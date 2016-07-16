@@ -4,6 +4,8 @@ import Data.List
 import Data.Time
 import Control.Applicative hiding ((<|>), many)
 import Control.Monad
+import Control.Monad.Writer
+import qualified Control.Monad.State as St
 import System.Directory
 import qualified Data.Map as Map
 import System.IO (IOMode (..), hGetContents, hSetEncoding, openFile, hClose, mkTextEncoding, stdout, utf8, hPutStrLn, Handle)
@@ -23,11 +25,24 @@ connect sep []     = ""
 connect sep [x]    = x
 connect sep (x:xs) = x++sep++connect sep xs
 
-string2Date :: String -> Day
-string2Date date =
-  fromGregorian y m d
-  where y':m:d:_ = map (\m -> read m :: Int) $ split '/' date
-        y = toInteger y'
+-- uniq :: Eq a => [a] -> [a]
+uniq s = reverse . (`St.execState` []) $ do
+  St.forM_ s $ \n -> do
+    r <- St.get
+    if n `notElem` r
+      then St.put (n:r)
+      else St.put r
+  return ()
+
+makeMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k [a]
+makeMap kF vF [] = Map.empty
+makeMap kF vF (x:xs) =
+  Map.insertWith' (++) (kF x) [vF x] $ makeMap kF vF xs
+
+makeCountMap :: (Num a, Ord k) => (t -> k) -> [t] -> Map.Map k a
+makeCountMap kF [] = Map.empty
+makeCountMap kF (x:xs) =
+   Map.insertWith' (+) (kF x) 1 $ makeCountMap kF xs
 
 readUTF8File :: FilePath -> IO String
 readUTF8File fp = do
@@ -51,9 +66,25 @@ withOutFile oFile func = do
   func h
   hClose h
 
+withAppendFile :: FilePath -> (Handle -> IO ()) -> IO ()
+withAppendFile oFile func = do
+  h <- openFile oFile AppendMode
+  encoding <- mkTextEncoding "cp65001"
+  hSetEncoding h encoding
+  func h
+  hClose h
+
 writeUTF8File :: FilePath -> String -> IO ()
 writeUTF8File fp contents = do
   h <- (openFile fp WriteMode)
+  encoding <- mkTextEncoding "cp65001"
+  hSetEncoding h encoding
+  hPutStrLn h contents
+  hClose h
+
+appendUTF8File :: FilePath -> String -> IO ()
+appendUTF8File fp contents = do
+  h <- (openFile fp AppendMode)
   encoding <- mkTextEncoding "cp65001"
   hSetEncoding h encoding
   hPutStrLn h contents

@@ -19,14 +19,14 @@ keyColNum :: Int
 nendo     :: Integer
 file      = "f:/Haskell/.kensin"
 keyColNum = 12
-nendo     = 2015
+nendo     = 2016
 ----------definition--------------------------------------------------------------------------------
 valueAlist :: [(String, Integer, Integer)]
-valueAlist = [("1", 5000,2000), ("2", 2500,2500), ("3", 7500,4500),
+valueAlist = [("1", 6000,3000), ("2", 2500,2500), ("3", 8500,5500),
               ("4", 1500,1500), ("5", 1500, 500), ("6", 1500, 500),
-              ("7", 1500, 500), ("8", 4500,2500), ("9", 4500,2500),
-              ("10",3000,2000), ("11",6000,3000), ("12",1000,1000),
-              ("13",3500,3500), ("13",3500,3500)]
+              ("7", 1500, 500), ("8", 5000,0), ("9", 5000,0),
+              ("10",3000,2000), ("11",8000,4000), ("12",1000,1000),
+              ("13",3500,3500), ("14",3500,3500)]
 
 -- data Option = Option
 --               { optKensin :: Maybe String,
@@ -84,10 +84,12 @@ ladiesP npList pList kd =
                                             (payContains, pList)]
 
 ladies1P :: KensinBool
-ladies1P = ladiesP ["4", "5", "6"] ["8", "9", "10"]
+-- ladies1P = ladiesP ["4", "5", "6"] ["8", "9", "10"]
+ladies1P = ladiesP ["5", "6", "7", "8", "9"] ["8", "9", "10"]
 
 ladies2P :: KensinBool
-ladies2P = ladiesP ["4", "5"] ["8", "9"]
+-- ladies2P = ladiesP ["4", "5"] ["8", "9"]
+ladies2P = ladiesP ["5", "6", "8", "9"] ["8", "9"]
 
 jinpaiP :: KensinBool
 jinpaiP = payContains ["13", "14"]
@@ -111,9 +113,9 @@ genSortKey (date, hour, minute) =
 
 extractAlist :: [(Integer, String)]
 extractAlist = [(0, "氏名"), (2, "性別"), (3, "生年月日"),
-                (6, "保険証番号"),  (7, "区分"), (11, "補助"),
-                (12, "日時"), (13, "申込日時"), (14, "無料オプション"),
-                (15, "有料オプション")]
+                (5, "保険証番号"),  (6, "区分"), (7, "補助"),
+                (10, "日時"), (11, "申込日時"), (12, "無料オプション"),
+                (13, "有料オプション")]
 
 extractElement :: [String] -> [String]
 extractElement line =
@@ -249,6 +251,6 @@ main = do
   -- print opt
   I.hSetEncoding I.stdout I.utf8
   cont <- sort <$> toCsvData <$> readUTF8File file
-  let showS = mapM_ (putStrLn . show)
-  showS $ translateJusin cont
-  -- mapM_ (putStrLn . amountShow) $ translateAmount cont
+  -- let showS = mapM_ (putStrLn . show)
+  -- showS $ translateJusin cont
+  mapM_ (putStrLn . amountShow) $ translateAmount cont

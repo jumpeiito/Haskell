@@ -175,7 +175,7 @@ main = do
   -- let result = map (\key -> (key, search dict key)) $ lines target
   let result = map (search dict) $ lines target
   hSetEncoding stdout utf8
-  mapM_ print result
+  mapM_ (putStrLn . show) result
   -- let result = map (search dict) $ lines target
   -- hSetEncoding stdout utf8
   -- mapM_ (putStrLn . show) result
