@@ -120,13 +120,13 @@ deleteStr key target = snd $ runWriter (delStr key target)
   where (>>>) x y = drop (length x) y
         delStr :: String -> String -> Writer String String
         delStr _ [] = return []
-        delStr key target@(t:ts)
-          | key `isPrefixOf` target = delStr key (key >>> target)
-          | otherwise               = do { tell [t]; delStr key ts}
+        delStr key' target'@(t:ts)
+          | key' `isPrefixOf` target' = delStr key' (key' >>> target')
+          | otherwise               = do { tell [t]; delStr key' ts}
   
 deleteStrMap :: [String] -> String -> String
 deleteStrMap [] s = s
-deleteStrMap (x:xs) s = deleteStrMap xs (deleteStr x s)
+deleteStrMap (x:xs) s = deleteStrMap xs $ deleteStr x s
 
 toL :: String -> [String]
 toL = split ','
@@ -165,12 +165,13 @@ fTrans2 :: [String] -> MS.State (String, [String]) ()
 fTrans2 ls = do
   MS.forM ls $ \n -> do
     (num, ret) <- MS.get
-    case (n `blankP` 4, n `blankP` 1) of
+    case (n <-?-> 4, n <-?-> 1) of
       (True, _) -> MS.put (num,   n `lineMerge` ret)
       (_, True) -> MS.put (num,   (inner num n):ret)
       (_, _)    -> MS.put (n<@>1, n:ret)
   return ()
-  where inner n l = case toL l of
+  where (<-?->) = blankP
+        inner n l = case toL l of
           h:_:r -> intercalate "," $ h:n:r
           _ -> ""
 
@@ -180,6 +181,7 @@ secondTrans day (x:xs) = case (parse (test day) "" x) of
   Right s -> s:(secondTrans day xs)
   Left _  -> secondTrans day xs
 
+trans :: Day -> [String] -> [Line s]
 trans day = (secondTrans day) . firstTrans
 
 fixTel, mobileTel :: Line s -> [Telephone]
@@ -187,7 +189,7 @@ fixTel = fixFilter . tel
 mobileTel = mobileFilter . tel
 
 mobileBlankP :: Line s -> Bool
-mobileBlankP = (==[]) . mobileTel
+mobileBlankP = null . mobileTel
 
 addressMap :: [Line s] -> Map.Map String [Line s]
 addressMap = makeMap ad id 
@@ -225,8 +227,10 @@ hanchoMap = makeMap f id
   where f line' = (100 * toInt (bknum line')) + (toInt (han line'))
         toInt s = read s :: Int
         
+hanchoFilter :: [Line s] -> [Line s]
 hanchoFilter = filter (isJust . hancho)
 
+safeHead :: [a] -> Maybe a
 safeHead [] = Nothing
 safeHead (x:_) = Just x
 
@@ -451,4 +455,5 @@ hoge :: MS.State [String] Int
 hoge = do
   x <- MS.get
   MS.forM ["hoge", "foo", "buz"] (\n -> MS.modify (++[n]))
-  return $ length x
+  y <- MS.get
+  return $ length y
