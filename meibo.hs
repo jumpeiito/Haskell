@@ -71,26 +71,26 @@ test day = do
   let adtel  = ad' ++ "・" ++ tel'
   let telp   = telParse adtel
   let birth' = strdt bir :: Maybe Day
-  return $ Line { bunkai = bnk,
-                  bknum  = bunkaiNumber bnk,
-                  han    = hn,
-                  kind   = removeSymbol sym,
-                  hancho = case hcho of "" -> Nothing; _ -> Just "●",
-                  gen    = adtel ++ "\n",
-                  name   = nm,
-                  nameP  = nameParse nm,
-                  ad     = deleteStrMap (map telString telp) adtel,
-                  tel    = telp,
-                  work   = exp',
-                  furi   = fu',
-                  birthS = bir,
-                  birth  = birth',
-                  year   = howOld <$> birth' <*> (Just day),
-                  Main.exp = exp2' }
-  where sep  = ','
-        cell = many (noneOf [sep])
-        sep' = char sep
-  
+  return Line { bunkai = bnk,
+                bknum  = bunkaiNumber bnk,
+                han    = hn,
+                kind   = removeSymbol sym,
+                hancho = case hcho of "" -> Nothing; _ -> Just "●",
+                gen    = adtel ++ "\n",
+                name   = nm,
+                nameP  = nameParse nm,
+                ad     = deleteStrMap (map telString telp) adtel,
+                tel    = telp,
+                work   = exp',
+                furi   = fu',
+                birthS = bir,
+                birth  = birth',
+                year   = howOld <$> birth' <*> Just day,
+                Main.exp = exp2' }
+    where sep  = ','
+          cell = many (noneOf [sep])
+          sep' = char sep
+          
 removeSymbol :: String -> String
 removeSymbol = deleteStrMap ["◎", "○"]
 
@@ -106,9 +106,9 @@ bunkaiNumber s = case s of
 ----------------------------------------------------------------------------------------------------
 _nameParse :: Parser (String, String)
 _nameParse = do
-  fam <- (many1 $ noneOf "　") <* char '　'
+  fam <- many1 (noneOf "　") <* char '　'
   fir <- many1 $ noneOf "　"
-  return $ (fam, fir)
+  return (fam, fir)
 
 nameParse :: String -> (String, String)
 nameParse n = case parse _nameParse "" n of
@@ -117,7 +117,7 @@ nameParse n = case parse _nameParse "" n of
 ----------------------------------------------------------------------------------------------------
 deleteStr :: String -> String -> String
 deleteStr key target = snd $ runWriter (delStr key target)
-  where (>>>) x y = drop (length x) y
+  where (>>>) x = drop (length x)
         delStr :: String -> String -> Writer String String
         delStr _ [] = return []
         delStr key' target'@(t:ts)
@@ -125,14 +125,13 @@ deleteStr key target = snd $ runWriter (delStr key target)
           | otherwise               = do { tell [t]; delStr key' ts}
   
 deleteStrMap :: [String] -> String -> String
-deleteStrMap [] s = s
-deleteStrMap (x:xs) s = deleteStrMap xs $ deleteStr x s
+deleteStrMap xs s = foldl (flip deleteStr) s xs
 
 toL :: String -> [String]
 toL = split ','
 
 (<@>) :: String -> Int -> String
-(<@>) str n = (toL str)!!n
+(<@>) str n = toL str !! n
 
 blankP :: String -> Int -> Bool
 blankP s n = (s <@> n) == ""
@@ -144,14 +143,14 @@ syncF a b numList f = snd $ runWriter (syncFr a b 0)
   where syncFr [] _ _ = return []
         syncFr _ [] _ = return []
         syncFr (x:xs) (y:ys) n = do
-          (if (n `elem` numList)
-           then tell [f x y]
-           else tell [x])
+          if n `elem` numList
+            then tell [f x y]
+            else tell [x]
           syncFr xs ys (n+1)
 
 lineMerge :: String -> [String] -> [String]
 lineMerge str (l:ls) =
-  (intercalate "," syn):ls
+  intercalate "," syn : ls
   where str'     = toL str
         header   = toL l
         plus a b = a ++ "・" ++ b
@@ -167,7 +166,7 @@ fTrans2 ls = do
     (num, ret) <- MS.get
     case (n <-?-> 4, n <-?-> 1) of
       (True, _) -> MS.put (num,   n `lineMerge` ret)
-      (_, True) -> MS.put (num,   (inner num n):ret)
+      (_, True) -> MS.put (num,   inner num n : ret)
       (_, _)    -> MS.put (n<@>1, n:ret)
   return ()
   where (<-?->) = blankP
@@ -177,12 +176,12 @@ fTrans2 ls = do
 
 secondTrans :: Day -> [String] -> [Line s]
 secondTrans _ [] = []
-secondTrans day (x:xs) = case (parse (test day) "" x) of
-  Right s -> s:(secondTrans day xs)
+secondTrans day (x:xs) = case parse (test day) "" x of
+  Right s -> s : secondTrans day xs
   Left _  -> secondTrans day xs
 
 trans :: Day -> [String] -> [Line s]
-trans day = (secondTrans day) . firstTrans
+trans day = secondTrans day . firstTrans
 
 fixTel, mobileTel :: Line s -> [Telephone]
 fixTel = fixFilter . tel
@@ -202,20 +201,20 @@ testFilter lines = filter hofoo lines
         key l = Map.lookup (ad l) mapp
 
 lineToTel :: [Telephone] -> String
-lineToTel = (intercalate "・") . map telString
+lineToTel = intercalate "・" . map telString
 
 lineMobile, lineFix :: Line s -> String
 lineMobile = lineToTel . mobileTel
 lineFix    = lineToTel . fixTel
 
-functionsToString :: [(Line s -> String)] -> Line s -> String
+functionsToString :: [Line s -> String] -> Line s -> String
 functionsToString fs l = intercalate "," $ map (\f -> f l) fs
 
 mainString :: Line s -> String
-mainString l =
+mainString =
   functionsToString [bunkai, han, kind,  name, furi,
                      blank, ad', lineMobile, lineFix, work, Main.exp,
-                     (show . birth), (show . year)] l
+                     show . birth, show . year]
   where ad' line = deleteStrMap [".", "・", "･", " ", "　"] $ ad line
         blank _           = ""
 ----------------------------------------------------------------------------------------------------
@@ -224,7 +223,7 @@ mainString l =
 ----------------------------------------------------------------------------------------------------
 hanchoMap :: [Line s] -> Map.Map Int [Line s]
 hanchoMap = makeMap f id
-  where f line' = (100 * toInt (bknum line')) + (toInt (han line'))
+  where f line' = (100 * toInt (bknum line')) + toInt (han line')
         toInt s = read s :: Int
         
 hanchoFilter :: [Line s] -> [Line s]
@@ -249,7 +248,7 @@ hanchoList (_, v) = [bkn, bnk, hn, name', fam', len]
         len   = show $ length v
 
 hanInfo :: (t, [Line s]) -> String
-hanInfo = (intercalate ",") . hanchoList
+hanInfo = intercalate "," . hanchoList
 
 hanDay :: [String] -> String -> String
 hanDay lis bk
@@ -264,10 +263,10 @@ hanDay lis bk
 hanOutput :: (Int, [String]) -> (t, [Line s]) -> String
 hanOutput (month, day) = opfunc . hanchoList
   where arguments (bn:_:h:_:n:l:_) =
-          intercalate "}{" [h,l,n,(show month),(hanDay day bn)]
+          intercalate "}{" [h,l,n,show month,hanDay day bn]
         arguments _ = ""
         opfunc list = 
-          "\\hancholine{" ++ (arguments list) ++ "}"
+          "\\hancholine{" ++ arguments list ++ "}"
 ----------------------------------------------------------------------------------------------------
 makeTable :: Integer -> [(String, Day, Day)]
 makeTable y' =
@@ -296,40 +295,38 @@ fromBirthday table d = coref table
 
 checK :: [(String, Day, Day)] -> Line s -> Bool
 checK table l = (kind l) == (kind2 l)
-  where kind2 line = fromJust $ fromBirthday table <$> (birth line)
+  where kind2 line = fromJust $ fromBirthday table <$> birth line
 
 checkFilter :: [(String, Day, Day)] -> [Line s] -> [Line s]
-checkFilter table l = filter (\n -> checK table n == False) l
+checkFilter table = filter (not . checK table)
 ----------------------------------------------------------------------------------------------------
 translateFunc, translateFuncPartial :: (Line s -> String) -> String -> Line s -> Bool
-translateFunc func key = (\n -> key == func n) 
+translateFunc func key n = key == func n
 
-translateFuncPartial func key = (\n -> key `isInfixOf` func n)
+translateFuncPartial func key n = key `isInfixOf` func n
 
-translateFuncTel :: (Line s -> [Telephone]) -> String -> (Line s -> Bool)
-translateFuncTel func key = (\n -> key `isInfixOf` telpn n)
+translateFuncTel :: (Line s -> [Telephone]) -> String -> Line s -> Bool
+translateFuncTel func key n = key `isInfixOf` telpn n
   where telpn = intercalate "," . map telString . func
 
-translateFuncYear :: String -> (Line s -> Bool)
-translateFuncYear y =
-  (\n -> case year n of
-     Nothing -> False
-     Just x  -> (read y :: Integer) == x)
+translateFuncYear :: String -> Line s -> Bool
+translateFuncYear y n = case year n of
+  Nothing -> False
+  Just x  -> (read y :: Integer) == x
 
-translateFuncOld :: (Maybe Day, Maybe Day) -> (Line s -> Bool)
-translateFuncOld (start, end) =
-  (\n -> fromJust $ (&&) <$> (startBool n) <*> (endBool n))
+translateFuncOld :: (Maybe Day, Maybe Day) -> Line s -> Bool
+translateFuncOld (start, end) n = fromJust $ (&&) <$> startBool n <*> endBool n
   where startBool n' = (>=) <$> birth n' <*> start
         endBool n'   = (<=) <$> birth n' <*> end
 
-translateFold :: (Bool -> Bool -> Bool) -> Bool -> [Key] -> (Line s -> Bool)
-translateFold func bool list =
-  (\line -> foldl func bool $ map (\f -> (translate f) line) list)
+translateFold :: (Bool -> Bool -> Bool) -> Bool -> [Key] -> Line s -> Bool
+translateFold func bool list line =
+  foldl func bool $ map (`translate` line) list
 
-translate :: Key -> (Line s -> Bool)
+translate :: Key -> Line s -> Bool
 translate (Or  list)  = translateFold (||) False list
 translate (And list)  = translateFold (&&) True list
-translate (Not term)  = not . (translate term)
+translate (Not term)  = not . translate term
 translate (Bunkai s)  = translateFunc bunkai s
 translate (Bk i)      = translateFunc bknum i
 translate (Han i)     = translateFunc han i
@@ -370,7 +367,7 @@ bkhanCodeParse = do
 yearoldParse :: Parser Key
 yearoldParse = do
   let ac = noneOf "=,)]>&"
-  start <- (many1 ac) <* char '&'
+  start <- many1 ac <* char '&'
   end   <- many1 ac
   let s = strdt start :: Maybe Day
   let e = strdt end :: Maybe Day
@@ -387,7 +384,7 @@ yearOld :: String -> Key
 yearOld = returnParse yearoldParse
 
 keyParseTermWord = do
-  key' <- (many1 aChar) <* char '='
+  key' <- many1 aChar <* char '='
   val' <- many1 aChar
   case key' of
     "bunkai" -> return $ Bunkai val'
@@ -404,7 +401,7 @@ keyParseTermWord = do
     "c"      -> return $ bkhanCode val'
     _        -> return $ And []
 
-keyParseTerm = do
+keyParseTerm =
   try keyParseOr
   <|> try keyParseAnd
   <|> try keyParseNot
@@ -427,20 +424,20 @@ main = do
   (y', m', d')    <- today
   (_, sout, _, _) <- runRuby
   let currentDay = fromGregorian y' m' d'
-  mainList        <- (trans currentDay) <$> lines <$> I.hGetContents sout
+  mainList        <- trans currentDay <$> lines <$> I.hGetContents sout
   args            <- getArgs
 ----------------------------------------------------------------------------------------------------
   case args of
     ["seek", key] -> mainOut $ seekS key mainList
     []            -> mainOut mainList
     ["check"]     -> let table = makeTable y' in (mainOut $ checkFilter table mainList)
-    ["hch"]       -> (printer hanInfo) $ mapToList mainList
-    "hchp":l      -> (printer (hanOutput (m' , l))) $ mapToList mainList
+    ["hch"]       -> printer hanInfo $ mapToList mainList
+    "hchp":l      -> printer (hanOutput (m' , l)) $ mapToList mainList
     -- "test"        -> mainOut $ testFilter mainList
     _             -> putStrLn ""
 ----------------------------------------------------------------------------------------------------
   where printer f = mapM_ (putStrLn . f)
-        mainOut   = (printer mainString)
+        mainOut   = printer mainString
         mapToList = Map.assocs . hanchoMap
 
 -- data Join a = Join String deriving (Show, Eq)

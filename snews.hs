@@ -69,12 +69,21 @@ getPageContents url = do
   converted <- convertUTF8 body
   return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
-main :: IO ()
+-- main :: IO ()
 main = do
   td   <- todayDay
-  let akahata = LP "http://www.jcp.or.jp/akahata/" akahataMakeURL akahataNewsList
-  page <- getPageContents (topPageURL td akahata)
-  mapM_ B.putStrLn $ (listedKey akahata) page
+  let akahata = makeAkahata td
+  page <- getPageContents (topURL akahata)
+  let urls = (listedKey akahata) page
+  let akpage = makeAkahataPage ""
+  forM_ urls $ \url -> do
+    cont <- getPageContents url
+    B.putStrLn $ (titleFunc akpage) cont
+    mapM_ B.putStrLn $ (textFunc akpage) cont
+  -- cont <- getPageContents testurl
+  -- mapM_ B.putStrLn $ (textFunc akpage) cont
+  -- pages <- [ getPageContents u >>= (return . textFunc akpage) | u <- urls ]
+  -- return $ pages
   -- I.putStrLn (topPageURL td akahata)
 ----------------------------------------------------------------------------------------------------
 testfoo = TagBranch "div" [("class","blogbody")] [TagLeaf (TagText "foo"),TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")],TagBranch "h3" [("class","title")] [TagLeaf (TagText "[読売新聞] 震災遺構の(保存)　合意形成へ議論を尽くそう (2015年08月24日)"), TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")]]]
@@ -83,3 +92,4 @@ testtitle = "[読売新聞] 震災遺構の保存　合意形成へ(議論)を�
 
 ---------- url -> ListedPage -> [url, url, url, ...] -> [Page, Page, Page, ...] -> [Article, Article, Article, ...]
 ---------- String -> ListedPage -> IO [String] -> IO [Page] -> IO [Article]
+
