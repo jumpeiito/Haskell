@@ -1,6 +1,7 @@
-module NewsArticle (Article (..), always,
+module NewsArticle (Article (..), always, AKey (..), ListedPage (..),
                     makeArticle, treeText, findTree, (<@>),
-                    titleFO, output, takePaper) where
+                    titleFO, output, takePaper,
+                    akahataNewsList, akahataMakeURL, topPageURL) where
 
 import Strdt
 import Data.Time
@@ -19,6 +20,44 @@ import qualified Control.Monad.State as St
 import qualified Network.HTTP as Net
 import Data.Text.ICU.Convert as C
 
+type URL = String
+
+data ListedPage a b = LP { baseURL   :: URL,
+                           urlFunc   :: b -> URL -> URL,
+                           listedKey :: [TagTree a] -> [a] }
+
+
+-- "http://www.jcp.or.jp/akahata/"
+akahataBaseURL :: String
+akahataBaseURL = "http://www.jcp.or.jp/akahata/aik"
+
+akahataFullURL :: ByteString -> ByteString
+akahataFullURL url = pack (akahataBaseURL <> nendo' </> day' <> "/") <> url
+  where (</>) a b  = a <> "/" <> b
+        dayString  = Data.List.take 8 (unpack url)
+        dayDay     = fromJust (strdt dayString :: Maybe Day)
+        nendo'     = show $ nendo dayDay `mod` 1000
+        day'       = dayStrWithSep '-' dayDay
+
+akahataNewsList :: [TagTree ByteString] -> [ByteString]
+akahataNewsList = (map akahataFullURL) . extractHref . extractTree
+  where extractTree = concatMap (findTree (Always, Attr "newslist"))
+        extractHref = concatMap (findAttribute (B.pack "href"))
+
+akahataMakeURL :: Day -> URL -> URL
+akahataMakeURL day base =
+  base <> "aik" <> nendo' </> day' </> "index.html"
+  where (</>) a = (a <>) . ("/" <>)
+        nendo'  = show $ (`mod` 1000) $ nendo day
+        day'    = dayStrWithSep '-' day
+
+topPageURL :: b -> ListedPage a b -> URL
+topPageURL b xl = (urlFunc xl) b (baseURL xl)
+
+data Page a = Page { pageUrl :: String,
+                     textkey :: ArticleKey
+                   }
+
 data Article a = Article { tree  :: TagTree a,
                            title :: a,
                            text  :: [a],
@@ -26,33 +65,38 @@ data Article a = Article { tree  :: TagTree a,
                            paper :: a }
                deriving (Show, Eq)
 
-data ArticleKey = Attr String | Name String deriving (Show, Eq)
+data AKey = Name String | Attr String | Always deriving (Show, Eq)
 
+type ArticleKey = (AKey, AKey)
 -- "http://www.jcp.or.jp/akahata/aik16/2016-07-13/2016071301_01_1.html"
-akahataBaseURL :: String
-akahataBaseURL = "http://www.jcp.or.jp/akahata/aik"
-
-makeAkahataURL :: String -> String
-makeAkahataURL url = akahataBaseURL <> nendo' </> day' </> url
-  where (</>) a b  = a <> "/" <> b
-        dayString  = Data.List.take 8 url
-        dayDay     = fromJust (strdt dayString :: Maybe Day)
-        nendo'     = show $ nendo dayDay `mod` 1000
-        day'       = dayStrWithSep '-' dayDay
 
 (<@>) :: (String, String) -> [(ByteString, ByteString)] -> Bool
 (a, b) <@> alist = [pairF pack (a,b)] `isInfixOf` alist
 
+----------------------------------------------------------------------------------------------------
 always :: a -> Bool
 always _ = True
-----------------------------------------------------------------------------------------------------
-findTree hF aF tb@(TagBranch {}) = execWriter $ _findT hF aF tb
-findTree _ _ _ = []
 
-_findT hF aF tb@(TagBranch header attr ys)
-  | hF header && aF attr = tell [tb]
-  | otherwise = St.forM_ ys (tell . findTree hF aF)
-_findT _ _ _ = tell []
+solveAKey :: AKey -> (TagTree ByteString -> Bool)
+solveAKey (Name a) (TagBranch n _ _) = n == pack a
+solveAKey (Attr a) (TagBranch _ l _) = [pairF pack ("class", a)] `isInfixOf` l
+solveAKey Always _                   = always ()
+solveAKey _ _ = False
+        
+solveArticleKey :: ArticleKey -> (TagTree ByteString -> Bool)
+solveArticleKey  (l, r) = do
+  left'  <- solveAKey l
+  right' <- solveAKey r
+  return $ left' && right'
+
+findTree akey tb@(TagBranch {}) = execWriter $ find' akey tb
+findTree _ _ = []
+(==>) = findTree
+
+find' akey tb@(TagBranch header attr ys)
+  | solveArticleKey akey tb = tell [tb]
+  | otherwise = St.forM_ ys (tell . findTree akey)
+find' _ _ = tell []
 
 assocKey    :: Eq a => a -> [(a, b)] -> Maybe b
 assocKey _ [] = Nothing
@@ -110,23 +154,23 @@ makeArticleAkahata tagtree =
             title = takeAkahataTitle tagtree,
             text  = takeAkahataText tagtree,
             date  = getAkahataDate tagtree,
-            paper = B.pack "赤旗"
+             paper = B.pack "赤旗"
           }
 -------------
-takeTitle        = treeTextMap . findTree always (("class", "title")<@>)
-takeAkahataTitle = treeTextMap . findTree (B.pack "title" ==) always
+takeTitle        = treeTextMap . findTree (Always, Attr "title")
+takeAkahataTitle = treeTextMap . findTree (Name "title", Always)
 -- ----------
 titleFO a = pack "** " <> title a <> B.pack "\n"
 textFO a  = B.intercalate (B.pack "\n") $ map (pack "   " <>) $ text a
 output    = titleFO <> textFO
 ------------
 takeText  = filterBlankLines . treeToStringList . makeTree
-  where makeTree = findTree always (("class", "text")<@>)
+  where makeTree = findTree (Always, Attr "text")
         treeToStringList = B.lines . treeTextMap
 
 takeAkahataText :: TagTree ByteString -> [ByteString]
 takeAkahataText = treeToStringList . makeTree
-  where makeTree = findTree (B.pack "p" ==) always
+  where makeTree = findTree (Name "p", Always)
         treeToStringList = map treeText
 
 filterBlankLines :: [ByteString] -> [ByteString]
@@ -146,7 +190,7 @@ getDate s = case parse getDateParse "" s of
 
 getAkahataDate :: TagTree ByteString -> Maybe Day
 getAkahataDate tree = strdt (B.unpack date')
-  where date' = treeTextMap $ findTree always (("class", "date")<@>) tree
+  where date' = treeTextMap $ (Always, Attr "date") ==> tree
 
 dateP :: Parser ByteString
 dateP = do
@@ -189,14 +233,12 @@ translateTags str = tagTree $ parseTags str
 -- ----------------------------------------------------------------------------------------------------
 extractBlogBody :: [TagTree ByteString] -> [TagTree ByteString]
 extractBlogBody =
-  concatMap (findTree always (("class", "blogbody")<@>))
+  concatMap $ findTree (Always, Attr "blogbody")
 
 extractHtml :: [TagTree ByteString] -> [TagTree ByteString]
-extractHtml = concatMap (findTree (B.pack "html" ==) always)
+extractHtml = concatMap $ findTree (Name "html", Always)
 -------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
-extractAkahataNewsList :: [TagTree ByteString] -> [TagTree ByteString]
-extractAkahataNewsList = concatMap $ findTree always (("class", "newslist")<@>)
 ----------------------------------------------------------------------------------------------------
 testIO = do
   (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./4.html"] Nothing Nothing
@@ -204,15 +246,15 @@ testIO = do
   let contents = map makeArticle $ extractBlogBody $ translateTags page
   mapM_ (mapM_ B.putStrLn . text) contents
 
-testIO2 = do
-  (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./5.html"] Nothing Nothing
-  page <- B.hGetContents p
-  return $ concatMap (findAttribute (B.pack "href")) $ extractAkahataNewsList $ translateTags page
+-- testIO2 = do
+--   (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./5.html"] Nothing Nothing
+--   page <- B.hGetContents p
+--   return $ concatMap (findAttribute (B.pack "href")) $ akahataNewsList $ translateTags page
 
 testIO21 = do
   (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./5.html"] Nothing Nothing
   page <- B.hGetContents p
-  return $ extractAkahataNewsList $ translateTags page
+  return $ akahataNewsList $ translateTags page
 
 testIO22 = do
   (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./5.html"] Nothing Nothing
@@ -236,3 +278,5 @@ testStr3 = "今回は選挙権年齢が「20歳以上」から「18歳以上」�
 numaddOver10 :: [Int] -> Int
 -- numaddOver10 = (Data.List.filter odd) >>> (Data.List.filter (>10)) >>> Data.List.length
 numaddOver10 = Data.List.length . Data.List.filter (>10) . Data.List.filter odd
+
+testfoo = TagBranch "div" [("class","blogbody")] [TagLeaf (TagText "foo"),TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")],TagBranch "h3" [("class","title")] [TagLeaf (TagText "[読売新聞] 震災遺構の(保存)　合意形成へ議論を尽くそう (2015年08月24日)"), TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")]]]

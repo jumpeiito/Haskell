@@ -37,7 +37,7 @@ translateTags str = tagTree $ parseTags str
 ----------------------------------------------------------------------------------------------------
 extractBlogBody :: [TagTree ByteString] -> [TagTree ByteString]
 extractBlogBody =
-  concatMap (findTree always (("class", "blogbody")<@>))
+  concatMap $ findTree (Always, Attr "blogbody")
 ----------------------------------------------------------------------------------------------------
 -- testIO = do
 --   contents <- U.readUTF8File "f:/haskell/2.html"
@@ -45,6 +45,7 @@ extractBlogBody =
 --   let tra = translateTags contents
 --   return $ map makeArticle $ extractBlogBody tra
 
+-- http://www.jcp.or.jp/akahata/aik16/2016-07-18/index.html
 testIO2 :: [String] -> IO ()
 testIO2 s = 
   U.withAppendFile "./test.org" $ \handle -> mapM_ (I.hPutStrLn handle) s
@@ -55,25 +56,30 @@ appendText txt day' =
   mapM_ (I.hPutStrLn handle) txt
   where orgfile = orgName day'
 ----------------------------------------------------------------------------------------------------
-getPageContents :: String -> IO String
-getPageContents url = 
-  Net.simpleHTTP (Net.getRequest url) >>= Net.getResponseBody
+convertUTF8 :: String -> IO ByteString
+convertUTF8 s = do
+  utf8 <- C.open "utf8" (Just False)
+  sjis <- C.open "cp932" (Just False)
+  return $ C.fromUnicode utf8 (C.toUnicode sjis (B.pack s))
+
+getPageContents :: String -> IO [TagTree ByteString]
+getPageContents url = do
+  http      <- Net.simpleHTTP (Net.getRequest url)
+  body      <- Net.getResponseBody http
+  converted <- convertUTF8 body
+  return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
 main :: IO ()
 main = do
-  page <- getPageContents (makeOrgUrl (fromGregorian 2016 7 11))
-  sjis <- C.open "cp932" (Just False)
-  utf8 <- C.open "utf8"  (Just False)
-  let contents = (C.fromUnicode utf8 (C.toUnicode sjis (B.pack page)))
-  -- (_, p, _, _) <- getPageContents (makeOrgUrl (fromGregorian 2016 7 10))
-  -- I.hSetEncoding I.stdin I.utf8
-  -- page <- B.hGetContents p
-  -- I.hSetEncoding I.stdout I.utf8
-  mapM_ (B.putStrLn . output . makeArticle) $ extractBlogBody $ translateTags contents
-  -- putStrLn contents
-  -- putStrLn =<< I.hGetContents p
-  -- B.putStrLn contents
+  td   <- todayDay
+  let akahata = LP "http://www.jcp.or.jp/akahata/" akahataMakeURL akahataNewsList
+  page <- getPageContents (topPageURL td akahata)
+  mapM_ B.putStrLn $ (listedKey akahata) page
+  -- I.putStrLn (topPageURL td akahata)
 ----------------------------------------------------------------------------------------------------
 testfoo = TagBranch "div" [("class","blogbody")] [TagLeaf (TagText "foo"),TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")],TagBranch "h3" [("class","title")] [TagLeaf (TagText "[読売新聞] 震災遺構の(保存)　合意形成へ議論を尽くそう (2015年08月24日)"), TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")]]]
 
 testtitle = "[読売新聞] 震災遺構の保存　合意形成へ(議論)を尽くそう (2015年08月24日)"
+
+---------- url -> ListedPage -> [url, url, url, ...] -> [Page, Page, Page, ...] -> [Article, Article, Article, ...]
+---------- String -> ListedPage -> IO [String] -> IO [Page] -> IO [Article]
