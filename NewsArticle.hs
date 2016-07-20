@@ -7,6 +7,11 @@ import Strdt
 import Data.Time
 import Data.List
 import Data.Maybe
+import qualified Data.Text          as Tx
+import qualified Data.Text.Encoding as Txe
+import qualified Data.Text.Internal as Txi
+import qualified Data.Text.IO       as Txio
+import qualified System.IO          as I
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import Text.Parsec
@@ -56,8 +61,7 @@ akahataURL day base subpage =
 
 data Page a = Page { pageUrl   :: URL,
                      titleFunc :: [TagTree a] -> a,
-                     textFunc  :: [TagTree a] -> [a]
-                   }
+                     textFunc  :: [TagTree a] -> [Txi.Text] }
 
 data Article a = Article { tree  :: TagTree a,
                            title :: a,
@@ -67,16 +71,18 @@ data Article a = Article { tree  :: TagTree a,
                deriving (Show, Eq)
 
 takeAkahataTitle :: [TagTree ByteString] -> ByteString
-takeAkahataTitle tree = treeTextMap tree'
-  where tree' = ((Name "title", Always) ==>) `concatMap` tree
+takeAkahataTitle tr = orgStar <> treeTextMap tree'
+  where tree'   = ((Name "title", Always) ==>) `concatMap` tr
+        orgStar = pack "** "
 
-takeAkahataText :: [TagTree ByteString] -> [ByteString]
-takeAkahataText = treeToStringList . makeTree
+takeAkahataText :: [TagTree ByteString] -> [Txi.Text]
+takeAkahataText = map stringFold2 . filter' . treeToStringList . makeTree
   where makeTree = concatMap $ findTrees [(Name "p",  Always),
-                                          (Name "h1", Always),
-                                          (Name "h2", Always),
+                                          -- (Name "h1", Always),
+                                          -- (Name "h2", Always),
                                           (Name "h3", Always)]
         treeToStringList = map treeText
+        filter' = filterBlankLines
 
 makeAkahataPage :: URL -> Page ByteString
 makeAkahataPage url = Page url takeAkahataTitle takeAkahataText
@@ -93,6 +99,7 @@ type ArticleKey = (AKey, AKey)
 always          :: a -> Bool
 solveAKey       :: AKey -> TagTree ByteString -> Bool
 solveArticleKey :: ArticleKey -> TagTree ByteString -> Bool
+solver          :: [ArticleKey] -> TagTree ByteString -> Bool
 (&&&)           :: Monad m => m Bool -> m Bool -> m Bool
 (|||)           :: Monad m => m Bool -> m Bool -> m Bool
 (==>), findTree :: ArticleKey -> TagTree ByteString -> [TagTree ByteString]
@@ -236,9 +243,12 @@ filterBlankLines (x:xl) = case parse fBLparse "" x of
   Right _ -> filterBlankLines xl
   Left _  -> x : filterBlankLines xl
 
-fBLparse :: Parser ByteString
-fBLparse = do { try (many1 $ oneOf " \r\n\t") <|> string "続きを読む";
-                return mempty }
+fBLparse :: Parser String
+fBLparse = do
+  try (string "" <* eof)
+    <|> try (many1 $ oneOf " \r\n\t")
+    <|> string "続きを読む"
+  return mempty
 ----------------------------------------------------------------------------------------------------
 getDate :: ByteString -> Maybe Day
 getDate s = case parse getDateParse "" s of
@@ -273,9 +283,9 @@ takePaperParse = try inner <|> (anyChar >> takePaperParse)
         return $ B.pack rel
 ----------------------------------------------------------------------------------------------------
 testStr = B.pack wn
-  where wn = [ '9' | x <- [1..1000] ]
+  where wn = [ 'あ' | x <- [1..1000] ]
 stringFold :: ByteString -> ByteString
-stringFold s = sfold2 s 0 
+stringFold s = sfold2 s 0
 
 sfold2 :: ByteString -> Int -> ByteString
 sfold2 bs c
@@ -284,6 +294,19 @@ sfold2 bs c
     if c == 104
     then B.singleton ch <> B.pack "\n" <> sfold2 rest 0
     else B.singleton ch <> sfold2 rest (c+1)
+
+stringFold2 :: ByteString -> Txi.Text
+stringFold2 s = sfold3 s' 0
+  where s' = Txe.decodeUtf8 s
+
+sfold3 :: Txi.Text -> Int -> Txi.Text
+sfold3 tx c
+  | tx == mempty = mempty
+  | otherwise = let Just (ch, rest) = Tx.uncons tx in
+    let char' = Tx.pack [ch] in
+    if c == 35
+    then char' <> Tx.pack "\n" <> sfold3 rest 0
+    else char' <> sfold3 rest (c+1)
 ----------------------------------------------------------------------------------------------------
 translateTags :: ByteString -> [TagTree ByteString]
 translateTags str = tagTree $ parseTags str
@@ -322,7 +345,9 @@ testIO3 = do
   (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./6.html"] Nothing Nothing
   page <- translateTags <$> B.hGetContents p
   let akpage = makeAkahataPage ""
-  mapM_ B.putStrLn $ textFunc akpage page
+  B.putStrLn $ titleFunc akpage page
+  I.hSetEncoding I.stdout I.utf8
+  mapM_ Txio.putStrLn $ textFunc akpage page
 
 testStr1 = "こうした北朝鮮の核・ミサイル開発が深刻な脅威となっているとみて、米韓は配備を最終決定した。2017年末までの運用開始をめざすという。不測の事態に備えた迎撃態勢の強化とともに、北朝鮮の核・ミサイル開発を抑制する効果も期待できるだろう。"
 

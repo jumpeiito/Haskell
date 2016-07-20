@@ -9,6 +9,7 @@ import Text.HTML.TagSoup.Tree
 import qualified Network.HTTP as Net
 import qualified Util         as U
 import qualified System.IO    as I
+import qualified Data.Text.IO       as Txio
 import qualified Control.Monad.State as St
 import Control.Applicative    hiding (many, (<|>))
 import Control.Monad.Writer
@@ -71,15 +72,16 @@ getPageContents url = do
 ----------------------------------------------------------------------------------------------------
 -- main :: IO ()
 main = do
+  I.hSetEncoding I.stdout I.utf8
   td   <- todayDay
-  let akahata = makeAkahata td
+  let akahata = makeAkahata (fromGregorian 2016 7 1)
   page <- getPageContents (topURL akahata)
   let urls = (listedKey akahata) page
   let akpage = makeAkahataPage ""
   forM_ urls $ \url -> do
     cont <- getPageContents url
     B.putStrLn $ (titleFunc akpage) cont
-    mapM_ B.putStrLn $ (textFunc akpage) cont
+    mapM_ Txio.putStrLn $ (textFunc akpage) cont
   -- cont <- getPageContents testurl
   -- mapM_ B.putStrLn $ (textFunc akpage) cont
   -- pages <- [ getPageContents u >>= (return . textFunc akpage) | u <- urls ]
