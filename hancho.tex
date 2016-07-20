@@ -1,0 +1,15 @@
+\documentclass[b5j,12pt]{jarticle}
+\usepackage{graphics,palatino}
+\setlength{\textheight}{37cm}
+\setlength{\textwidth}{24cm}
+\def\hancholine#1#2#3#4#5{\setlength{\unitlength}{1mm}
+\begin{picture}(240,330)(0,0)
+ \put(45,215){\scalebox{5.5}{#1}}
+ \put(125,215){\scalebox{5.5}{#2}}
+ \put(60,183){\scalebox{5.5}{#3}}
+ \put(38,139){\scalebox{5.5}{#4}}
+ \put(88,139){\scalebox{5.5}{#5}}
+\end{picture}\newpage}
+\begin{document}
+\include{hancho.insert}
+\end{document}
