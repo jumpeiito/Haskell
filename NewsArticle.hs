@@ -1,13 +1,12 @@
 module NewsArticle (Article (..), always, AKey (..), ListedPage (..),
-                    Page (..), makeAkahataPage, makeArticle, treeText, findTree, (<@>),
-                    titleFO, output, takePaper,
+                    Page (..), makeAkahataPage, treeText, findTree, (<@>),
                     makeAkahata) where
 
 import Strdt
 import Data.Time
 import Data.List
-import Data.Maybe
-import Debug.Trace
+import Data.Maybe (fromJust)
+import Debug.Trace (trace)
 import qualified Data.Text          as Tx
 import qualified Data.Text.Encoding as Txe
 import qualified Data.Text.Internal as Txi
@@ -22,9 +21,9 @@ import Control.Monad.Writer
 -- import Control.Arrow
 import Data.ByteString.Char8 as B  hiding (map, count, reverse, isInfixOf, concatMap, foldl, elem)
 import System.Process
-import qualified Control.Monad.State as St
-import qualified Network.HTTP as Net
-import Data.Text.ICU.Convert as C
+-- import qualified Control.Monad.State as St
+-- import qualified Network.HTTP as Net
+-- import Data.Text.ICU.Convert as C
 
 type URL = String
 
@@ -108,7 +107,7 @@ find'           :: ArticleKey -> TagTree ByteString -> Writer [TagTree ByteStrin
 assocKey        :: Eq a => a -> [(a, b)] -> Maybe b
 findAttribute   :: Eq s => s -> TagTree s -> [s]
 
-always _ = True
+always = const True
 
 solveAKey (Name a) (TagBranch n _ _) = n == pack a
 solveAKey (Attr a) (TagBranch _ l _) = [pairF pack ("class", a)] `isInfixOf` l
@@ -138,12 +137,12 @@ findTrees _ _ = []
 
 find' akey tb@(TagBranch _ _ ys)
   | solveArticleKey akey tb = tell [tb]
-  | otherwise = St.forM_ ys (tell . findTree akey)
+  | otherwise = forM_ ys (tell . findTree akey)
 find' _ _ = tell []
 
 finds' akeys tb@(TagBranch _ _ ys)
   | solver akeys tb = tell [tb]
-  | otherwise = St.forM_ ys (tell . findTrees akeys)
+  | otherwise = forM_ ys (tell . findTrees akeys)
 
 assocKey _ [] = Nothing
 assocKey k ((x, y):rest)
@@ -162,12 +161,12 @@ findAttribute _ _ = []
 ----------------------------------------------------------------------------------------------------
 treeText    :: TagTree ByteString -> ByteString
 treeTextMap :: [TagTree ByteString] -> ByteString
-makeArticle :: TagTree ByteString -> Article ByteString
-takeTitle   :: TagTree ByteString -> ByteString
-takeText    :: TagTree ByteString -> [ByteString]
-titleFO     :: Article ByteString -> ByteString
-textFO      :: Article ByteString -> ByteString
-output      :: Article ByteString -> ByteString
+-- makeArticle :: TagTree ByteString -> Article ByteString
+-- takeTitle   :: TagTree ByteString -> ByteString
+-- takeText    :: TagTree ByteString -> [ByteString]
+-- titleFO     :: Article ByteString -> ByteString
+-- textFO      :: Article ByteString -> ByteString
+-- output      :: Article ByteString -> ByteString
 ----------
 pairF f (a, b) = (f a, f b)
 ----------
@@ -184,7 +183,7 @@ ttx tb@(TagBranch _ _ descend) =
   case direction tb directionList of
   Skip   -> tell mempty
   Pack n -> tell $ pack n
-  Loop   -> St.forM_ descend (tell . treeText)
+  Loop   -> forM_ descend (tell . treeText)
 ttx _ = tell mempty
 
 data WriterDirection = Skip | Pack String | Loop deriving (Show, Eq)
@@ -211,12 +210,12 @@ direction tb ((f, direct):xs)
   | otherwise = direction tb xs
 
 ----------
-makeArticle tagtree =
-  Article { tree  = tagtree,
-            title = takeTitle tagtree,
-            text  = takeText tagtree,
-            date  = getDate $ takeTitle tagtree,
-            paper = takePaper $ takeTitle tagtree }
+-- makeArticle tagtree =
+--   Article { tree  = tagtree,
+--             title = takeTitle tagtree,
+--             text  = takeText tagtree,
+--             date  = getDate $ takeTitle tagtree,
+--             paper = takePaper $ takeTitle tagtree }
 
 -- makearticleakahata tagtree =
 --   article { tree  = tagtree,
@@ -226,16 +225,16 @@ makeArticle tagtree =
 --              paper = b.pack "赤旗"
 --           }
 -------------
-takeTitle        = treeTextMap . findTree (Always, Attr "title")
+-- takeTitle        = treeTextMap . findTree (Always, Attr "title")
 
 -- ----------
-titleFO a = pack "** " <> title a <> B.pack "\n"
-textFO a  = B.intercalate (B.pack "\n") $ map (pack "   " <>) $ text a
-output    = titleFO <> textFO
+-- titleFO a = pack "** " <> title a <> B.pack "\n"
+-- textFO a  = B.intercalate (B.pack "\n") $ map (pack "   " <>) $ text a
+-- output    = titleFO <> textFO
 ------------
-takeText  = filterBlankLines . treeToStringList . makeTree
-  where makeTree = findTree (Always, Attr "text")
-        treeToStringList = B.lines . treeTextMap
+-- takeText  = filterBlankLines . treeToStringList . makeTree
+--   where makeTree = findTree (Always, Attr "text")
+--         treeToStringList = B.lines . treeTextMap
 
 strip :: ByteString -> ByteString
 strip = B.dropWhile (`elem` [' ', '\NUL', '\t'])
@@ -253,37 +252,37 @@ fBLparse = do
     <|> string "続きを読む"
   return mempty
 ----------------------------------------------------------------------------------------------------
-getDate :: ByteString -> Maybe Day
-getDate s = case parse getDateParse "" s of
-  Right x -> strdt (B.unpack x)
-  Left _  -> Nothing
+-- getDate :: ByteString -> Maybe Day
+-- getDate s = case parse getDateParse "" s of
+--   Right x -> strdt (B.unpack x)
+--   Left _  -> Nothing
 
-getAkahataDate :: TagTree ByteString -> Maybe Day
-getAkahataDate tree = strdt (B.unpack date')
-  where date' = treeTextMap $ (Always, Attr "date") ==> tree
+-- getAkahataDate :: TagTree ByteString -> Maybe Day
+-- getAkahataDate tree = strdt (B.unpack date')
+--   where date' = treeTextMap $ (Always, Attr "date") ==> tree
 
-dateP :: Parser ByteString
-dateP = do
-  year <- char '(' *> count 4 digit <* anyChar
-  mon  <- count 2 digit <* anyChar
-  day  <- count 2 digit <* anyChar <* char ')'
-  return $ B.pack $ year ++ "/" ++ mon ++ "/" ++ day
+-- dateP :: Parser ByteString
+-- dateP = do
+--   year <- char '(' *> count 4 digit <* anyChar
+--   mon  <- count 2 digit <* anyChar
+--   day  <- count 2 digit <* anyChar <* char ')'
+--   return $ B.pack $ year ++ "/" ++ mon ++ "/" ++ day
 
-getDateParse :: Parser ByteString
-getDateParse = try dateP <|> (anyChar >> getDateParse)
+-- getDateParse :: Parser ByteString
+-- getDateParse = try dateP <|> (anyChar >> getDateParse)
 ----------------------------------------------------------------------------------------------------
-takePaper :: ByteString -> ByteString
-takePaper s = case parse takePaperParse mempty s of
-  Right s' -> s'
-  Left _   -> mempty
+-- takePaper :: ByteString -> ByteString
+-- takePaper s = case parse takePaperParse mempty s of
+--   Right s' -> s'
+--   Left _   -> mempty
 
-takePaperParse :: Parser ByteString
-takePaperParse = try inner <|> (anyChar >> takePaperParse)
-  where inner = do
-        char '['
-        rel <- many1 (noneOf "]")
-        char ']'
-        return $ B.pack rel
+-- takePaperParse :: Parser ByteString
+-- takePaperParse = try inner <|> (anyChar >> takePaperParse)
+--   where inner = do
+--         char '['
+--         rel <- many1 (noneOf "]")
+--         char ']'
+--         return $ B.pack rel
 ----------------------------------------------------------------------------------------------------
 testStr = B.pack wn
   where wn = [ 'あ' | x <- [1..1000] ]
@@ -297,27 +296,27 @@ sfold tx c
   | tx == mempty = mempty
   | otherwise = let Just (ch, rest) = Tx.uncons tx in
     let char' = Tx.pack [ch] in
-    if c == 35
+    if c == 33
     then char' <> Tx.pack "\n   " <> sfold rest 0
     else char' <> sfold rest (c+1)
 ----------------------------------------------------------------------------------------------------
 translateTags :: ByteString -> [TagTree ByteString]
 translateTags str = tagTree $ parseTags str
 -- ----------------------------------------------------------------------------------------------------
-extractBlogBody :: [TagTree ByteString] -> [TagTree ByteString]
-extractBlogBody =
-  concatMap $ findTree (Always, Attr "blogbody")
+-- extractBlogBody :: [TagTree ByteString] -> [TagTree ByteString]
+-- extractBlogBody =
+--   concatMap $ findTree (Always, Attr "blogbody")
 
-extractHtml :: [TagTree ByteString] -> [TagTree ByteString]
-extractHtml = concatMap $ findTree (Name "html", Always)
+-- extractHtml :: [TagTree ByteString] -> [TagTree ByteString]
+-- extractHtml = concatMap $ findTree (Name "html", Always)
 -------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
-testIO = do
-  (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./4.html"] Nothing Nothing
-  page <- B.hGetContents p
-  let contents = map makeArticle $ extractBlogBody $ translateTags page
-  mapM_ (mapM_ B.putStrLn . text) contents
+-- testIO = do
+--   (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./4.html"] Nothing Nothing
+--   page <- B.hGetContents p
+--   let contents = map makeArticle $ extractBlogBody $ translateTags page
+--   mapM_ (mapM_ B.putStrLn . text) contents
 
 -- testIO2 = do
 --   (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./5.html"] Nothing Nothing
