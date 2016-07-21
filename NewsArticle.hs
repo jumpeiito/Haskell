@@ -7,6 +7,7 @@ import Strdt
 import Data.Time
 import Data.List
 import Data.Maybe
+import Debug.Trace
 import qualified Data.Text          as Tx
 import qualified Data.Text.Encoding as Txe
 import qualified Data.Text.Internal as Txi
@@ -76,7 +77,7 @@ takeAkahataTitle tr = orgStar <> treeTextMap tree'
         orgStar = pack "** "
 
 takeAkahataText :: [TagTree ByteString] -> [Txi.Text]
-takeAkahataText = map stringFold2 . filter' . treeToStringList . makeTree
+takeAkahataText = map stringFold . filter' . treeToStringList . makeTree
   where makeTree = concatMap $ findTrees [(Name "p",  Always),
                                           -- (Name "h1", Always),
                                           -- (Name "h2", Always),
@@ -236,12 +237,14 @@ takeText  = filterBlankLines . treeToStringList . makeTree
   where makeTree = findTree (Always, Attr "text")
         treeToStringList = B.lines . treeTextMap
 
+strip :: ByteString -> ByteString
+strip = B.dropWhile (`elem` [' ', '\NUL', '\t'])
 
 filterBlankLines :: [ByteString] -> [ByteString]
 filterBlankLines [] = []
 filterBlankLines (x:xl) = case parse fBLparse "" x of
   Right _ -> filterBlankLines xl
-  Left _  -> x : filterBlankLines xl
+  Left _  -> strip x : filterBlankLines xl
 
 fBLparse :: Parser String
 fBLparse = do
@@ -284,29 +287,19 @@ takePaperParse = try inner <|> (anyChar >> takePaperParse)
 ----------------------------------------------------------------------------------------------------
 testStr = B.pack wn
   where wn = [ 'あ' | x <- [1..1000] ]
-stringFold :: ByteString -> ByteString
-stringFold s = sfold2 s 0
 
-sfold2 :: ByteString -> Int -> ByteString
-sfold2 bs c
-  | bs == mempty = mempty
-  | otherwise = let Just (ch, rest) = B.uncons bs in
-    if c == 104
-    then B.singleton ch <> B.pack "\n" <> sfold2 rest 0
-    else B.singleton ch <> sfold2 rest (c+1)
-
-stringFold2 :: ByteString -> Txi.Text
-stringFold2 s = sfold3 s' 0
+stringFold :: ByteString -> Txi.Text
+stringFold s = (Tx.pack "   ") <> sfold s' 0
   where s' = Txe.decodeUtf8 s
 
-sfold3 :: Txi.Text -> Int -> Txi.Text
-sfold3 tx c
+sfold :: Txi.Text -> Int -> Txi.Text
+sfold tx c
   | tx == mempty = mempty
   | otherwise = let Just (ch, rest) = Tx.uncons tx in
     let char' = Tx.pack [ch] in
     if c == 35
-    then char' <> Tx.pack "\n" <> sfold3 rest 0
-    else char' <> sfold3 rest (c+1)
+    then char' <> Tx.pack "\n   " <> sfold rest 0
+    else char' <> sfold rest (c+1)
 ----------------------------------------------------------------------------------------------------
 translateTags :: ByteString -> [TagTree ByteString]
 translateTags str = tagTree $ parseTags str
@@ -349,7 +342,7 @@ testIO3 = do
   I.hSetEncoding I.stdout I.utf8
   mapM_ Txio.putStrLn $ textFunc akpage page
 
-testStr1 = "こうした北朝鮮の核・ミサイル開発が深刻な脅威となっているとみて、米韓は配備を最終決定した。2017年末までの運用開始をめざすという。不測の事態に備えた迎撃態勢の強化とともに、北朝鮮の核・ミサイル開発を抑制する効果も期待できるだろう。"
+testStr1 = "　\tこうした北朝鮮の核・ミサイル開発が深刻な脅威となっているとみて、米韓は配備を最終決定した。2017年末までの運用開始をめざすという。不測の事態に備えた迎撃態勢の強化とともに、北朝鮮の核・ミサイル開発を抑制する効果も期待できるだろう。"
 
 testStr2 = "最近は投票率の低下が目立つ。衆院選は2012年、14年と２回続けて過去最低を更新。13年の前回参院選は選挙区で52.61％と歴代３位の低さだった。有権者の半数が棄権する状況は民主主義の土台を揺るがしかねず、どこかで流れを変えなければならない。"
 
@@ -361,4 +354,4 @@ numaddOver10 = Data.List.length . Data.List.filter (>10) . Data.List.filter odd
 
 testfoo = TagBranch "div" [("class","blogbody")] [TagLeaf (TagText "foo"),TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")],TagBranch "h3" [("class","title")] [TagLeaf (TagText "[読売新聞] 震災遺構の(保存)　合意形成へ議論を尽くそう (2015年08月24日)"), TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")]]]
 
-test = Data.List.foldl' (&&) True
+ 

@@ -74,7 +74,8 @@ getPageContents url = do
 main = do
   I.hSetEncoding I.stdout I.utf8
   td   <- todayDay
-  let akahata = makeAkahata (fromGregorian 2016 7 1)
+  -- let akahata = makeAkahata (fromGregorian 2016 7 1)
+  let akahata = makeAkahata td
   page <- getPageContents (topURL akahata)
   let urls = (listedKey akahata) page
   let akpage = makeAkahataPage ""
