@@ -236,10 +236,12 @@ direction tb ((f, direct):xs)
 --   where makeTree = findTree (Always, Attr "text")
 --         treeToStringList = B.lines . treeTextMap
 
-strip :: ByteString -> ByteString
-strip = B.dropWhile (`elem` [' ', '\NUL', '\t'])
+strip :: ByteString -> Txi.Text
+strip = skip . (<> Tx.pack "\n") . decode
+  where decode = Txe.decodeUtf8
+        skip   = Tx.dropWhile (`elem` [' ', '\t', '\12288'])
 
-filterBlankLines :: [ByteString] -> [ByteString]
+filterBlankLines :: [ByteString] -> [Txi.Text]
 filterBlankLines [] = []
 filterBlankLines (x:xl) = case parse fBLparse "" x of
   Right _ -> filterBlankLines xl
@@ -287,9 +289,8 @@ fBLparse = do
 testStr = B.pack wn
   where wn = [ 'あ' | x <- [1..1000] ]
 
-stringFold :: ByteString -> Txi.Text
-stringFold s = (Tx.pack "   ") <> sfold s' 0
-  where s' = Txe.decodeUtf8 s
+stringFold :: Txi.Text -> Txi.Text
+stringFold s = (Tx.pack "   ") <> sfold s 0
 
 sfold :: Txi.Text -> Int -> Txi.Text
 sfold tx c
