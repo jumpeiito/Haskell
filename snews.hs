@@ -1,30 +1,21 @@
 import Strdt
 import NewsArticle.Base
 import qualified NewsArticle.Akahata as Ak
+import qualified NewsArticle.Common  as Cm
+import Control.Monad
 import Data.Time
-import Data.List
-import Data.Text hiding (map, concatMap)
-import Data.Text.Encoding
+import Data.Monoid
+import Text.Printf
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import qualified Network.HTTP as Net
 import qualified Util         as U
 import qualified System.IO    as I
 import qualified Data.Text.IO       as Txio
-import qualified Control.Monad.State as St
-import Control.Applicative    hiding (many, (<|>))
-import Control.Monad.Writer
-import System.Process
-import Text.Printf
-import Text.Parsec
-import Text.Parsec.String
-import Codec.Binary.UTF8.String
-import Data.Text.ICU.Convert as C
-import Data.ByteString.Char8 as B  hiding (concatMap, map)
--- cabal install text-icu --extra-include-dirs=f:/Haskell/icu/include/ --extra-lib-dirs=f:/Haskell/icu/lib/
+import qualified Data.Text.ICU.Convert as C
+import qualified Data.ByteString.Char8 as B
 ----------------------------------------------------------------------------------------------------
 orgdir = "f:/org/news/"
-orgurl = "http://shasetsu.seesaa.net/archives/"
 ----------------------------------------------------------------------------------------------------
 orgName :: Day -> String
 orgName d = orgdir <> printf "%d%02d.org" y m
@@ -34,17 +25,6 @@ orgName d = orgdir <> printf "%d%02d.org" y m
 makeOrgUrl :: Day -> String
 makeOrgUrl d = orgurl <> (dayStr8 d) <> "-1.html"
 ----------------------------------------------------------------------------------------------------
-extractBlogBody :: [TagTree ByteString] -> [TagTree ByteString]
-extractBlogBody =
-  concatMap $ findTree [(Always, Attr "blogbody")]
-----------------------------------------------------------------------------------------------------
--- testIO = do
---   contents <- U.readUTF8File "f:/haskell/2.html"
---   I.hSetEncoding I.stdout I.utf8
---   let tra = translateTags contents
---   return $ map makeArticle $ extractBlogBody tra
-
--- http://www.jcp.or.jp/akahata/aik16/2016-07-18/index.html
 testIO2 :: [String] -> IO ()
 testIO2 s = 
   U.withAppendFile "./test.org" $ \handle -> mapM_ (I.hPutStrLn handle) s
@@ -55,13 +35,13 @@ appendText txt day' =
   mapM_ (I.hPutStrLn handle) txt
   where orgfile = orgName day'
 ----------------------------------------------------------------------------------------------------
-convertUTF8 :: String -> IO ByteString
+convertUTF8 :: String -> IO B.ByteString
 convertUTF8 s = do
   utf8 <- C.open "utf8" (Just False)
   sjis <- C.open "cp932" (Just False)
   return $ C.fromUnicode utf8 (C.toUnicode sjis (B.pack s))
 
-getPageContents :: String -> IO [TagTree ByteString]
+getPageContents :: String -> IO [TagTree B.ByteString]
 getPageContents url = do
   http      <- Net.simpleHTTP (Net.getRequest url)
   body      <- Net.getResponseBody http
@@ -73,6 +53,14 @@ main = do
   I.hSetEncoding I.stdout I.utf8
   td   <- todayDay
   -- let akahata = makeAkahata (fromGregorian 2016 7 1)
+----------------------------------------------------------------------------------------------------
+  let common = Cm.makeListedPage td
+  cmpage <- getPageContents (topURL common)
+  let pages = pageF common cmpage
+  forM_ pages $ \page -> do
+    B.putStrLn $ Cm.getTitle page
+    mapM_ Txio.putStrLn $ Cm.getText page
+----------------------------------------------------------------------------------------------------
   let akahata = Ak.makeListedPage td
   page <- getPageContents (topURL akahata)
   let urls = (urlF akahata) page
@@ -81,6 +69,7 @@ main = do
     cont <- getPageContents url
     B.putStrLn $ (titleFunc akpage) cont
     mapM_ Txio.putStrLn $ (textFunc akpage) cont
+----------------------------------------------------------------------------------------------------
   -- cont <- getPageContents testurl
   -- mapM_ B.putStrLn $ (textFunc akpage) cont
   -- pages <- [ getPageContents u >>= (return . textFunc akpage) | u <- urls ]

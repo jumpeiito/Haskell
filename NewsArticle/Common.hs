@@ -8,13 +8,13 @@ import Data.Maybe (fromJust)
 import NewsArticle.Base
 import Text.HTML.TagSoup.Tree
 import qualified Data.ByteString.Char8 as B
-import qualified Data.Text.Internal as Txi
+import qualified Data.Text             as Tx
+import qualified Data.Text.Internal    as Txi
 
-       ----------------------------------------------------------------------------------------------------
-import System.Process
-import qualified Data.Text.IO as Txio
-import qualified Data.Text as Tx
-import qualified System.IO as I
+----------------------------------------------------------------------------------------------------
+-- import System.Process
+-- import qualified Data.Text.IO as Txio
+-- import qualified System.IO as I
 ----------------------------------------------------------------------------------------------------
 
 makeListedPage :: Day -> ListedPage B.ByteString
@@ -25,11 +25,13 @@ makeListedPage d = LP base' d url' (const []) extractPage
 extractPage :: [TagTree B.ByteString] -> [Page B.ByteString]
 extractPage tr = flip map (makeTree tr) $ \n ->
   Page mempty n takeTitle takeText
-  where makeTree = concatMap (findTree [(Name "div", Attr "blogbody")])
+  where makeTree = reverse . 
+                   concatMap (findTree [(Name "div", Attr "blogbody")])
 
 takeTitle :: [TagTree B.ByteString] -> B.ByteString
-takeTitle = treeTextMap . (concatMap $ findTree [(Name "h3", Attr "title")])
+takeTitle = (B.pack "** " <>) . treeTextMap . makeTree
   where treeTextMap = mconcat . map treeText
+        makeTree    = concatMap $ findTree [(Name "h3", Attr "title")]
 
 takeText :: [TagTree B.ByteString] -> [Txi.Text]
 takeText = map (<> Tx.pack "\n") .
@@ -40,6 +42,9 @@ takeText = map (<> Tx.pack "\n") .
            makeTree
   where makeTree = concatMap $ findTree [(Name "div", Attr "text")]
 
+getF     :: (Page a -> [TagTree a] -> r) -> Page a -> r
+getTitle :: NewsArticle.Base.Page r -> r
+getText  :: NewsArticle.Base.Page r -> [Txi.Text]
 getF f = f <@> (return . tagtree)
 getTitle = getF titleFunc
 getText  = getF textFunc
@@ -50,12 +55,12 @@ getText  = getF textFunc
   tr' <- tr
   return $ f' tr'
 
-testIO21 = do
-  (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./1.html"] Nothing Nothing
-  page <- B.hGetContents p
-  I.hSetEncoding I.stdout I.utf8
-  -- let l = takeText $ translateTags page
-  -- Txio.putStrLn (head l)
-  -- print (head l)
-  -- (B.putStrLn) $ takeTitle $ translateTags page
-  return $ translateTags page
+-- testIO21 = do
+--   (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./1.html"] Nothing Nothing
+--   page <- B.hGetContents p
+--   I.hSetEncoding I.stdout I.utf8
+--   -- let l = takeText $ translateTags page
+--   -- Txio.putStrLn (head l)
+--   -- print (head l)
+--   -- (B.putStrLn) $ takeTitle $ translateTags page
+--   return $ translateTags page

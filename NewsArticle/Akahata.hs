@@ -9,7 +9,8 @@ import NewsArticle.Base
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import qualified Data.ByteString.Char8 as B
-import qualified Data.Text.Internal as Txi
+import qualified Data.Text             as Tx
+import qualified Data.Text.Internal    as Txi
 
 makeListedPage :: Day -> ListedPage B.ByteString
 makeListedPage d = LP base' d url' (newsList base') (\_ -> [])
@@ -44,7 +45,11 @@ takeTitle tr = orgStar <> treeTextMap tree'
         treeTextMap = mconcat . map treeText
 
 takeText :: [TagTree B.ByteString] -> [Txi.Text]
-takeText = map stringFold . filterBlankLines . toString . makeTree
+takeText = map (<> Tx.pack "\n") .
+           map stringFold        .
+           filterBlankLines      .
+           toString              .
+           makeTree
   where makeTree = concatMap $ findTree [(Name "p",  Always),
                                           -- (Name "h1", Always),
                                           -- (Name "h2", Always),
