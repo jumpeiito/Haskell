@@ -1,4 +1,4 @@
-module NewsArticle.Common (makeListedPage, getTitle, getText) where
+module NewsArticle.Common (makeListedPage) where
 
 import Strdt
 import Data.Time
@@ -41,20 +41,7 @@ takeText = map (<> Tx.pack "\n") .
            map treeText          .
            makeTree
   where makeTree = concatMap $ findTree [(Name "div", Attr "text")]
-
-getF     :: (Page a -> [TagTree a] -> r) -> Page a -> r
-getTitle :: NewsArticle.Base.Page r -> r
-getText  :: NewsArticle.Base.Page r -> [Txi.Text]
-getF f = f <@> (return . tagtree)
-getTitle = getF titleFunc
-getText  = getF textFunc
-
-(<@>) :: Monad m => m (t -> r) -> m t -> m r
-(<@>) f tr = do
-  f'  <- f
-  tr' <- tr
-  return $ f' tr'
-
+----------------------------------------------------------------------------------------------------
 -- testIO21 = do
 --   (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./1.html"] Nothing Nothing
 --   page <- B.hGetContents p

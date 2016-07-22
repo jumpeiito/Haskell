@@ -12,7 +12,9 @@ module NewsArticle.Base (ListedPage (..),
                          treeTextEx,
                          normalDirection,
                          filterBlankLines,
-                         translateTags) where
+                         translateTags,
+                         getTitle,
+                         getText) where
 
 import Data.Time
 import Data.List
@@ -184,3 +186,17 @@ fBLparse = do
 ----------------------------------------------------------------------------------------------------
 translateTags :: B.ByteString -> [TagTree B.ByteString]
 translateTags str = tagTree $ parseTags str
+----------------------------------------------------------------------------------------------------
+getF :: (Page a -> [TagTree a] -> r) -> Page a -> r
+getF f = f <@> (return . tagtree)
+
+(<@>) :: Monad m => m (t -> r) -> m t -> m r
+(<@>) f tr = do
+  f'  <- f
+  tr' <- tr
+  return $ f' tr'
+
+getTitle :: Page r -> r
+getText  :: Page r -> [Txi.Text]
+getTitle = getF titleFunc
+getText  = getF textFunc

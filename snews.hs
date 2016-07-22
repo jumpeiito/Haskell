@@ -1,17 +1,18 @@
 import Strdt
 import NewsArticle.Base
-import qualified NewsArticle.Akahata as Ak
-import qualified NewsArticle.Common  as Cm
+import qualified NewsArticle.Akahata   as Ak
+import qualified NewsArticle.Common    as Cm
 import Control.Monad
 import Data.Time
 import Data.Monoid
 import Text.Printf
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
-import qualified Network.HTTP as Net
-import qualified Util         as U
-import qualified System.IO    as I
-import qualified Data.Text.IO       as Txio
+import qualified Network.HTTP          as Net
+import qualified Util                  as U
+import qualified System.IO             as I
+import qualified Data.Text.IO          as Txio
+import qualified Data.Text.Internal    as Txi
 import qualified Data.Text.ICU.Convert as C
 import qualified Data.ByteString.Char8 as B
 ----------------------------------------------------------------------------------------------------
@@ -22,9 +23,6 @@ orgName d = orgdir <> printf "%d%02d.org" y m
   where y = toYear d
         m = toMonth d
 
-makeOrgUrl :: Day -> String
-makeOrgUrl d = orgurl <> (dayStr8 d) <> "-1.html"
-----------------------------------------------------------------------------------------------------
 testIO2 :: [String] -> IO ()
 testIO2 s = 
   U.withAppendFile "./test.org" $ \handle -> mapM_ (I.hPutStrLn handle) s
@@ -49,26 +47,39 @@ getPageContents url = do
   return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
 -- main :: IO ()
-main = do
-  I.hSetEncoding I.stdout I.utf8
-  td   <- todayDay
-  -- let akahata = makeAkahata (fromGregorian 2016 7 1)
-----------------------------------------------------------------------------------------------------
+printer :: Foldable t => (t1 -> B.ByteString)
+     -> (t1 -> t Txi.Text) -> t1 -> IO ()
+printer titleF textF tree' = do
+  B.putStrLn $ titleF tree'
+  mapM_ Txio.putStrLn $ textF tree'
+
+paperFORM xs f titleF textF = do
+  forM_ xs $ \x -> do
+    f1 <- f x
+    printer titleF textF f1
+  
+dayMaker :: Day -> IO ()
+dayMaker td = do
   let common = Cm.makeListedPage td
   cmpage <- getPageContents (topURL common)
   let pages = pageF common cmpage
-  forM_ pages $ \page -> do
-    B.putStrLn $ Cm.getTitle page
-    mapM_ Txio.putStrLn $ Cm.getText page
-----------------------------------------------------------------------------------------------------
+  forM_ pages $ \page -> printer getTitle getText page
+  ----------------------------------------------------------------------------------------------------
   let akahata = Ak.makeListedPage td
   page <- getPageContents (topURL akahata)
   let urls = (urlF akahata) page
   let akpage = Ak.makePage ""
   forM_ urls $ \url -> do
     cont <- getPageContents url
-    B.putStrLn $ (titleFunc akpage) cont
-    mapM_ Txio.putStrLn $ (textFunc akpage) cont
+    printer (titleFunc akpage) (textFunc akpage) cont
+
+main = do
+  I.hSetEncoding I.stdout I.utf8
+  td   <- todayDay
+  dayMaker td
+  -- let akahata = makeAkahata (fromGregorian 2016 7 1)
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
   -- cont <- getPageContents testurl
   -- mapM_ B.putStrLn $ (textFunc akpage) cont

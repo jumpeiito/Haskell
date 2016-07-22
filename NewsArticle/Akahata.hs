@@ -1,4 +1,5 @@
-module NewsArticle.Akahata (makePage, makeListedPage) where
+module NewsArticle.Akahata (makePage, makeListedPage,
+                           takeTitle, takeText) where
 
 import Strdt
 import Data.Time
@@ -13,7 +14,7 @@ import qualified Data.Text             as Tx
 import qualified Data.Text.Internal    as Txi
 
 makeListedPage :: Day -> ListedPage B.ByteString
-makeListedPage d = LP base' d url' (newsList base') (\_ -> [])
+makeListedPage d = LP base' d url' (newsList base') (const [])
   where base' = "http://www.jcp.or.jp/akahata/"
         url'  = makeTopPageURL d base'
 
