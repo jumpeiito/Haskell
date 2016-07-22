@@ -9,6 +9,8 @@ module NewsArticle.Base (ListedPage (..),
                          findAttribute,
                          stringFold,
                          treeText,
+                         treeTextEx,
+                         normalDirection,
                          filterBlankLines,
                          translateTags) where
 
@@ -22,10 +24,13 @@ import Text.Parsec.ByteString
 import qualified Data.Text             as Tx
 import qualified Data.Text.Internal    as Txi
 import qualified Data.Text.Encoding    as Txe
+import qualified Data.Text.IO    as Txio
+import qualified System.IO    as I
 import qualified Data.ByteString.Char8 as B
 
-type URL = String
-type ArticleKey = (AKey, AKey)
+type URL           = String
+type ArticleKey    = (AKey, AKey)
+type DirectionList = [(AKey, AKey, WriterDirection)]
 type DirectionType = [(TagTree B.ByteString -> Bool, WriterDirection)]
 
 data ListedPage a =
@@ -38,6 +43,7 @@ data ListedPage a =
 
 data Page a =
   Page { pageUrl   :: URL,
+         tagtree   :: TagTree a,
          titleFunc :: [TagTree a] -> a,
          textFunc  :: [TagTree a] -> [Txi.Text] }
 
@@ -51,6 +57,9 @@ data Article a =
 data AKey = Name String | Attr String | Always deriving (Show, Eq)
 
 data WriterDirection = Skip | Pack String | Loop deriving (Show, Eq)
+
+instance Show (Page a) where
+  show (Page u _ _ _) = "Page (url=" ++ u ++ ")"
 
 (==>), findTree :: [ArticleKey] -> TagTree B.ByteString -> [TagTree B.ByteString]
 findTree akeys tb@(TagBranch {}) = execWriter $ find' akeys tb
@@ -117,38 +126,42 @@ sfold tx c
     else char' <> sfold rest (c+1)
 ----------------------------------------------------------------------------------------------------
 treeText :: TagTree B.ByteString -> B.ByteString
-treeText s      = execWriter $ ttx s 
-treeTextMap     = mconcat . map treeText
-treeText2 dl s  = execWriter $ ttx s
-treeTextMap2 dl = mconcat . map (treeText2 dl)
+treeText    = treeTextEx normalDirection
+treeTextMap = mconcat . map treeText
 ----------
-ttx :: TagTree B.ByteString -> Writer B.ByteString ()
-ttx (TagLeaf (TagText s)) = tell s
-ttx tb@(TagBranch _ _ descend) =
-  case direction tb directionList of
-  Skip   -> tell mempty
-  Pack n -> tell $ B.pack n
-  Loop   -> forM_ descend (tell . treeText)
-ttx _ = tell mempty
-
-dList :: [(AKey, AKey, WriterDirection)]
-dList = 
+normalDirection :: DirectionList
+normalDirection = 
   [(Name "script", Always,          Skip),
    (Name "div",    Attr "posted",   Skip),
    (Name "div",    Attr "bookmark", Skip),
-   -- (Name "a",      Always,          Skip),
    (Name "p",      Attr "date",     Skip),
    (Name "br",     Always,          Pack "\n"),
    (Always,        Always,          Loop)]
 
-directionList :: DirectionType
-directionList = map translate' dList
+directionTranslate :: DirectionList -> DirectionType
+directionTranslate = map translate'
   where translate' (n, a, d) = (solveArticleKey (n, a), d)
+
+directionList :: DirectionType
+directionList = directionTranslate normalDirection
 
 direction _ [] = Skip
 direction tb ((f, direct):xs)
   | f tb = direct
   | otherwise = direction tb xs
+----------------------------------------------------------------------------------------------------
+treeTextEx :: DirectionList -> TagTree B.ByteString -> B.ByteString
+treeTextEx dl = execWriter . ttxex dl
+
+ttxex :: DirectionList -> TagTree B.ByteString -> Writer B.ByteString ()
+ttxex _ (TagLeaf (TagText s)) = tell s
+ttxex dl tb@(TagBranch _ _ descend) =
+  case direction tb dx of
+    Skip   -> tell mempty
+    Pack n -> tell $ B.pack n
+    Loop   -> forM_ descend (tell . treeTextEx dl)
+  where dx = directionTranslate dl
+ttxex _ _ = tell mempty    
 ----------------------------------------------------------------------------------------------------
 strip :: B.ByteString -> Txi.Text
 strip = tailCut . skip . (<> Tx.pack "\n") . decode

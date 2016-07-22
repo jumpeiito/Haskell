@@ -6,6 +6,7 @@ import Data.List
 import Data.Monoid
 import Data.Maybe (fromJust)
 import NewsArticle.Base
+import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Text.Internal as Txi
@@ -43,14 +44,15 @@ takeTitle tr = orgStar <> treeTextMap tree'
         treeTextMap = mconcat . map treeText
 
 takeText :: [TagTree B.ByteString] -> [Txi.Text]
-takeText = map stringFold . filter' . treeToStringList . makeTree
+takeText = map stringFold . filterBlankLines . toString . makeTree
   where makeTree = concatMap $ findTree [(Name "p",  Always),
                                           -- (Name "h1", Always),
                                           -- (Name "h2", Always),
                                           (Name "h3", Always)]
-        treeToStringList = map treeText
-        filter' = filterBlankLines
+        toString      = map (treeTextEx directionList)
+        directionList = [(Name "a", Always, Skip)] ++ normalDirection
 
 makePage :: URL -> Page B.ByteString
-makePage url = Page url takeTitle takeText
+makePage url = Page url vacant takeTitle takeText
+  where vacant = (TagLeaf (TagText mempty))
 
