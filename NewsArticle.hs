@@ -3,8 +3,10 @@ module NewsArticle (Article (..), always, AKey (..), ListedPage (..),
                     makeAkahata) where
 
 import Strdt
+import NewsArticleBase
 import Data.Time
 import Data.List
+import System.Process (runInteractiveProcess)
 import Data.Maybe (fromJust)
 import Debug.Trace (trace)
 import qualified Data.Text          as Tx
@@ -20,20 +22,12 @@ import Control.Applicative hiding (many, (<|>))
 import Control.Monad.Writer
 -- import Control.Arrow
 import Data.ByteString.Char8 as B  hiding (map, count, reverse, isInfixOf, concatMap, foldl, elem)
-import System.Process
 -- import qualified Control.Monad.State as St
 -- import qualified Network.HTTP as Net
 -- import Data.Text.ICU.Convert as C
 
-type URL = String
-
-data ListedPage a b = LP { baseURL   :: URL,
-                           topDate   :: Day, 
-                           topURL    :: URL,
-                           listedKey :: [TagTree a] -> [URL] }
-
 -- "http://www.jcp.or.jp/akahata/"
-makeAkahata :: Day -> ListedPage ByteString Day
+makeAkahata :: Day -> ListedPage ByteString
 makeAkahata d = LP base' d url' (akahataNewsList base')
   where base' = "http://www.jcp.or.jp/akahata/"
         url'  = akahataMakeURL d base'
@@ -59,17 +53,6 @@ akahataURL day base subpage =
         nendo'  = show $ (`mod` 1000) $ nendo day
         day'    = dayStrWithSep '-' day
 
-data Page a = Page { pageUrl   :: URL,
-                     titleFunc :: [TagTree a] -> a,
-                     textFunc  :: [TagTree a] -> [Txi.Text] }
-
-data Article a = Article { tree  :: TagTree a,
-                           title :: a,
-                           text  :: [a],
-                           date  :: Maybe Day,
-                           paper :: a }
-               deriving (Show, Eq)
-
 takeAkahataTitle :: [TagTree ByteString] -> ByteString
 takeAkahataTitle tr = orgStar <> treeTextMap tree'
   where tree'   = ((Name "title", Always) ==>) `concatMap` tr
@@ -86,11 +69,6 @@ takeAkahataText = map stringFold . filter' . treeToStringList . makeTree
 
 makeAkahataPage :: URL -> Page ByteString
 makeAkahataPage url = Page url takeAkahataTitle takeAkahataText
-
-data AKey = Name String | Attr String | Always deriving (Show, Eq)
-
-type ArticleKey = (AKey, AKey)
--- "http://www.jcp.or.jp/akahata/aik16/2016-07-13/2016071301_01_1.html"
 
 (<@>) :: (String, String) -> [(ByteString, ByteString)] -> Bool
 (a, b) <@> alist = [pairF pack (a,b)] `isInfixOf` alist
@@ -185,10 +163,6 @@ ttx tb@(TagBranch _ _ descend) =
   Pack n -> tell $ pack n
   Loop   -> forM_ descend (tell . treeText)
 ttx _ = tell mempty
-
-data WriterDirection = Skip | Pack String | Loop deriving (Show, Eq)
-
-type DirectionType = [(TagTree ByteString -> Bool, WriterDirection)]
 
 dList :: [(AKey, AKey, WriterDirection)]
 dList = 
@@ -353,5 +327,3 @@ numaddOver10 :: [Int] -> Int
 numaddOver10 = Data.List.length . Data.List.filter (>10) . Data.List.filter odd
 
 testfoo = TagBranch "div" [("class","blogbody")] [TagLeaf (TagText "foo"),TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")],TagBranch "h3" [("class","title")] [TagLeaf (TagText "[読売新聞] 震災遺構の(保存)　合意形成へ議論を尽くそう (2015年08月24日)"), TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")]]]
-
- 

@@ -1,5 +1,6 @@
 import Strdt
-import NewsArticle
+import NewsArticle.Base
+import qualified NewsArticle.Akahata as Ak
 import Data.Time
 import Data.List
 import Data.Text hiding (map, concatMap)
@@ -38,7 +39,7 @@ translateTags str = tagTree $ parseTags str
 ----------------------------------------------------------------------------------------------------
 extractBlogBody :: [TagTree ByteString] -> [TagTree ByteString]
 extractBlogBody =
-  concatMap $ findTree (Always, Attr "blogbody")
+  concatMap $ findTree [(Always, Attr "blogbody")]
 ----------------------------------------------------------------------------------------------------
 -- testIO = do
 --   contents <- U.readUTF8File "f:/haskell/2.html"
@@ -75,10 +76,10 @@ main = do
   I.hSetEncoding I.stdout I.utf8
   td   <- todayDay
   -- let akahata = makeAkahata (fromGregorian 2016 7 1)
-  let akahata = makeAkahata td
+  let akahata = Ak.makeListedPage td
   page <- getPageContents (topURL akahata)
   let urls = (listedKey akahata) page
-  let akpage = makeAkahataPage ""
+  let akpage = Ak.makePage ""
   forM_ urls $ \url -> do
     cont <- getPageContents url
     B.putStrLn $ (titleFunc akpage) cont
