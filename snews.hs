@@ -34,9 +34,6 @@ orgName d = orgdir <> printf "%d%02d.org" y m
 makeOrgUrl :: Day -> String
 makeOrgUrl d = orgurl <> (dayStr8 d) <> "-1.html"
 ----------------------------------------------------------------------------------------------------
-translateTags :: ByteString -> [TagTree ByteString]
-translateTags str = tagTree $ parseTags str
-----------------------------------------------------------------------------------------------------
 extractBlogBody :: [TagTree ByteString] -> [TagTree ByteString]
 extractBlogBody =
   concatMap $ findTree [(Always, Attr "blogbody")]
@@ -78,7 +75,7 @@ main = do
   -- let akahata = makeAkahata (fromGregorian 2016 7 1)
   let akahata = Ak.makeListedPage td
   page <- getPageContents (topURL akahata)
-  let urls = (listedKey akahata) page
+  let urls = (urlF akahata) page
   let akpage = Ak.makePage ""
   forM_ urls $ \url -> do
     cont <- getPageContents url

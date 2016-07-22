@@ -11,7 +11,7 @@ import qualified Data.ByteString.Char8 as B
 import qualified Data.Text.Internal as Txi
 
 makeListedPage :: Day -> ListedPage B.ByteString
-makeListedPage d = LP base' d url' (newsList base')
+makeListedPage d = LP base' d url' (newsList base') (\_ -> [])
   where base' = "http://www.jcp.or.jp/akahata/"
         url'  = makeTopPageURL d base'
 

@@ -9,7 +9,8 @@ module NewsArticle.Base (ListedPage (..),
                          findAttribute,
                          stringFold,
                          treeText,
-                         filterBlankLines) where
+                         filterBlankLines,
+                         translateTags) where
 
 import Data.Time
 import Data.List
@@ -28,10 +29,12 @@ type ArticleKey = (AKey, AKey)
 type DirectionType = [(TagTree B.ByteString -> Bool, WriterDirection)]
 
 data ListedPage a =
-  LP { baseURL   :: URL,
-       topDate   :: Day,
-       topURL    :: URL,
-       listedKey :: [TagTree a] -> [URL] }
+  LP { baseURL  :: URL,
+       topDate  :: Day,
+       topURL   :: URL,
+       urlF     :: [TagTree a] -> [URL],
+       pageF    :: [TagTree a] -> [Page a]
+     }
 
 data Page a =
   Page { pageUrl   :: URL,
@@ -133,7 +136,7 @@ dList =
   [(Name "script", Always,          Skip),
    (Name "div",    Attr "posted",   Skip),
    (Name "div",    Attr "bookmark", Skip),
-   (Name "a",      Always,          Skip),
+   -- (Name "a",      Always,          Skip),
    (Name "p",      Attr "date",     Skip),
    (Name "br",     Always,          Pack "\n"),
    (Always,        Always,          Loop)]
@@ -148,9 +151,10 @@ direction tb ((f, direct):xs)
   | otherwise = direction tb xs
 ----------------------------------------------------------------------------------------------------
 strip :: B.ByteString -> Txi.Text
-strip = skip . (<> Tx.pack "\n") . decode
-  where decode = Txe.decodeUtf8
-        skip   = Tx.dropWhile (`elem` [' ', '\t', '\12288'])
+strip = tailCut . skip . (<> Tx.pack "\n") . decode
+  where decode  = Txe.decodeUtf8
+        skip    = Tx.dropWhile (`elem` [' ', '\t', '\12288', '\n'])
+        tailCut = Tx.reverse . skip . Tx.reverse
 
 filterBlankLines :: [B.ByteString] -> [Txi.Text]
 filterBlankLines [] = []
@@ -164,3 +168,6 @@ fBLparse = do
     <|> try (many1 $ oneOf " \r\n\t")
     <|> string "続きを読む"
   return mempty
+----------------------------------------------------------------------------------------------------
+translateTags :: B.ByteString -> [TagTree B.ByteString]
+translateTags str = tagTree $ parseTags str
