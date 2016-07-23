@@ -47,35 +47,43 @@ getPageContents url = do
   return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
 -- main :: IO ()
-printer :: Foldable t => (t1 -> B.ByteString)
-     -> (t1 -> t Txi.Text) -> t1 -> IO ()
-printer titleF textF tree' = do
-  B.putStrLn $ titleF tree'
-  mapM_ Txio.putStrLn $ textF tree'
+-- printer :: Foldable t => (t1 -> B.ByteString)
+--      -> (t1 -> t Txi.Text) -> t1 -> IO ()
+-- printer titleF textF tree' = do
+--   B.putStrLn $ titleF tree'
+--   mapM_ Txio.putStrLn $ textF tree'
 
-paperFORM xs f titleF textF = do
-  forM_ xs $ \x -> do
-    f1 <- f x
-    printer titleF textF f1
-  
+singleHTML tree = head tree'
+  where tree' = findTree [(Name "body", Always)] `concatMap` tree
+
+-- printer :: Page B.ByteString -> IO ()
+printer f1 f2 page = do
+  B.putStrLn $ f1 page
+  mapM_ Txio.putStrLn $ f2 page
+
 dayMaker :: Day -> IO ()
 dayMaker td = do
+  I.putStrLn $ "* " <> show td
   let common = Cm.makeListedPage td
   cmpage <- getPageContents (topURL common)
   let pages = pageF common cmpage
-  forM_ pages $ \page -> printer getTitle getText page
+  forM_ pages (printer getTitle getText)
   ----------------------------------------------------------------------------------------------------
   let akahata = Ak.makeListedPage td
   page <- getPageContents (topURL akahata)
   let urls = (urlF akahata) page
   let akpage = Ak.makePage ""
   forM_ urls $ \url -> do
+    -- cont <- singleHTML <$> getPageContents url
+    -- let p = Page "" cont Ak.takeTitle Ak.takeText
+    -- printer p
     cont <- getPageContents url
     printer (titleFunc akpage) (textFunc akpage) cont
 
 main = do
   I.hSetEncoding I.stdout I.utf8
   td   <- todayDay
+  -- dayMaker (fromGregorian 2016 7 21)
   dayMaker td
   -- let akahata = makeAkahata (fromGregorian 2016 7 1)
 ----------------------------------------------------------------------------------------------------

@@ -7,7 +7,7 @@ module Strdt (strdt, dtmap, Date, NendoDate,
 
 import Data.Time
 import Data.List
-import System.Time (CalendarTime(..), Month(..), getClockTime, toCalendarTime)
+import Data.Maybe
 import Control.Applicative hiding ((<|>), many)
 import Text.ParserCombinators.Parsec
 import Text.Printf
@@ -159,8 +159,8 @@ nendoEnd y = fromGregorian (y+1) 3 31
 
 today :: IO (Integer, Int, Int)
 today = do
-    now <- calendarNow
-    return $ gregorianDate now
+  d <- todayDay
+  return (toYear d, toMonth d, toDay d)
 
 nendo :: Day -> Int
 nendo d
@@ -169,27 +169,33 @@ nendo d
   where month = toMonth d
         year  = fromInteger $ toYear d
 
+-- todayDay :: IO Day
+-- todayDay = do
+--   (y, m, d) <- today
+--   return (fromGregorian y m d)
 todayDay :: IO Day
 todayDay = do
-  (y, m, d) <- today
-  return (fromGregorian y m d)
+  d   <- getCurrentTime
+  let cur  = addUTCTime (9*60*60) d
+  let dstr = formatTime defaultTimeLocale "%Y%m%d" cur
+  return $ fromJust $ (strdt dstr :: Maybe Day)
 
-gregorianDate :: CalendarTime -> (Integer, Int, Int)
-gregorianDate cal = (fromIntegral $ ctYear cal, toNumber $ ctMonth cal, ctDay cal)
+-- gregorianDate :: CalendarTime -> (Integer, Int, Int)
+-- gregorianDate cal = (fromIntegral $ ctYear cal, toNumber $ ctMonth cal, ctDay cal)
 
-calendarNow :: IO CalendarTime
-calendarNow = toCalendarTime =<< getClockTime
+-- calendarNow :: IO CalendarTime
+-- calendarNow = toCalendarTime =<< getClockTime
 
-toNumber :: Month -> Int
-toNumber January   = 1
-toNumber February  = 2
-toNumber March     = 3
-toNumber April     = 4
-toNumber May       = 5
-toNumber June      = 6
-toNumber July      = 7
-toNumber August    = 8
-toNumber September = 9
-toNumber October   = 10
-toNumber November  = 11
-toNumber December  = 12
+-- toNumber :: Month -> Int
+-- toNumber January   = 1
+-- toNumber February  = 2
+-- toNumber March     = 3
+-- toNumber April     = 4
+-- toNumber May       = 5
+-- toNumber June      = 6
+-- toNumber July      = 7
+-- toNumber August    = 8
+-- toNumber September = 9
+-- toNumber October   = 10
+-- toNumber November  = 11
+-- toNumber December  = 12

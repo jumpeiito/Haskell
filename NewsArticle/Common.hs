@@ -1,5 +1,6 @@
 module NewsArticle.Common (makeListedPage) where
 
+import qualified Util as U
 import Strdt
 import Data.Time
 import Data.List
@@ -12,9 +13,9 @@ import qualified Data.Text             as Tx
 import qualified Data.Text.Internal    as Txi
 
 ----------------------------------------------------------------------------------------------------
--- import System.Process
--- import qualified Data.Text.IO as Txio
--- import qualified System.IO as I
+import System.Process
+import qualified Data.Text.IO as Txio
+import qualified System.IO as I
 ----------------------------------------------------------------------------------------------------
 
 makeListedPage :: Day -> ListedPage B.ByteString
@@ -42,12 +43,17 @@ takeText = map (<> Tx.pack "\n") .
            makeTree
   where makeTree = concatMap $ findTree [(Name "div", Attr "text")]
 ----------------------------------------------------------------------------------------------------
--- testIO21 = do
---   (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./1.html"] Nothing Nothing
---   page <- B.hGetContents p
---   I.hSetEncoding I.stdout I.utf8
---   -- let l = takeText $ translateTags page
---   -- Txio.putStrLn (head l)
---   -- print (head l)
---   -- (B.putStrLn) $ takeTitle $ translateTags page
---   return $ translateTags page
+testIO21 = do
+  (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./6.html"] Nothing Nothing
+  page <- B.hGetContents p
+  I.hSetEncoding I.stdout I.utf8
+  -- let l = takeText $ translateTags page
+  -- Txio.putStrLn (head l)
+  -- print (head l)
+  -- (B.putStrLn) $ takeTitle $ translateTags page
+  return $ translateTags page
+
+testIO22 = do
+  U.withAppendFile "f:/Haskell/NewsArticle/test" $ \handle -> do
+    I.hSeek handle I.AbsoluteSeek 10
+    I.hPutStrLn handle "** testoutput **"

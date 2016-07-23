@@ -56,9 +56,9 @@ takeText = map (<> Tx.pack "\n") .
                                           -- (Name "h2", Always),
                                           (Name "h3", Always)]
         toString      = map (treeTextEx directionList)
-        directionList = [(Name "a", Always, Skip)] ++ normalDirection
+        directionList = (Name "a", Always, Skip) : normalDirection
 
 makePage :: URL -> Page B.ByteString
 makePage url = Page url vacant takeTitle takeText
-  where vacant = (TagLeaf (TagText mempty))
+  where vacant = TagLeaf (TagText mempty)
 

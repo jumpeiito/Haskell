@@ -19,6 +19,7 @@ module NewsArticle.Base (ListedPage (..),
 import Data.Time
 import Data.List
 import Control.Monad.Writer
+import Control.Applicative            hiding (many, (<|>))
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import Text.Parsec

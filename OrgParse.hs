@@ -6,19 +6,27 @@ import Data.Time
 import Data.Monoid
 import Data.Maybe
 import Strdt
-import NewsArticle
-import qualified Data.Map   as Map
+-- import NewsArticle.Base
+import qualified Data.Map               as Map
 -- import qualified Data.List.Split as Sp
-import qualified Util         as U
-import qualified System.IO    as I
-import Control.Monad.State    as St
+import qualified Util                   as U
+import qualified System.IO              as I
+import qualified Control.Monad.State    as St
+import qualified Data.ByteString.Char8  as B
 import Control.Monad.Writer
 import Control.Applicative hiding (many, (<|>))
+import Text.Printf
 import Text.Parsec
 import Text.Parsec.String
 
 test :: String
-test = "f:/Org/news/201606.org"
+test = "f:/Org/news/201607.org"
+
+orgDir :: FilePath
+orgDir = "f:/Org/news/"
+
+orgFileName :: Integer -> Int -> FilePath
+orgFileName = printf "%s%04d%02d.org" orgDir 
 ----------------------------------------------------------------------------------------------------
 data Lines s =
   OrgDate String
@@ -104,6 +112,19 @@ takeHeader art head' =
   art { header = head', paper' = p }
   where p = takePaper head'
 
+takePaper :: String -> String
+takePaper s = case parse takePaperParse mempty s of
+  Right s' -> s'
+  Left _   -> mempty
+
+takePaperParse :: Parser String
+takePaperParse = try inner <|> (anyChar >> takePaperParse)
+  where inner = do
+        char '['
+        rel <- many1 (noneOf "]")
+        char ']'
+        return rel
+
 makePaperMap :: [Lines s] -> PaperMap
 makePaperMap = U.makeMap (timeToDay . time) paper'
   where timeToDay Nothing = 0
@@ -124,7 +145,7 @@ notElemDayPaper dayList x = execWriter $ do
   return ()
 ----------------------------------------------------------------------------------------------------
 dateFold :: [Lines s] -> [Lines s]
-dateFold s = thd . (`execState` (mempty, mempty, [])) $ do
+dateFold s = thd . (`St.execState` (mempty, mempty, [])) $ do
   St.forM_ s $ \n -> do
     (prev, art, big) <- St.get
     case n of
@@ -146,3 +167,8 @@ testIO = do
   contents <- U.readUTF8File test
   I.hSetEncoding I.stdout I.utf8
   return $ dateFold $ map toLine $ lines contents
+
+testIO2 year month = do
+  let file = orgFileName year month
+  contents <- U.readUTF8File file
+  

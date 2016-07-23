@@ -68,7 +68,7 @@ withOutFile oFile func = do
 
 withAppendFile :: FilePath -> (Handle -> IO ()) -> IO ()
 withAppendFile oFile func = do
-  h <- openFile oFile AppendMode
+  h <- openFile oFile WriteMode
   encoding <- mkTextEncoding "cp65001"
   hSetEncoding h encoding
   func h
