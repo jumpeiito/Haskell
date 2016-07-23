@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module OrgParse (dateFold) where 
+module OrgParse (dateFold, parseToDayList) where 
 
 import Data.Time
 import Data.Monoid
@@ -161,14 +161,20 @@ orgDateList = map toDay . U.uniq . mapMaybe time
 notElemDay :: [Int] -> [Lines s] -> [Int]
 notElemDay dayList x = [ y | y <- dayList, y `notElem` orgDateList x]
 ----------------------------------------------------------------------------------------------------
+orgLineList :: String -> [Lines s]
+orgLineList = dateFold . map toLine . lines
+
+parseToDayList :: Integer -> Int -> IO [Day]
+parseToDayList year month = do
+  today    <- todayDay
+  let file    = orgFileName year month
+  let daylist = makeMonthList today year month
+  contents <- orgLineList <$> U.readUTF8File file
+  return $ map (fromGregorian year month) $ notElemDay daylist contents
 
 -- testIO :: IO ()
 testIO = do
   contents <- U.readUTF8File test
   I.hSetEncoding I.stdout I.utf8
-  return $ dateFold $ map toLine $ lines contents
+  return $ orgLineList contents
 
-testIO2 year month = do
-  let file = orgFileName year month
-  contents <- U.readUTF8File file
-  

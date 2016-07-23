@@ -1,10 +1,12 @@
 import Strdt
+import OrgParse
 import NewsArticle.Base
 import qualified NewsArticle.Akahata   as Ak
 import qualified NewsArticle.Common    as Cm
 import Control.Monad
 import Data.Time
 import Data.Monoid
+import qualified Options.Applicative   as O
 import Text.Printf
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
@@ -83,8 +85,18 @@ dayMaker td = do
 main = do
   I.hSetEncoding I.stdout I.utf8
   td   <- todayDay
+  --------------------------------------------------
+  opt <- O.customExecParser (O.prefs O.showHelpOnError) myParserInfo
+  --------------------------------------------------
+  case (today' opt, date' opt) of
+    (True, _) -> dayMaker td
+    (_, d)    -> case (strdt d :: Maybe Day) of
+                   Just d' -> do
+                     let (y, m) = (toYear d', toMonth d')
+                     dlist  <- parseToDayList y m
+                     forM_ dlist dayMaker
+                   Nothing -> return ()
   -- dayMaker (fromGregorian 2016 7 21)
-  dayMaker td
   -- let akahata = makeAkahata (fromGregorian 2016 7 1)
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
@@ -102,3 +114,29 @@ testtitle = "[読売新聞] 震災遺構の保存　合意形成へ(議論)を�
 ---------- url -> ListedPage -> [url, url, url, ...] -> [Page, Page, Page, ...] -> [Article, Article, Article, ...]
 ---------- String -> ListedPage -> IO [String] -> IO [Page] -> IO [Article]
 
+data Options = Options { today' :: Bool,
+                         date'  :: String
+                       } deriving (Show)
+
+todayP :: O.Parser Bool
+todayP = O.switch $ O.short 't' <> O.long "today" <> O.help "Output today's article"
+
+dateP :: O.Parser String
+dateP = O.strOption $ mconcat
+        [ O.short 'd', O.long "date"
+        , O.help "If given year and month, Output news articles after parsing org files."
+        , O.metavar "YEAR MONTH (6 digit chars)."
+        , O.value ""
+        , O.showDefaultWith id]
+
+optionsP :: O.Parser Options
+optionsP = (<*>) O.helper $ Options <$> todayP <*> dateP
+
+myParserInfo :: O.ParserInfo Options
+myParserInfo = O.info optionsP $ mconcat 
+    [ O.fullDesc
+    , O.progDesc "test program."
+    , O.header "snews.exe -- get a daily news article program."
+    , O.footer ""
+    , O.progDesc ""
+    ]    
