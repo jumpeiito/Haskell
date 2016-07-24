@@ -96,23 +96,6 @@ main = do
                      dlist  <- parseToDayList y m
                      forM_ dlist dayMaker
                    Nothing -> return ()
-  -- dayMaker (fromGregorian 2016 7 21)
-  -- let akahata = makeAkahata (fromGregorian 2016 7 1)
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
-  -- cont <- getPageContents testurl
-  -- mapM_ B.putStrLn $ (textFunc akpage) cont
-  -- pages <- [ getPageContents u >>= (return . textFunc akpage) | u <- urls ]
-  -- return $ pages
-  -- I.putStrLn (topPageURL td akahata)
-----------------------------------------------------------------------------------------------------
-testfoo = TagBranch "div" [("class","blogbody")] [TagLeaf (TagText "foo"),TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")],TagBranch "h3" [("class","title")] [TagLeaf (TagText "[読売新聞] 震災遺構の(保存)　合意形成へ議論を尽くそう (2015年08月24日)"), TagBranch "h3" [("class","title")] [TagLeaf (TagText "buz")]]]
-
-testtitle = "[読売新聞] 震災遺構の保存　合意形成へ(議論)を尽くそう (2015年08月24日)"
-
----------- url -> ListedPage -> [url, url, url, ...] -> [Page, Page, Page, ...] -> [Article, Article, Article, ...]
----------- String -> ListedPage -> IO [String] -> IO [Page] -> IO [Article]
 
 data Options = Options { today' :: Bool,
                          date'  :: String

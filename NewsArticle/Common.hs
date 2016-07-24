@@ -1,13 +1,12 @@
 module NewsArticle.Common (makeListedPage) where
 
-import qualified Util as U
-import Strdt
-import Data.Time
-import Data.List
-import Data.Monoid
-import Data.Maybe (fromJust)
+import Strdt            (dayStr8)
+import Data.Time        (Day (..))
+import Data.Monoid      ((<>))
+import Data.Maybe       (fromJust)
 import NewsArticle.Base
 import Text.HTML.TagSoup.Tree
+import qualified Util                  as U
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Text             as Tx
 import qualified Data.Text.Internal    as Txi

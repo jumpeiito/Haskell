@@ -2,18 +2,15 @@
 
 module OrgParse (dateFold, parseToDayList) where 
 
-import Data.Time
-import Data.Monoid
-import Data.Maybe
-import Strdt
--- import NewsArticle.Base
+import Strdt            (strdt, toYear, toMonth, toDay, todayDay)
+import Data.Time        (Day (..), fromGregorian)
+import Data.Maybe       (isJust, mapMaybe)
+import Control.Monad.Writer
 import qualified Data.Map               as Map
--- import qualified Data.List.Split as Sp
 import qualified Util                   as U
 import qualified System.IO              as I
 import qualified Control.Monad.State    as St
 import qualified Data.ByteString.Char8  as B
-import Control.Monad.Writer
 import Control.Applicative hiding (many, (<|>))
 import Text.Printf
 import Text.Parsec
@@ -57,15 +54,16 @@ leapYear y
 
 monthEnd :: Integer -> Int -> Int
 monthEnd year month
-  | month == 1 ||
-    month == 3 ||
-    month == 5 ||
-    month == 7 ||
-    month == 8 ||
-    month == 10 = 31
-  | month == 4 ||
-    month == 6 ||
-    month == 9 ||
+  | month == 1  ||
+    month == 3  ||
+    month == 5  ||
+    month == 7  ||
+    month == 8  ||
+    month == 10 ||
+    month == 12 = 31
+  | month == 4  ||
+    month == 6  ||
+    month == 9  ||
     month == 11 = 30
   | month == 2 = if leapYear year then 29 else 28
 
@@ -88,7 +86,7 @@ titleP = do
 dateP :: Parser (Lines s)
 dateP = do
   string "* "
-  d <- manyTill (oneOf "0123456789/") eof
+  d <- manyTill (oneOf "0123456789/-") eof
   return $ OrgDate d
 
 lineP :: Parser (Lines s)

@@ -16,20 +16,20 @@ module NewsArticle.Base (ListedPage (..),
                          getTitle,
                          getText) where
 
-import Data.Time
-import Data.List
+import Data.Time                        (Day (..))
+import Data.List                        (foldl', isInfixOf)
 import Control.Monad.Writer
-import Control.Applicative            hiding (many, (<|>))
+import Control.Applicative              hiding (many, (<|>))
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import Text.Parsec
 import Text.Parsec.ByteString
-import qualified Data.Text             as Tx
-import qualified Data.Text.Internal    as Txi
-import qualified Data.Text.Encoding    as Txe
-import qualified Data.Text.IO    as Txio
-import qualified System.IO    as I
-import qualified Data.ByteString.Char8 as B
+import qualified Data.Text              as Tx
+import qualified Data.Text.Internal     as Txi
+import qualified Data.Text.Encoding     as Txe
+import qualified Data.Text.IO           as Txio
+import qualified System.IO              as I
+import qualified Data.ByteString.Char8  as B
 
 type URL           = String
 type ArticleKey    = (AKey, AKey)

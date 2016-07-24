@@ -1,14 +1,14 @@
 module NewsArticle.Akahata (makePage, makeListedPage,
                            takeTitle, takeText) where
 
-import Strdt
-import Data.Time
-import Data.List
-import Data.Monoid
-import Data.Maybe (fromJust)
+import Strdt            (strdt, nendo, dayStrWithSep)
+import Data.Time        (Day (..))
+import Data.Monoid      ((<>))
+import Data.Maybe       (fromJust)
 import NewsArticle.Base
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
+import qualified Data.List             as L
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Text             as Tx
 import qualified Data.Text.Internal    as Txi
@@ -26,7 +26,7 @@ newsList base = map (fullURL base) . extractHref . extractTree
 fullURL :: URL -> B.ByteString -> URL
 fullURL base url = makeURLFunction d base url'
   where url' = B.unpack url
-        dstr = Data.List.take 8 url'
+        dstr = L.take 8 url'
         d    = fromJust $ strdt dstr
 
 makeTopPageURL :: Day -> URL -> URL
