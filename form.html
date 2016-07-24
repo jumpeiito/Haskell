@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<title></title>
+	<link rel="stylesheet" type="text/css" href="form.css">
+	<script type="text/javascript" language="javascript">
+
+	 var table = document.getElementById("tableID");
+	 var cellColor = "gainsboro";
+
+	 if (!Array.prototype.reduce) {
+	     Array.prototype.reduce = function reduce(accumulator){
+		 if (this===null || this===undefined) throw new TypeError("Object is null or undefined");
+
+		 var i = 0, l = this.length >> 0, curr;
+
+		 if(typeof accumulator !== "function") // ES5 : "If IsCallable(callbackfn) is false, throw a TypeError exception."
+		     throw new TypeError("First argument is not callable");
+
+		 if(arguments.length < 2) {
+		     if (l === 0) throw new TypeError("Array length is 0 and no second argument");
+		     curr = this[0];
+		     i = 1; // start accumulating at the second element
+		 }
+		 else
+		     curr = arguments[1];
+
+		 while (i < l) {
+		     if(i in this) curr = accumulator.call(undefined, curr, this[i], i, this);
+	 ++i;
+		 }
+
+		 return curr;
+	     };
+	 }
+
+	 if (!Array.prototype.map) {
+	     Array.prototype.map = function(callback, thisArg) {
+
+		 var T, A, k;
+
+		 if (this == null) {
+		     throw new TypeError(" this is null or not defined");
+		 }
+
+		 // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+		     var O = Object(this);
+
+		 // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+		     // 3. Let len be ToUint32(lenValue).
+		     var len = O.length >>> 0;
+
+		 // 4. If IsCallable(callback) is false, throw a TypeError exception.
+		     // See: http://es5.github.com/#x9.11
+		 if ({}.toString.call(callback) != "[object Function]") {
+		     throw new TypeError(callback + " is not a function");
+		 }
+
+		 // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+		     if (thisArg) {
+			 T = thisArg;
+		     }
+
+		 // 6. Let A be a new array created as if by the expression new Array(len) where Array is
+		 // the standard built-in constructor with that name and len is the value of len.
+		     A = new Array(len);
+
+		 // 7. Let k be 0
+		 k = 0;
+
+		 // 8. Repeat, while k < len
+		 while(k < len) {
+
+		     var kValue, mappedValue;
+
+		     // a. Let Pk be ToString(k).
+			 //   This is implicit for LHS operands of the in operator
+		     // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+			 //   This step can be combined with c
+		     // c. If kPresent is true, then
+		     if (k in O) {
+
+			 // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+			     kValue = O[ k ];
+
+			 // ii. Let mappedValue be the result of calling the Call internal method of callback
+			 // with T as the this value and argument list containing kValue, k, and O.
+			     mappedValue = callback.call(T, kValue, k, O);
+
+			 // iii. Call the DefineOwnProperty internal method of A with arguments
+			 // Pk, Property Descriptor {Value: mappedValue, Writable: true, Enumerable: true, Configurable: true},
+			 // and false.
+
+			     // In browsers that support Object.defineProperty, use the following:
+					   // Object.defineProperty(A, Pk, { value: mappedValue, writable: true, enumerable: true, configurable: true });
+
+			 // For best browser support, use the following:
+					   A[ k ] = mappedValue;
+		     }
+		     // d. Increase k by 1.
+			 k++;
+		 }
+
+		 // 9. return A
+		 return A;
+	     };      
+	 }
+	 if ( !Array.prototype.forEach ) {
+	     Array.prototype.forEach = function( callback, thisArg ) {
+		 var T, k;
+		 if ( this == null ) {
+		     throw new TypeError( " this is null or not defined" );
+		 }
+		 // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+		     var O = Object(this);
+		 // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+		     // 3. Let len be ToUint32(lenValue).
+		     var len = O.length >>> 0; // Hack to convert O.length to a UInt32
+		 // 4. If IsCallable(callback) is false, throw a TypeError exception.
+			 // See: http://es5.github.com/#x9.11
+		 if ( {}.toString.call(callback) != "[object Function]" ) {
+		     throw new TypeError( callback + " is not a function" );
+		 }
+		 // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+		     if ( thisArg ) {
+			 T = thisArg;
+		     }
+		 // 6. Let k be 0
+		 k = 0;
+		 // 7. Repeat, while k < len
+		 while( k < len ) {
+		     var kValue;
+		     // a. Let Pk be ToString(k).
+			 //   This is implicit for LHS operands of the in operator
+		     // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+			 //   This step can be combined with c
+		     // c. If kPresent is true, then
+		     if ( k in O ) {
+			 // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+			     kValue = O[ k ];
+			 // ii. Call the Call internal method of callback with T as the this value and
+			 // argument list containing kValue, k, and O.
+			     callback.call( T, kValue, k, O );
+		     }
+		     // d. Increase k by 1.
+			 k++;
+		 }
+		 // 8. return undefined
+	     };
+	 }
+
+	 function separate(num){
+	     // 文字列にする
+	     num = String(num);
+
+	     // 返却用
+	     var separated = '';
+
+	     // 位置文字ずつ配列にする
+	     var nums = num.split('');
+
+	     // 長さを入れとく
+	     var len = nums.length;
+
+	     // 一文字ずつ追加してくよ
+	     for(var i = 0; i < len; i++){
+		 // 後ろから追加していく
+		 separated = nums[(len-1)-i] + separated;
+
+		 // 3桁ごとにカンマ追加
+		 if(i % 3 === 2){
+		     separated = ',' + separated;
+		 }
+	     }
+
+	     return separated;
+	 }
+
+	 function cellVal (r, c, v) {
+	     table = document.getElementById("tableID");
+	     var icell  = table.rows[r].cells[c];
+	     /* Intをコンマ付きのStringに変える。 20000 -> 20,000 */
+	     icell.innerHTML = separate(v);
+	     if ( v != "" && v != 0 ) {
+		 /* セルに数字が入力されれば色を変える。*/
+		 if ( r != 11 ) { icell.style.backgroundColor = cellColor; }
+	     }
+	     else {
+		 icell.innerHTML = "";
+		 if (icell.className == "altval" || icell.className == "alt" ) {
+		     icell.style.backgroundColor = "#F5FAFA";		     
+		 } else {
+		     icell.style.backgroundColor = "white";
+		 }
+	     }
+	 }
+
+	 function cell(r, c) {
+	     /* セルの値を取得する。*/
+	     var table = document.getElementById("tableID");
+	     return table.rows[r].cells[c].innerHTML;
+	 }
+	 
+	 function cellEachVal (ary, row, valAry) {
+	     /* valAryにnullを指定した場合、aryと同じサイズの空文字列から成るリストをvaにセット*/
+	     va = valAry || ary.map ( function (_, _, _, _) { return "" } )
+
+	     ary.forEach ( function (el, id, _) { cellVal(row, el, va[id]) })
+	     tableCalc();
+	 }
+
+	 function Payment (ary) {
+	     this.kumiaihi = ary[0];
+	     this.hoken    = ary[1];
+	     this.kaigo    = ary[2];
+	     this.htotal   = this.hoken + this.kaigo;
+	     this.total    = this.htotal + this.kumiaihi;
+	     this.all      = [this.kumiaihi, this.hoken, this.kaigo, this.htotal, this.total];
+	     this.hall     = [this.hoken, this.kaigo, this.htotal]
+
+	     this.output        = function ()    { cellEachVal(iota(2,6), 1,     this.all);  tableCalc(); }
+	     this.output_kazoku = function (row) { cellEachVal(iota(3,5), row+1, this.hall); tableCalc(); }
+	 }
+
+	 var pAry = [
+	     new Payment ([4300, 8500, 0]),
+	     new Payment ([4900, 9500, 0]),
+	     new Payment ([5500, 12000, 0]),
+	     new Payment ([5500, 13500, 0]),
+	     new Payment ([5500, 15500, 0]),
+	     new Payment ([5500, 18000, 0]),
+	     new Payment ([5500, 20000, 0]),
+	     new Payment ([5500, 20000, 2400]),
+	     new Payment ([5500, 21300, 2400]),
+	     new Payment ([5500, 21300, 0]),
+	     new Payment ([5500, 20500, 0]),
+	     new Payment ([3000, 13500, 0]),
+	     new Payment ([3000, 17000, 0]),
+	     new Payment ([5500, 19500, 0]),
+	     new Payment ([3000, 12500, 0]),
+	     new Payment ([3000, 16000, 0])
+	 ]
+
+	 var fAry = [
+	     new Payment ([0,4500, 0]),
+	     new Payment ([0,4500, 1900]),
+	     new Payment ([0,5000, 1900]),
+	     new Payment ([0,5000, 0]),
+	     new Payment ([0,4000, 0]),
+	     new Payment ([0,15000, 0]),
+	     new Payment ([0,15000, 1900]),
+	 ]
+
+	 function iota (f, t) {
+	     /* fからtまでの配列を作成する。*/
+	     ary = new Array;
+	     for (i = f; i <= t; i++) { ary.push(i); }
+	     return ary;
+	 }
+
+	 function paymentOut(kind, row, index) {
+	     if (kind == "h") {
+		 /* 本人の場合*/
+		 obj = pAry[index - 1];
+		 if (index == 0) { cellEachVal(iota(2,6), 1, null) }
+		 else { obj.output(); }
+	     } else {
+		 /* 家族の場合*/
+		 obj = fAry[index - 1];
+		 if (index == 0) { cellEachVal(iota(3,5), row+1, null) }
+		 else { obj.output_kazoku(row); }
+	     }
+	 }
+
+	 function clearByID(id) { document.getElementById(id).selectedIndex = 0; }
+
+	 function allClear() {
+	     var ary = ["honSel", "fsel1", "fsel2", "fsel3", "fsel4", "fsel5",
+			"fsel6", "fsel7", "fsel8", "fsel9"]
+	     /* ドロップダウンリストの内容をクリア*/
+	     ary.forEach ( function (el, _, _) { clearByID(el) })
+	     /* 表の内容をクリア*/
+	     for (row = 1; row <= 11; row++) { cellEachVal(iota(2,6), row, null) }
+	 }
+
+	 function sum(ary) {
+	     /* Numberがないと文字列として認識されてしまい、例えば
+		「20500 + 30000」が、2050030000と表示されてしまう。*/
+	     return ary.reduce( function (p, c, _, _) { return Number(p) + Number(c) } );
+	 }
+
+	 function commaRemove(str) {
+	     /* コンマ付きのStringをIntに変換する。*/
+	     return Number(str.replace(",", ""));
+	 }
+
+	 function tdOutput (clname) {
+	     /* iota(0,4).forEach ( function (_, _, _) {*/
+	     [0,1,2,3,4].forEach ( function (a,b,c) {
+		 document.write("<td class='" + clname + "'></td>");
+	     })
+	 }
+
+	 function bigger (x, y) { return y - x; }
+
+	 function take (num, list) {
+	     /* 配列listの先頭num個を取得する。*/
+	     var ary = new Array;
+	     for (i = 0; i < num; i++) { ary.push(list[i]); }
+	     return ary
+	 }
+
+	 function sum2(num) {
+	     /* 各列の1〜10行目までの数字を足し、11列目に結果を入れる。*/
+	     rows    = iota(2,10);
+	     numList = rows.map ( function (id) { return commaRemove(cell(id, num)); });
+	     take5   = take(5, numList.sort(bigger));
+
+	     cellVal(11,num, commaRemove(cell(1, num)) + sum(take5));
+	 }
+
+	 function tableCalc() {
+	     cellVal(11,2, commaRemove(cell(1,2)));
+	     sum2(3);
+	     sum2(4);
+	     sum2(5);
+	     /* 組合費と保険料合計の足し算*/
+	     cellVal(11, 6, commaRemove(cell(11,2)) + commaRemove(cell(11,5)));
+
+	     [2,5,6].forEach( function (col, _, _) {
+		 var cell = table.rows[11].cells[col]
+		 if ( cell.innerHTML != "" ) { cell.style.backgroundColor = "skyblue"; }
+	     })
+	 }
+
+	 function buttonClearCore(id, num) {
+	     document.getElementById(id).selectedIndex = 0;
+	     iota(2,6).forEach ( function (el, _, _) { cellVal(num, el, "") })
+	     tableCalc();
+	 }
+
+	 function buttonClear(num) { buttonClearCore("fsel" + num, num + 1); }
+	 function buttonClear_hon(num) { buttonClearCore("honSel", num); }
+
+	 function kazokuSel(i) {
+	     document.write("<select id='fsel" + i + "' style='width:200px;' onchange='paymentOut(");
+	     document.write('"", ' + i + ", this.selectedIndex);'>");
+	     document.write("<option value=''></option>");
+	     document.write("<option value=''>一般A(39歳以下)</option>");
+	     document.write("<option value=''>一般A(39歳・介護あり)</option>");
+	     document.write("<option value=''>一般B(40歳以上)</option>");
+	     document.write("<option value=''>一般B(65歳以上)</option>");
+	     document.write("<option value=''>小学生以下</option>");
+	     document.write("<option value=''>20〜59歳男子(介護なし)</option>");
+	     document.write("<option value=''>20〜59歳男子(介護あり)</option>");
+	     document.write("</select>")
+	     document.write("<input type='button' id='but" + i + "' value='クリア' onclick='buttonClear(" + i + ");'/>")
+	 }
+	</script>
+    </head>
+    <body>
+	<form name="table">
+	    <table id="tableID">
+		<tr>
+		    <th class="nobg"></th>
+		    <th>種別</th>
+		    <th>組合費</th>
+		    <th>保険料</th>
+		    <th>介護保険料</th>
+		    <th>保険料合計</th>
+		    <th>全体合計</th>
+		</tr>
+		<tr>
+		    <td>本人</td>
+		    <td>
+			<!-- <select id="honSel" style="width:200px;" onchange="rbChange2(this.selectedIndex)"> -->
+			<select id="honSel" style="width:200px;" onchange="paymentOut('h', '', this.selectedIndex)">
+			    <option value=""></option>
+			    <option value="">20歳以下, H7.4.2-</option>
+			    <option value="">21歳 〜25歳, H2.4.2-H7.4.1</option>
+			    <option value="">26歳, H1.4.2-H2.4.1</option>
+			    <option value="">27歳, S63.4.2-H1.4.1</option>
+			    <option value="">28歳, S62.4.2-S63.4.1</option>
+			    <option value="">29歳, S61.4.2-S62.4.1</option>
+			    <option value="">30歳〜39歳, S51.4.2-S61.4.1</option>
+			    <option value="">39歳(介護あり), S51.4.2-S52.4.1</option>
+			    <option value="">40歳〜64歳, S26.4.2-S51.4.1</option>
+			    <option value="">64歳(介護なし), S26.4.2-S27.4.1</option>
+			    <option value="">65歳〜69歳, S21.4.2-S26.4.1</option>
+			    <option value="">70歳〜74歳(単身), S16.4.2-S21.4.1</option>
+			    <option value="">70歳〜74歳(家族有), S16.4.2-S21.4.1</option>
+			    <option value="">65歳〜69歳(非課税), S21.4.2-S26.4.1</option>
+			    <option value="">70歳〜74歳(単身・非課税), S16.4.2-S21.4.1</option>
+			    <option value="">70歳〜74歳(家族有・非課税), S16.4.2-S21.4.1</option>
+			</select><input type='button' id='butH' value='クリア' onclick="buttonClear_hon(1)"/>
+		    </td>
+		    <script>tdOutput("val");</script></tr>
+		<tr>
+		    <td class="alt">家族1</td><td class="alt"><script>kazokuSel(1);</script></td>
+		    <script>tdOutput("altval");</script>
+		</tr>
+		<tr>
+		    <td>家族2</td><td><script>kazokuSel(2);</script></td>
+		    <script>tdOutput("val");</script></tr>
+		<tr>
+		    <td class="alt">家族3</td><td><script>kazokuSel(3);</script></td>
+		    <script>tdOutput("altval");</script></tr>
+		<tr>
+		    <td>家族4</td><td><script>kazokuSel(4);</script></td>
+		    <script>tdOutput("val");</script></tr>
+		<tr>
+		    <td class="alt">家族5</td><td><script>kazokuSel(5);</script></td>
+		    <script>tdOutput("altval")</script></tr>
+		<tr>
+		    <td>家族6</td><td><script>kazokuSel(6);</script></td>
+		    <script>tdOutput("val");</script></tr>
+		<tr>
+		    <td class="alt">家族7</td><td><script>kazokuSel(7);</script></td>
+		    <script>tdOutput("altval")</script></tr>
+		<tr>
+		    <td>家族8</td><td><script>kazokuSel(8);</script></td>
+		    <script>tdOutput("val");</script></tr>
+		<tr>
+		    <td class="alt">家族9</td><td><script>kazokuSel(9);</script></td>
+		    <script>tdOutput("altval")</script></tr>
+		<tr><td>合計</td><td></td>
+		    <script>tdOutput("val");</script></tr>
+	    </table>
+	</form>
+	<input type="button" value="全部をクリア" onclick="allClear()"/>
+    </body>
+</html>
+<!-- 
+     特別1	20歳以下	8500		H7.4.2-			4300
+     特別2	21歳〜25歳	9500		H2.4.2-H7.4.1		4900
+     特別3	26歳		12000		H1.4.2-H2.4.1		5500
+     特別4	27歳		13500		S63.4.2-H1.4.1		5500
+     特別5	28歳		15500		S62.4.2-S63.4.1		5500
+     特別6	29歳		18000		S61.4.2-S62.4.1		5500
+     一般A	30歳〜39歳	20000		S51.4.2-S61.4.1		5500
+     一般B	40歳〜64歳	21300 + 2400	S26.4.2-S51.4.1		5500
+     特別7	65歳〜69歳	20500		S21.4.2-S26.4.1		5500
+     特別8	70歳〜74歳	13500		S16.4.2-S21.4.1		3000
+     特別9	70歳〜74歳	17000		S16.4.2-S21.4.1		3000
+     特別10	65歳〜69歳	19500		S21.4.2-S26.4.1		5500
+     特別11	70歳〜74歳	12500		S16.4.2-S21.4.1		3000
+     特別12	70歳〜74歳	16000		S16.4.2-S21.4.1		3000
+
+     一般A		39歳以下の家族		4500
+     一般A		40歳以上の家族		5000 + 1900
+     小学生まで	小学生までの家族		4000
+     特別		20歳以上59歳以下の男性	15000
+
+     扶養家族6人目から保険料免除
+   -->
