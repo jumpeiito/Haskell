@@ -2,22 +2,18 @@
 
 module OrgParse (dateFold, parseToDayList) where 
 
-import Strdt            (strdt, toYear, toMonth, toDay, todayDay)
-import Data.Time        (Day (..), fromGregorian)
-import Data.Maybe       (isJust, mapMaybe)
+import Strdt                            (strdt, toYear, toMonth, toDay, todayDay)
+import Data.Time                        (Day (..), fromGregorian)
+import Data.Maybe                       (isJust, mapMaybe)
+import Text.Printf                      (printf)
 import Control.Monad.Writer
+import Control.Applicative              hiding (many, (<|>))
+import Text.Parsec
+import Text.Parsec.String
 import qualified Data.Map               as Map
 import qualified Util                   as U
 import qualified System.IO              as I
 import qualified Control.Monad.State    as St
-import qualified Data.ByteString.Char8  as B
-import Control.Applicative hiding (many, (<|>))
-import Text.Printf
-import Text.Parsec
-import Text.Parsec.String
-
-test :: String
-test = "f:/Org/news/201607.org"
 
 orgDir :: FilePath
 orgDir = "f:/Org/news/"
@@ -170,9 +166,4 @@ parseToDayList year month = do
   contents <- orgLineList <$> U.readUTF8File file
   return $ map (fromGregorian year month) $ notElemDay daylist contents
 
--- testIO :: IO ()
-testIO = do
-  contents <- U.readUTF8File test
-  I.hSetEncoding I.stdout I.utf8
-  return $ orgLineList contents
 

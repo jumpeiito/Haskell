@@ -1,32 +1,31 @@
 module NewsArticle.Akahata (makePage, makeListedPage,
                            takeTitle, takeText) where
 
-import Strdt            (strdt, nendo, dayStrWithSep)
-import Data.Time        (Day (..))
-import Data.Monoid      ((<>))
-import Data.Maybe       (fromJust)
+import Strdt                            (strdt, nendo, dayStrWithSep)
+import Data.Time                        (Day (..))
+import Data.Monoid                      ((<>))
+import Data.Maybe                       (fromJust)
+import Data.ByteString.Char8            (ByteString (..), pack, unpack)
+import Data.Text.Internal               (Text (..))
 import NewsArticle.Base
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
-import qualified Data.List             as L
-import qualified Data.ByteString.Char8 as B
-import qualified Data.Text             as Tx
-import qualified Data.Text.Internal    as Txi
+import qualified Data.Text              as Tx
 
-makeListedPage :: Day -> ListedPage B.ByteString
+makeListedPage :: Day -> ListedPage ByteString
 makeListedPage d = LP base' d url' (newsList base') (const [])
   where base' = "http://www.jcp.or.jp/akahata/"
         url'  = makeTopPageURL d base'
 
-newsList :: URL -> [TagTree B.ByteString] -> [URL]
+newsList :: URL -> [TagTree ByteString] -> [URL]
 newsList base = map (fullURL base) . extractHref . extractTree
   where extractTree = (findTree [(Always, Attr "newslist")] `concatMap`)
-        extractHref = (findAttribute (B.pack "href")      `concatMap`)
+        extractHref = (findAttribute (pack "href")      `concatMap`)
 
-fullURL :: URL -> B.ByteString -> URL
+fullURL :: URL -> ByteString -> URL
 fullURL base url = makeURLFunction d base url'
-  where url' = B.unpack url
-        dstr = L.take 8 url'
+  where url' = unpack url
+        dstr = take 8 url'
         d    = fromJust $ strdt dstr
 
 makeTopPageURL :: Day -> URL -> URL
@@ -39,13 +38,13 @@ makeURLFunction day base subpage =
         nendo'  = show $ (`mod` 1000) $ nendo day
         day'    = dayStrWithSep '-' day
 
-takeTitle :: [TagTree B.ByteString] -> B.ByteString
+takeTitle :: [TagTree ByteString] -> ByteString
 takeTitle tr = orgStar <> treeTextMap tree'
   where tree'   = ([(Name "title", Always)] ==>) `concatMap` tr
-        orgStar = B.pack "** "
+        orgStar = pack "** "
         treeTextMap = mconcat . map treeText
 
-takeText :: [TagTree B.ByteString] -> [Txi.Text]
+takeText :: [TagTree ByteString] -> [Text]
 takeText = map (<> Tx.pack "\n") .
            map stringFold        .
            filterBlankLines      .
@@ -58,7 +57,7 @@ takeText = map (<> Tx.pack "\n") .
         toString      = map (treeTextEx directionList)
         directionList = (Name "a", Always, Skip) : normalDirection
 
-makePage :: URL -> Page B.ByteString
+makePage :: URL -> Page ByteString
 makePage url = Page url vacant takeTitle takeText
   where vacant = TagLeaf (TagText mempty)
 

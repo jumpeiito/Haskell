@@ -18,6 +18,9 @@ module NewsArticle.Base (ListedPage (..),
 
 import Data.Time                        (Day (..))
 import Data.List                        (foldl', isInfixOf)
+import Data.ByteString.Char8            (ByteString (..), pack)
+import Data.Text.Internal               (Text (..))
+import Data.Text.Encoding               (decodeUtf8)
 import Control.Monad.Writer
 import Control.Applicative              hiding (many, (<|>))
 import Text.HTML.TagSoup
@@ -25,16 +28,11 @@ import Text.HTML.TagSoup.Tree
 import Text.Parsec
 import Text.Parsec.ByteString
 import qualified Data.Text              as Tx
-import qualified Data.Text.Internal     as Txi
-import qualified Data.Text.Encoding     as Txe
-import qualified Data.Text.IO           as Txio
-import qualified System.IO              as I
-import qualified Data.ByteString.Char8  as B
 
 type URL           = String
 type ArticleKey    = (AKey, AKey)
 type DirectionList = [(AKey, AKey, WriterDirection)]
-type DirectionType = [(TagTree B.ByteString -> Bool, WriterDirection)]
+type DirectionType = [(TagTree ByteString -> Bool, WriterDirection)]
 
 data ListedPage a =
   LP { baseURL  :: URL,
@@ -48,7 +46,7 @@ data Page a =
   Page { pageUrl   :: URL,
          tagtree   :: TagTree a,
          titleFunc :: [TagTree a] -> a,
-         textFunc  :: [TagTree a] -> [Txi.Text] }
+         textFunc  :: [TagTree a] -> [Text] }
 
 data Article a =
   Article { tree  :: TagTree a,
@@ -64,17 +62,17 @@ data WriterDirection = Skip | Pack String | Loop deriving (Show, Eq)
 instance Show (Page a) where
   show (Page u _ _ _) = "Page (url=" ++ u ++ ")"
 
-(==>), findTree :: [ArticleKey] -> TagTree B.ByteString -> [TagTree B.ByteString]
+(==>), findTree :: [ArticleKey] -> TagTree ByteString -> [TagTree ByteString]
 findTree akeys tb@(TagBranch {}) = execWriter $ find' akeys tb
 findTree _ _ = []
 (==>) = findTree
 
-find' :: [ArticleKey] -> TagTree B.ByteString -> Writer [TagTree B.ByteString] ()
+find' :: [ArticleKey] -> TagTree ByteString -> Writer [TagTree ByteString] ()
 find' akeys tb@(TagBranch _ _ ys)
   | solver akeys tb = tell [tb]
   | otherwise = forM_ ys (tell . findTree akeys)
 
-solver :: [ArticleKey] -> TagTree B.ByteString -> Bool
+solver :: [ArticleKey] -> TagTree ByteString -> Bool
 solver akeys = Data.List.foldl' (|||) (const False) $ map solveArticleKey akeys
 
 (&&&), (|||) :: Monad m => m Bool -> m Bool -> m Bool
@@ -88,12 +86,12 @@ solver akeys = Data.List.foldl' (|||) (const False) $ map solveArticleKey akeys
   f2 <- y
   return $ f1 || f2
 
-solveArticleKey :: ArticleKey -> TagTree B.ByteString -> Bool
+solveArticleKey :: ArticleKey -> TagTree ByteString -> Bool
 solveArticleKey (l, r) = solveAKey l &&& solveAKey r
 
-solveAKey :: AKey -> TagTree B.ByteString -> Bool
-solveAKey (Name a) (TagBranch n _ _) = n == B.pack a
-solveAKey (Attr a) (TagBranch _ l _) = [pairF B.pack ("class", a)] `isInfixOf` l
+solveAKey :: AKey -> TagTree ByteString -> Bool
+solveAKey (Name a) (TagBranch n _ _) = n == pack a
+solveAKey (Attr a) (TagBranch _ l _) = [pairF pack ("class", a)] `isInfixOf` l
 solveAKey Always _                   = True
 solveAKey _ _ = False
 
@@ -116,10 +114,10 @@ assocKey k ((x, y):rest)
   | k == x = Just y
   | otherwise = assocKey k rest
 ----------------------------------------------------------------------------------------------------
-stringFold :: Txi.Text -> Txi.Text
+stringFold :: Text -> Text
 stringFold s = (Tx.pack "   ") <> sfold s 0
 
-sfold :: Txi.Text -> Int -> Txi.Text
+sfold :: Text -> Int -> Text
 sfold tx c
   | tx == mempty = mempty
   | otherwise = let Just (ch, rest) = Tx.uncons tx in
@@ -128,7 +126,7 @@ sfold tx c
     then char' <> Tx.pack "\n   " <> sfold rest 0
     else char' <> sfold rest (c+1)
 ----------------------------------------------------------------------------------------------------
-treeText :: TagTree B.ByteString -> B.ByteString
+treeText :: TagTree ByteString -> ByteString
 treeText    = treeTextEx normalDirection
 treeTextMap = mconcat . map treeText
 ----------
@@ -153,26 +151,26 @@ direction tb ((f, direct):xs)
   | f tb = direct
   | otherwise = direction tb xs
 ----------------------------------------------------------------------------------------------------
-treeTextEx :: DirectionList -> TagTree B.ByteString -> B.ByteString
+treeTextEx :: DirectionList -> TagTree ByteString -> ByteString
 treeTextEx dl = execWriter . ttxex dl
 
-ttxex :: DirectionList -> TagTree B.ByteString -> Writer B.ByteString ()
+ttxex :: DirectionList -> TagTree ByteString -> Writer ByteString ()
 ttxex _ (TagLeaf (TagText s)) = tell s
 ttxex dl tb@(TagBranch _ _ descend) =
   case direction tb dx of
     Skip   -> tell mempty
-    Pack n -> tell $ B.pack n
+    Pack n -> tell $ pack n
     Loop   -> forM_ descend (tell . treeTextEx dl)
   where dx = directionTranslate dl
 ttxex _ _ = tell mempty    
 ----------------------------------------------------------------------------------------------------
-strip :: B.ByteString -> Txi.Text
+strip :: ByteString -> Text
 strip = tailCut . skip . (<> Tx.pack "\n") . decode
-  where decode  = Txe.decodeUtf8
+  where decode  = decodeUtf8
         skip    = Tx.dropWhile (`elem` [' ', '\t', '\12288', '\n'])
         tailCut = Tx.reverse . skip . Tx.reverse
 
-filterBlankLines :: [B.ByteString] -> [Txi.Text]
+filterBlankLines :: [ByteString] -> [Text]
 filterBlankLines [] = []
 filterBlankLines (x:xl) = case parse fBLparse "" x of
   Right _ -> filterBlankLines xl
@@ -185,7 +183,7 @@ fBLparse = do
     <|> string "続きを読む"
   return mempty
 ----------------------------------------------------------------------------------------------------
-translateTags :: B.ByteString -> [TagTree B.ByteString]
+translateTags :: ByteString -> [TagTree ByteString]
 translateTags str = tagTree $ parseTags str
 ----------------------------------------------------------------------------------------------------
 getF :: (Page a -> [TagTree a] -> r) -> Page a -> r
@@ -198,6 +196,6 @@ getF f = f <@> (return . tagtree)
   return $ f' tr'
 
 getTitle :: Page r -> r
-getText  :: Page r -> [Txi.Text]
+getText  :: Page r -> [Text]
 getTitle = getF titleFunc
 getText  = getF textFunc

@@ -1,22 +1,21 @@
-import Strdt
-import OrgParse
+import Util                             (withAppendFile)
+import Strdt                            (strdt, toYear, toMonth, todayDay)
+import OrgParse                         (parseToDayList)
 import NewsArticle.Base
-import qualified NewsArticle.Akahata   as Ak
-import qualified NewsArticle.Common    as Cm
-import Control.Monad
-import Data.Time
-import Data.Monoid
-import qualified Options.Applicative   as O
-import Text.Printf
+import Control.Monad                    (forM_)
+import Data.Time                        (Day (..))
+import Data.Monoid                      ((<>))
+import Text.Printf                      (printf)
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
-import qualified Network.HTTP          as Net
-import qualified Util                  as U
-import qualified System.IO             as I
-import qualified Data.Text.IO          as Txio
-import qualified Data.Text.Internal    as Txi
-import qualified Data.Text.ICU.Convert as C
-import qualified Data.ByteString.Char8 as B
+import qualified Options.Applicative    as O
+import qualified NewsArticle.Akahata    as Ak
+import qualified NewsArticle.Common     as Cm
+import qualified Network.HTTP           as Net
+import qualified System.IO              as I
+import qualified Data.Text.IO           as Txio
+import qualified Data.Text.ICU.Convert  as C
+import qualified Data.ByteString.Char8  as B
 ----------------------------------------------------------------------------------------------------
 orgdir = "f:/org/news/"
 ----------------------------------------------------------------------------------------------------
@@ -27,11 +26,11 @@ orgName d = orgdir <> printf "%d%02d.org" y m
 
 testIO2 :: [String] -> IO ()
 testIO2 s = 
-  U.withAppendFile "./test.org" $ \handle -> mapM_ (I.hPutStrLn handle) s
+  withAppendFile "./test.org" $ \handle -> mapM_ (I.hPutStrLn handle) s
 ----------------------------------------------------------------------------------------------------
 appendText :: [String] -> Day -> IO ()
 appendText txt day' =
-  U.withAppendFile orgfile $ \handle ->
+  withAppendFile orgfile $ \handle ->
   mapM_ (I.hPutStrLn handle) txt
   where orgfile = orgName day'
 ----------------------------------------------------------------------------------------------------

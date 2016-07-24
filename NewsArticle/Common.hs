@@ -1,15 +1,15 @@
 module NewsArticle.Common (makeListedPage) where
 
-import Strdt            (dayStr8)
-import Data.Time        (Day (..))
-import Data.Monoid      ((<>))
-import Data.Maybe       (fromJust)
+import Util                             (withAppendFile)
+import Strdt                            (dayStr8)
+import Data.Time                        (Day (..))
+import Data.Monoid                      ((<>))
+import Data.Maybe                       (fromJust)
+import Data.Text.Internal               (Text (..))
 import NewsArticle.Base
 import Text.HTML.TagSoup.Tree
-import qualified Util                  as U
-import qualified Data.ByteString.Char8 as B
-import qualified Data.Text             as Tx
-import qualified Data.Text.Internal    as Txi
+import qualified Data.ByteString.Char8  as B
+import qualified Data.Text              as Tx
 
 ----------------------------------------------------------------------------------------------------
 import System.Process
@@ -33,7 +33,7 @@ takeTitle = (B.pack "** " <>) . treeTextMap . makeTree
   where treeTextMap = mconcat . map treeText
         makeTree    = concatMap $ findTree [(Name "h3", Attr "title")]
 
-takeText :: [TagTree B.ByteString] -> [Txi.Text]
+takeText :: [TagTree B.ByteString] -> [Text]
 takeText = map (<> Tx.pack "\n") .
            map stringFold        .
            filterBlankLines      .
@@ -53,6 +53,6 @@ testIO21 = do
   return $ translateTags page
 
 testIO22 = do
-  U.withAppendFile "f:/Haskell/NewsArticle/test" $ \handle -> do
+  withAppendFile "f:/Haskell/NewsArticle/test" $ \handle -> do
     I.hSeek handle I.AbsoluteSeek 10
     I.hPutStrLn handle "** testoutput **"
