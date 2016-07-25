@@ -48,12 +48,6 @@ getPageContents url = do
   converted <- convertUTF8 body
   return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
--- main :: IO ()
--- printer :: Foldable t => (t1 -> B.ByteString)
---      -> (t1 -> t Txi.Text) -> t1 -> IO ()
--- printer titleF textF tree' = do
---   B.putStrLn $ titleF tree'
---   mapM_ Txio.putStrLn $ textF tree'
 
 singleHTML tree = head tree'
   where tree' = findTree [(Name "body", Always)] `concatMap` tree
@@ -66,11 +60,11 @@ printer f1 f2 page = do
 dayMaker :: Day -> IO ()
 dayMaker td = do
   I.putStrLn $ "* " <> show td
-  let common = (Cm.makeListedPage td :: ListedPage B.ByteString)
+  let common = Cm.makeListedPage td
   cmpage <- getPageContents $ topURL common
   let pages = pageF common cmpage
   forM_ pages $ printer getTitle getText
-  
+  --------------------------------------------------
   let akahata = Ak.makeListedPage td
   page <- getPageContents $ topURL akahata
   let urls = urlF akahata page

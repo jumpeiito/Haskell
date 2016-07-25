@@ -1,6 +1,7 @@
 import Util
 import Data.List
 import Data.Char
+import Data.Ratio
 import Text.Printf
 import Control.Monad.State              as St
 import Text.Regex.Posix
@@ -171,21 +172,89 @@ testSearch xs = do
           then St.put dic
           else St.put filt
 
-search'' :: B.ByteString -> [[B.ByteString]] -> [[B.ByteString]]
-search'' target dic =
-  St.execState (testSearch' target) dic
+testl = map reverse
+  ["平叡比市津大県賀滋",
+   "平大市津大県賀滋",
+   "松平区津大市路姫県庫兵",
+   "津平市津大県賀滋",
+   "町尾平所膳市津大県賀滋",
+   "町野平上田上市津大県賀滋",
+   "野平市津大県賀滋"]
 
-testSearch' :: B.ByteString -> State [[B.ByteString]] ()
-testSearch' xs = do
-  forM_ xs $ \x -> do
-    dic <- St.get
-    let filt = filter (\line -> x `elem` head line) dic
-    case dic of
-      [_] -> St.put dic
-      _   -> do
-        if null filt
-          then St.put dic
-          else St.put filt
+testl2 = map reverse
+  ["丘里千南市津摂府阪大",
+   "丘里千市津摂府阪大",
+   "山里一市津大県賀滋",
+   "東丘里千市津摂府阪大",
+   "東里の木仰市津大県賀滋",
+   "里の木仰市津大県賀滋",
+   "里の池市津大県賀滋",
+   "里の鶴市津大県賀滋",
+   "里市津大県賀滋",
+   "里賀滋市津大県賀滋"]
+
+-- givePoint :: String -> String -> (String, Int, Int)
+-- givePoint x target
+--   | x `isInfixOf` target = (target, length x, 0)
+--   | otherwise = givePoint (reverse $ tail $ reverse x) target
+-- givePoint :: String -> St.State [(String, Int)] ()
+
+data Hitting = Hitting { target    :: String,
+                         hit       :: Int,
+                         hitratio  :: Ratio Int,
+                         nohit     :: Int,
+                         continual :: Int
+                       } deriving (Show)
+
+addHit char hit' =
+  Hitting { target   = newTarget,
+            hit      = newHit,
+            hitratio = (newHit - (length newTarget)) % newHit,
+            nohit    = nohit hit',
+            continual = continual hit'
+          }
+  where newTarget = removeChar char (target hit')
+        newHit    = (hit hit') + 1
+
+givePoint :: String -> String -> Hitting
+givePoint baseStr gen = (`St.execState` initHit) $ do
+  forM_ baseStr $ \char -> do
+    hit <- St.get
+    let newHit = addHit char hit
+    if ([char] `isInfixOf` (target hit))
+      then St.put newHit
+      else St.put $ hit { nohit = nohit hit + 1 }
+  hit <- St.get
+  St.put $ hit { continual = giveContinualPoint baseStr gen }
+  where initHit = Hitting gen 0 (0%1) 0 0
+
+giveContinualPoint :: String -> String -> Int
+giveContinualPoint "" _ = 0
+giveContinualPoint bsx@(b:bs) gen
+  | bsx `isInfixOf` gen = length bsx
+  | otherwise = giveContinualPoint bs gen
+  
+removeChar :: Char -> String -> String
+removeChar char str = loop str []
+  where loop (x:xs) r
+          | char == x = reverse r ++ xs
+          | otherwise = loop xs (x:r)
+
+-- search'' :: B.ByteString -> [[B.ByteString]] -> [[B.ByteString]]
+-- search'' target dic =
+--   St.execState (testSearch' target) dic
+
+-- testSearch' :: B.ByteString -> State [[B.ByteString]] ()
+-- testSearch' xs = do
+--   forM_ xs $ \x -> do
+--     dic <- St.get
+--     let filt = filter (\line -> x `elem` head line) dic
+--     case dic of
+--       [_] -> St.put dic
+--       _   -> do
+--         if null filt
+--           then St.put dic
+--           else St.put filt
 -- data Filtering a = Filt $ \n -> b n
 
 -- instance Functor Filtering where

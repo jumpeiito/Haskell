@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
 module Strdt (strdt, dtmap, Date, NendoDate,
               toYear, toYearInt, toMonth, toDay, nendo,
@@ -8,9 +8,10 @@ module Strdt (strdt, dtmap, Date, NendoDate,
 import Data.Time
 import Data.List
 import Data.Maybe
-import Control.Applicative hiding ((<|>), many)
+import Control.Applicative              hiding ((<|>), many)
 import Text.ParserCombinators.Parsec
 import Text.Printf
+import qualified Text.StringLike        as Like
 
 type Date      = (Int, Int, Int)
 type NendoDate = (Int, Int, Int, Int)
@@ -27,28 +28,28 @@ dtmap :: Either a b -> (b -> c) -> Maybe c
 (Right x) `dtmap` f = Just $ f x
 (Left _)  `dtmap` _ = Nothing
 
-class StringDate a where
-  strdt :: String -> a
+class StringDate a b where
+  strdt :: a -> b
 
-instance StringDate (Maybe Day) where
+instance Like.StringLike a => StringDate a (Maybe Day) where
   strdt str = _strdt str `dtmap` id
 
-instance StringDate (Maybe String) where
+instance Like.StringLike a => StringDate a (Maybe String) where
   strdt str = _strdt str `dtmap` show
 
-instance StringDate (Maybe Int) where
+instance Like.StringLike a => StringDate a (Maybe Int) where
   strdt str =
     _strdt str `dtmap` (\n -> fromInteger $ toYear n :: Int)
 
-instance StringDate (Maybe (Int, Int)) where
+instance Like.StringLike a => StringDate a (Maybe (Int, Int)) where
   strdt str =
     _strdt str `dtmap` (\d -> (toMonth d, toDay d))
 
-instance StringDate (Maybe Date) where
+instance Like.StringLike a => StringDate a (Maybe Date) where
   strdt str =
     _strdt str `dtmap` (\d -> (toYearInt d, toMonth d, toDay d))
 
-instance StringDate (Maybe NendoDate) where
+instance Like.StringLike a => StringDate a (Maybe NendoDate) where
   strdt str =
     _strdt str `dtmap` returner
     where returner d = (nendoCalc d, toYearInt d, toMonth d, toDay d)
@@ -124,8 +125,8 @@ calc = do
   <|> try dateJapaneseLong
   <|> date6 
 
-_strdt :: String -> Either ParseError Day
-_strdt = parse calc ""
+_strdt :: Like.StringLike a => a -> Either ParseError Day
+_strdt = parse calc "" . Like.castString
 
 toYear :: Day -> Integer
 toYear day = let (d, _, _) = toGregorian day in d
