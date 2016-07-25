@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
+
 module Util where
 
 import Data.List
@@ -9,16 +11,29 @@ import qualified Control.Monad.State as St
 import System.Directory
 import qualified Data.Map as Map
 import System.IO (IOMode (..), hGetContents, hSetEncoding, openFile, hClose, mkTextEncoding, stdout, utf8, hPutStrLn, Handle)
-import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Char8 as B
+import qualified Data.Text.Internal as Txi
+import qualified Data.Text as Tx
 import Text.ParserCombinators.Parsec
 
-split :: Char -> String -> [String]
-split sep str =
-  loop str [] []
-  where (&) a b = reverse b:a
-        loop "" big small = reverse (big&small)
-        loop (x:xs) big small | x == sep  = loop xs (big&small) []
-                              | otherwise = loop xs big (x:small)
+class Splittable a where
+  split :: Char -> a -> [a]
+
+instance Splittable String where
+  split sep str = reverse . fst . (`St.execState` (mempty, mempty)) $ do
+    forM_ str $ \char -> do
+      (big, small) <- St.get
+      if char == sep
+        then St.put (reverse small:big, [])
+        else St.put (big, char : small)
+    (big, small) <- St.get
+    St.put (reverse small:big, [])
+
+instance Splittable B.ByteString where
+  split sep bstr = map B.pack $ split sep $ B.unpack bstr
+
+instance Splittable Txi.Text where
+  split sep bstr = map Tx.pack $ split sep $ Tx.unpack bstr
 
 connect :: String -> [String] -> String
 connect sep []     = ""

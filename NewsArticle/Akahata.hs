@@ -11,20 +11,21 @@ import NewsArticle.Base
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import qualified Data.Text              as Tx
+import qualified Text.StringLike        as Like
 
-makeListedPage :: Day -> ListedPage ByteString
+makeListedPage :: Like.StringLike a => Day -> ListedPage a
 makeListedPage d = LP base' d url' (newsList base') (const [])
   where base' = "http://www.jcp.or.jp/akahata/"
         url'  = makeTopPageURL d base'
 
-newsList :: URL -> [TagTree ByteString] -> [URL]
+newsList :: Like.StringLike a => URL -> [TagTree a] -> [URL]
 newsList base = map (fullURL base) . extractHref . extractTree
   where extractTree = (findTree [(Always, Attr "newslist")] `concatMap`)
-        extractHref = (findAttribute (pack "href")      `concatMap`)
+        extractHref = (findAttribute (Like.castString "href")      `concatMap`)
 
-fullURL :: URL -> ByteString -> URL
+fullURL :: Like.StringLike a => URL -> a -> URL
 fullURL base url = makeURLFunction d base url'
-  where url' = unpack url
+  where url' = Like.castString url
         dstr = take 8 url'
         d    = fromJust $ strdt dstr
 
@@ -38,13 +39,13 @@ makeURLFunction day base subpage =
         nendo'  = show $ (`mod` 1000) $ nendo day
         day'    = dayStrWithSep '-' day
 
-takeTitle :: [TagTree ByteString] -> ByteString
+takeTitle :: (Monoid a, Like.StringLike a) => [TagTree a] -> a
 takeTitle tr = orgStar <> treeTextMap tree'
   where tree'   = ([(Name "title", Always)] ==>) `concatMap` tr
-        orgStar = pack "** "
+        orgStar = Like.castString "** "
         treeTextMap = mconcat . map treeText
 
-takeText :: [TagTree ByteString] -> [Text]
+takeText :: (Monoid a, Like.StringLike a) => [TagTree a] -> [Text]
 takeText = map (<> Tx.pack "\n") .
            map stringFold        .
            filterBlankLines      .
@@ -57,7 +58,7 @@ takeText = map (<> Tx.pack "\n") .
         toString      = map (treeTextEx directionList)
         directionList = (Name "a", Always, Skip) : normalDirection
 
-makePage :: URL -> Page ByteString
+makePage :: (Monoid a, Like.StringLike a) => URL -> Page a
 makePage url = Page url vacant takeTitle takeText
   where vacant = TagLeaf (TagText mempty)
 

@@ -2,11 +2,14 @@ import Util
 import Data.List
 import Data.Char
 import Text.Printf
+import Control.Monad.State              as St
 import Text.Regex.Posix
+import Control.Monad
 import Codec.Binary.UTF8.String
 import GHC.IO.Handle.Types
 import System.Environment (getArgs)
 import System.IO (IOMode (..), hGetContents, hSetEncoding, openFile, hClose, mkTextEncoding, stdout, utf8, hPutStrLn, hFlush)
+import qualified Data.ByteString.Char8  as B
 
 data Dict =
   Tree String Dict Dict
@@ -127,21 +130,72 @@ search dict key =
           Nothing -> loop $ init k'
           Just x  -> Just x
 
-tuplePrint :: (String, Maybe String) -> IO ()
+tuplePrint :: (String, Maybe Int) -> IO ()
 tuplePrint (ad, pcode) =
   case pcode of
-  Just p  -> putStrLn $ "(" ++ ad ++ ", " ++ p ++ ")"
+  Just p  -> putStrLn $ "(" ++ ad ++ ", " ++ show p ++ ")"
   Nothing -> putStrLn $ "(" ++ ad ++ ", ---)"
 
 main :: IO ()
 main = do
-  dict <- deserializeDict ".dict"
+  dict <- testIO-- deserializeDict ".dict"
   target <- readUTF8File ".test.address"
-  let result    = map (search dict) $ lines target
+  let result    = map (\n -> (n, Just $ length $ search' n dict)) $ lines target
   hSetEncoding stdout utf8
   mapM_ tuplePrint result
 
--- toDict :: FilePath -> FilePath -> IO ()
--- toDict inFile outFile = do
---   contents <- readUTF8File inFile
-  
+-- testIO :: IO ()
+testIO = do
+  zips <- readUTF8File ".zipcode.out"
+  let dic = map (split ',') $ lines zips
+  return dic
+
+testIO2 = do
+  zips <- B.pack <$> readUTF8File ".zipcode.out"
+  let dic = map (split ',') $ B.lines zips
+  return dic
+
+search' :: String -> [[String]] -> [[String]]
+search' target dic =
+  St.execState (testSearch target) dic
+
+testSearch :: String -> State [[String]] ()
+testSearch xs = do
+  forM_ xs $ \x -> do
+    dic <- St.get
+    let filt = filter (\line -> x `elem` head line) dic
+    case dic of
+      [_] -> St.put dic
+      _   -> do
+        if null filt
+          then St.put dic
+          else St.put filt
+
+search'' :: B.ByteString -> [[B.ByteString]] -> [[B.ByteString]]
+search'' target dic =
+  St.execState (testSearch' target) dic
+
+testSearch' :: B.ByteString -> State [[B.ByteString]] ()
+testSearch' xs = do
+  forM_ xs $ \x -> do
+    dic <- St.get
+    let filt = filter (\line -> x `elem` head line) dic
+    case dic of
+      [_] -> St.put dic
+      _   -> do
+        if null filt
+          then St.put dic
+          else St.put filt
+-- data Filtering a = Filt $ \n -> b n
+
+-- instance Functor Filtering where
+--   f `fmap` F x = F $ x . (map f)
+
+-- instance Monad Filtering where
+--   return a = F { runFilt = filter (const True) }
+
+-- instance Applicative Filtering where
+--   pure = return
+
+-- instance Functor Filtering where
+--   f `fmap` F x = F $ \xl -> map f $ x xl

@@ -16,6 +16,7 @@ import qualified System.IO              as I
 import qualified Data.Text.IO           as Txio
 import qualified Data.Text.ICU.Convert  as C
 import qualified Data.ByteString.Char8  as B
+import qualified Text.StringLike        as Like
 ----------------------------------------------------------------------------------------------------
 orgdir = "f:/org/news/"
 ----------------------------------------------------------------------------------------------------
@@ -38,11 +39,11 @@ convertUTF8 :: String -> IO B.ByteString
 convertUTF8 s = do
   utf8 <- C.open "utf8" (Just False)
   sjis <- C.open "cp932" (Just False)
-  return $ C.fromUnicode utf8 (C.toUnicode sjis (B.pack s))
+  return $ C.fromUnicode utf8 $ C.toUnicode sjis $ B.pack s
 
 getPageContents :: String -> IO [TagTree B.ByteString]
 getPageContents url = do
-  http      <- Net.simpleHTTP (Net.getRequest url)
+  http      <- Net.simpleHTTP $ Net.getRequest url
   body      <- Net.getResponseBody http
   converted <- convertUTF8 body
   return $ translateTags converted
@@ -65,19 +66,16 @@ printer f1 f2 page = do
 dayMaker :: Day -> IO ()
 dayMaker td = do
   I.putStrLn $ "* " <> show td
-  let common = Cm.makeListedPage td
-  cmpage <- getPageContents (topURL common)
+  let common = (Cm.makeListedPage td :: ListedPage B.ByteString)
+  cmpage <- getPageContents $ topURL common
   let pages = pageF common cmpage
-  forM_ pages (printer getTitle getText)
-  ----------------------------------------------------------------------------------------------------
+  forM_ pages $ printer getTitle getText
+  
   let akahata = Ak.makeListedPage td
-  page <- getPageContents (topURL akahata)
-  let urls = (urlF akahata) page
+  page <- getPageContents $ topURL akahata
+  let urls = urlF akahata page
   let akpage = Ak.makePage ""
   forM_ urls $ \url -> do
-    -- cont <- singleHTML <$> getPageContents url
-    -- let p = Page "" cont Ak.takeTitle Ak.takeText
-    -- printer p
     cont <- getPageContents url
     printer (titleFunc akpage) (textFunc akpage) cont
 

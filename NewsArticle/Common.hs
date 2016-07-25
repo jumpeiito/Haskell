@@ -10,6 +10,7 @@ import NewsArticle.Base
 import Text.HTML.TagSoup.Tree
 import qualified Data.ByteString.Char8  as B
 import qualified Data.Text              as Tx
+import qualified Text.StringLike        as Like
 
 ----------------------------------------------------------------------------------------------------
 import System.Process
@@ -17,28 +18,28 @@ import qualified Data.Text.IO as Txio
 import qualified System.IO as I
 ----------------------------------------------------------------------------------------------------
 
-makeListedPage :: Day -> ListedPage B.ByteString
+makeListedPage :: (Monoid a, Like.StringLike a) => Day -> ListedPage a
 makeListedPage d = LP base' d url' (const []) extractPage
   where base' = "http://shasetsu.seesaa.net/archives/"
         url'  = base' <> dayStr8 d <> "-1.html"
 
-extractPage :: [TagTree B.ByteString] -> [Page B.ByteString]
+extractPage :: (Monoid a, Like.StringLike a) => [TagTree a] -> [Page a]
 extractPage tr = flip map (makeTree tr) $ \n ->
   Page mempty n takeTitle takeText
   where makeTree = reverse . 
                    concatMap (findTree [(Name "div", Attr "blogbody")])
 
-takeTitle :: [TagTree B.ByteString] -> B.ByteString
-takeTitle = (B.pack "** " <>) . treeTextMap . makeTree
+takeTitle :: (Monoid a, Like.StringLike a) => [TagTree a] -> a
+takeTitle = (Like.castString "** " <>) . treeTextMap . makeTree
   where treeTextMap = mconcat . map treeText
         makeTree    = concatMap $ findTree [(Name "h3", Attr "title")]
 
-takeText :: [TagTree B.ByteString] -> [Text]
-takeText = map (<> Tx.pack "\n") .
-           map stringFold        .
-           filterBlankLines      .
-           concatMap B.lines     .
-           map treeText          .
+takeText :: (Monoid a, Like.StringLike a) => [TagTree a] -> [Text]
+takeText = map (<> Tx.pack "\n")               .
+           map stringFold                      .
+           filterBlankLines                    .
+           concatMap (lines . Like.castString) .
+           map treeText                        .
            makeTree
   where makeTree = concatMap $ findTree [(Name "div", Attr "text")]
 ----------------------------------------------------------------------------------------------------
