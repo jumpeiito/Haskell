@@ -99,8 +99,7 @@ toLine :: Like.StringLike a => a -> Lines String
 toLine s = case parse selected "" target of
   Right line -> line
   Left _     -> OrgError
-  where selected :: Parser (Lines String)
-        selected = choice [try titleP, try dateP, lineP]
+  where selected = choice [try titleP, try dateP, lineP]
         target   = Like.castString s
 ----------------------------------------------------------------------------------------------------
 type PaperMap a = Map.Map Int [a]

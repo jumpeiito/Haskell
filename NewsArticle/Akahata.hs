@@ -39,11 +39,11 @@ makeURLFunction day base subpage =
         nendo'  = show $ (`mod` 1000) $ nendo day
         day'    = dayStrWithSep '-' day
 
-takeTitle :: (Monoid a, Like.StringLike a) => [TagTree a] -> a
+takeTitle :: (Monoid a, Like.StringLike a) => [TagTree a] -> Text
 takeTitle tr = orgStar <> treeTextMap tree'
   where tree'   = ([(Name "title", Always)] ==>) `concatMap` tr
         orgStar = Like.castString "** "
-        treeTextMap = mconcat . map treeText
+        treeTextMap = utf8Text . mconcat . map treeText
 
 takeText :: (Monoid a, Like.StringLike a) => [TagTree a] -> [Text]
 takeText = map (<> Tx.pack "\n") .

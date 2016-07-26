@@ -2,7 +2,7 @@ import Util                             (withAppendFile)
 import Strdt                            (strdt, toYear, toMonth, todayDay)
 import OrgParse                         (parseToDayList)
 import NewsArticle.Base
-import Control.Monad                    (forM_)
+import Control.Monad                    (forM_, when)
 import Data.Time                        (Day (..))
 import Data.Monoid                      ((<>))
 import Text.Printf                      (printf)
@@ -54,7 +54,7 @@ singleHTML tree = head tree'
 
 -- printer :: Page B.ByteString -> IO ()
 printer f1 f2 page = do
-  B.putStrLn $ f1 page
+  Txio.putStrLn $ f1 page
   mapM_ Txio.putStrLn $ f2 page
 
 dayMaker :: Day -> IO ()
@@ -74,10 +74,13 @@ dayMaker td = do
     printer (titleFunc akpage) (textFunc akpage) cont
 
 main = do
+  sjis <- I.mkTextEncoding "CP932"
   I.hSetEncoding I.stdout I.utf8
   td   <- todayDay
   --------------------------------------------------
   opt <- O.customExecParser (O.prefs O.showHelpOnError) myParserInfo
+  --------------------------------------------------
+  when (sjis' opt) $ I.hSetEncoding I.stdout sjis
   --------------------------------------------------
   case (today' opt, date' opt) of
     (True, _) -> dayMaker td
@@ -89,7 +92,8 @@ main = do
                    Nothing -> return ()
 
 data Options = Options { today' :: Bool,
-                         date'  :: String
+                         date'  :: String,
+                         sjis'  :: Bool
                        } deriving (Show)
 
 todayP :: O.Parser Bool
@@ -102,9 +106,12 @@ dateP = O.strOption $ mconcat
         , O.metavar "YEAR MONTH (6 digit chars)."
         , O.value ""
         , O.showDefaultWith id]
+        
+sjisP :: O.Parser Bool
+sjisP = O.switch $ O.short 's' <> O.long "sjis" <> O.help "Output with char-set sjis"
 
 optionsP :: O.Parser Options
-optionsP = (<*>) O.helper $ Options <$> todayP <*> dateP
+optionsP = (<*>) O.helper $ Options <$> todayP <*> dateP <*> sjisP
 
 myParserInfo :: O.ParserInfo Options
 myParserInfo = O.info optionsP $ mconcat 

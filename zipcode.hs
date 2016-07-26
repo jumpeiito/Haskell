@@ -173,25 +173,25 @@ testSearch xs = do
           else St.put filt
 
 testl = map reverse
-  ["平叡比市津大県賀滋",
-   "平大市津大県賀滋",
-   "松平区津大市路姫県庫兵",
-   "津平市津大県賀滋",
-   "町尾平所膳市津大県賀滋",
-   "町野平上田上市津大県賀滋",
-   "野平市津大県賀滋"]
+  [["滋賀県大津市比叡平", ""],
+   ["滋賀県大津市大平", ""],
+   ["兵庫県姫路市大津区平松", ""],
+   ["滋賀県大津市平津", ""],
+   ["滋賀県大津市膳所平尾町", ""],
+   ["滋賀県大津市上田上平野町", ""],
+   ["滋賀県大津市平野", ""]]
 
 testl2 = map reverse
-  ["丘里千南市津摂府阪大",
-   "丘里千市津摂府阪大",
-   "山里一市津大県賀滋",
-   "東丘里千市津摂府阪大",
-   "東里の木仰市津大県賀滋",
-   "里の木仰市津大県賀滋",
-   "里の池市津大県賀滋",
-   "里の鶴市津大県賀滋",
-   "里市津大県賀滋",
-   "里賀滋市津大県賀滋"]
+  [["大阪府摂津市南千里丘", ""],
+   ["大阪府摂津市千里丘", ""],
+   ["滋賀県大津市一里山", ""],
+   ["大阪府摂津市千里丘東", ""],
+   ["滋賀県大津市仰木の里東", ""],
+   ["滋賀県大津市仰木の里", ""],
+   ["滋賀県大津市池の里", ""],
+   ["滋賀県大津市鶴の里", ""],
+   ["滋賀県大津市里", ""],
+   ["滋賀県大津市滋賀里", ""]]
 
 -- givePoint :: String -> String -> (String, Int, Int)
 -- givePoint x target
@@ -199,15 +199,27 @@ testl2 = map reverse
 --   | otherwise = givePoint (reverse $ tail $ reverse x) target
 -- givePoint :: String -> St.State [(String, Int)] ()
 
-data Hitting = Hitting { target    :: String,
+data Hitting = Hitting { initial   :: String,
+                         target    :: String,
                          hit       :: Int,
                          hitratio  :: Ratio Int,
                          nohit     :: Int,
                          continual :: Int
-                       } deriving (Show)
+                       } deriving (Show, Eq)
+
+pointHitting :: Hitting -> Ratio Int
+pointHitting d = (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * continual & d)
+  where (&) f d = (f d) % 1
+
+instance Ord Hitting where
+  compare h1@(Hitting {}) h2@(Hitting {})
+    | pointHitting h1 < pointHitting h2  = LT
+    | pointHitting h1 == pointHitting h2 = EQ
+    | otherwise            = GT
 
 addHit char hit' =
-  Hitting { target   = newTarget,
+  Hitting { initial  = initial hit',
+            target   = newTarget,
             hit      = newHit,
             hitratio = (newHit - (length newTarget)) % newHit,
             nohit    = nohit hit',
@@ -216,18 +228,24 @@ addHit char hit' =
   where newTarget = removeChar char (target hit')
         newHit    = (hit hit') + 1
 
+guessHit :: String -> [[String]] -> String
+guessHit target dict = initial $ top $ sort hitter
+  where hitter = map (givePoint target) $ map head dict
+        top    = head . reverse
+
 givePoint :: String -> String -> Hitting
 givePoint baseStr gen = (`St.execState` initHit) $ do
   forM_ baseStr $ \char -> do
     hit <- St.get
-    let newHit = addHit char hit
-    if ([char] `isInfixOf` (target hit))
-      then St.put newHit
-      else St.put $ hit { nohit = nohit hit + 1 }
+    let newHit = if ([char] `isInfixOf` (target hit))
+                 then addHit char hit
+                 else hit { nohit = nohit hit + 1 }
+    St.put newHit
   hit <- St.get
   St.put $ hit { continual = giveContinualPoint baseStr gen }
-  where initHit = Hitting gen 0 (0%1) 0 0
+  where initHit = Hitting gen gen 0 (0%1) 0 0
 
+-- guessHit :: String -> [[String]] -> 
 giveContinualPoint :: String -> String -> Int
 giveContinualPoint "" _ = 0
 giveContinualPoint bsx@(b:bs) gen

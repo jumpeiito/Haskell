@@ -29,9 +29,9 @@ extractPage tr = flip map (makeTree tr) $ \n ->
   where makeTree = reverse . 
                    concatMap (findTree [(Name "div", Attr "blogbody")])
 
-takeTitle :: (Monoid a, Like.StringLike a) => [TagTree a] -> a
-takeTitle = (Like.castString "** " <>) . treeTextMap . makeTree
-  where treeTextMap = mconcat . map treeText
+takeTitle :: (Monoid a, Like.StringLike a) => [TagTree a] -> Text
+takeTitle = (utf8Text "** " <>) . treeTextMap . makeTree
+  where treeTextMap = utf8Text . mconcat . map treeText
         makeTree    = concatMap $ findTree [(Name "h3", Attr "title")]
 
 takeText :: (Monoid a, Like.StringLike a) => [TagTree a] -> [Text]

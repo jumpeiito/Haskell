@@ -14,7 +14,8 @@ module NewsArticle.Base (ListedPage (..),
                          filterBlankLines,
                          translateTags,
                          getTitle,
-                         getText) where
+                         getText,
+                         utf8Text) where
 
 import Data.Time                        (Day (..))
 import Data.List                        (foldl', isInfixOf)
@@ -46,7 +47,7 @@ data ListedPage a =
 data Page a =
   Page { pageUrl   :: URL,
          tagtree   :: TagTree a,
-         titleFunc :: [TagTree a] -> a,
+         titleFunc :: [TagTree a] -> Text,
          textFunc  :: [TagTree a] -> [Text] }
 
 data Article a =
@@ -153,10 +154,10 @@ direction tb ((f, direct):xs)
   | f tb = direct
   | otherwise = direction tb xs
 ----------------------------------------------------------------------------------------------------
-treeTextEx :: Like.StringLike a => Monoid a => DirectionList -> TagTree a -> a
+treeTextEx :: (Like.StringLike a, Monoid a) => DirectionList -> TagTree a -> a
 treeTextEx dl = execWriter . ttxex dl
 
-ttxex :: Like.StringLike a => Monoid a => DirectionList -> TagTree a -> Writer a ()
+ttxex :: (Like.StringLike a, Monoid a) => DirectionList -> TagTree a -> Writer a ()
 ttxex _ (TagLeaf (TagText s)) = tell s
 ttxex dl tb@(TagBranch _ _ descend) =
   case direction tb dx of
@@ -189,7 +190,7 @@ fBLparse = do
 translateTags :: Like.StringLike a => a -> [TagTree a]
 translateTags str = tagTree $ parseTags str
 ----------------------------------------------------------------------------------------------------
-getF :: (Page a -> [TagTree a] -> r) -> Page a -> r
+getF :: (Like.StringLike a, Monoid a) => (Page a -> [TagTree a] -> r) -> Page a -> r
 getF f = f <@> (return . tagtree)
 
 (<@>) :: Monad m => m (t -> r) -> m t -> m r
@@ -198,7 +199,10 @@ getF f = f <@> (return . tagtree)
   tr' <- tr
   return $ f' tr'
 
-getTitle :: Page r -> r
-getText  :: Page r -> [Text]
+getTitle :: (Like.StringLike r, Monoid r) => Page r -> Text
+getText  :: (Like.StringLike r, Monoid r) => Page r -> [Text]
 getTitle = getF titleFunc
 getText  = getF textFunc
+
+utf8Text :: Like.StringLike a => a -> Text
+utf8Text = decodeUtf8 . Like.castString
