@@ -9,11 +9,11 @@ import Text.Printf                      (printf)
 import Control.Monad
 import qualified System.IO              as I
 import qualified Control.Monad.State    as St
-import qualified Data.ByteString.Char8  as B
-import qualified Text.StringLike        as Like
 import qualified Data.Text              as Tx
 import qualified Data.Text.IO           as Txio
 import qualified Data.Text.Encoding     as Txe
+import qualified Data.ByteString.Char8  as B
+import qualified Text.StringLike        as Like
 
 type DictLine a   = Array Int a
 type Dictionary a = [DictLine a]
@@ -54,9 +54,10 @@ adWithPcode (ad, p) = mconcat [cast ad, " --> ", cast p]
 pointHitting :: Hitting -> Ratio Int
 pointHitting d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * continual & d)
   where (&) f d = (f d) % 1
-        ratio'  = if "伏見区" `isInfixOf` initial d
-                  then 10
-                  else 1
+        -- ratio'  = if "伏見区" `isInfixOf` initial d
+        --           then 10
+        --           else 1
+        ratio'  = 1
 ----------------------------------------------------------------------------------------------------
 -- makeDict :: (ReadFile a, Like.StringLike a, Splittable a) => IO (Dictionary a)
 makeDict :: IO (Dictionary Text)
@@ -94,7 +95,6 @@ searchST bs
   | otherwise    = do
       let Just (ch, rest) = Tx.uncons bs
       dic <- St.get
-      -- let toText n = Like.castString n :: Txi.Text
       let filt = filter (\line -> ch `telem` (line!0)) dic
       case dic of
         [_] -> St.put dic
@@ -105,12 +105,12 @@ searchST bs
 ----------------------------------------------------------------------------------------------------
 addHit :: Char -> Hitting -> Hitting
 addHit char hit' =
-  Hitting { initial  = initial hit',
-            pcode    = pcode hit',
-            target   = newTarget,
-            hit      = newHit,
-            hitratio = (newHit - (length newTarget)) % newHit,
-            nohit    = nohit hit',
+  Hitting { initial   = initial hit',
+            pcode     = pcode hit',
+            target    = newTarget,
+            hit       = newHit,
+            hitratio  = (newHit - (length newTarget)) % newHit,
+            nohit     = nohit hit',
             continual = continual hit'
           }
   where newTarget = removeChar char (target hit')
