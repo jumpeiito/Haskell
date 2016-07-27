@@ -13,7 +13,9 @@ import qualified Data.Map as Map
 import System.IO (IOMode (..), hGetContents, hSetEncoding, openFile, hClose, mkTextEncoding, stdout, utf8, hPutStrLn, Handle)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Text.Internal as Txi
+import qualified Data.Text.IO as Txio
 import qualified Data.Text as Tx
+import qualified Text.StringLike as Like
 import Text.ParserCombinators.Parsec
 
 class Splittable a where
@@ -35,12 +37,7 @@ instance Splittable B.ByteString where
 instance Splittable Txi.Text where
   split sep bstr = map Tx.pack $ split sep $ Tx.unpack bstr
 
-connect :: String -> [String] -> String
-connect sep []     = ""
-connect sep [x]    = x
-connect sep (x:xs) = x++sep++connect sep xs
-
--- uniq :: Eq a => [a] -> [a]
+uniq :: Eq a => [a] -> [a]
 uniq s = reverse . (`St.execState` []) $ do
   St.forM_ s $ \n -> do
     r <- St.get
@@ -58,6 +55,31 @@ makeCountMap :: (Num a, Ord k) => (t -> k) -> [t] -> Map.Map k a
 makeCountMap kF [] = Map.empty
 makeCountMap kF (x:xs) =
    Map.insertWith' (+) (kF x) 1 $ makeCountMap kF xs
+
+class ReadFile a where
+  readUTF8     :: FilePath -> IO a
+  readUTF8line :: FilePath -> IO [a]
+
+baseReadUTF8 :: Like.StringLike a => (Handle -> IO a) -> FilePath -> IO a
+baseReadUTF8 f fp = do
+    h <- openFile fp ReadMode
+    encoding <- mkTextEncoding "cp65001"
+    hSetEncoding h encoding
+    r <- f h
+    hClose h
+    return r
+
+instance ReadFile String where
+  readUTF8        = baseReadUTF8 hGetContents
+  readUTF8line fp = lines <$> readUTF8 fp
+
+instance ReadFile B.ByteString where
+  readUTF8        = baseReadUTF8 B.hGetContents
+  readUTF8line fp = B.lines <$> readUTF8 fp
+    
+instance ReadFile Txi.Text where
+  readUTF8        = baseReadUTF8 Txio.hGetContents
+  readUTF8line fp = Tx.lines <$> readUTF8 fp
 
 readUTF8File :: FilePath -> IO String
 readUTF8File fp = do
@@ -110,17 +132,3 @@ appendUTF8File fp contents = do
   if "/" `isSuffixOf` dirname
   then dirname ++ filename
   else dirname ++ "/" ++ filename
-
--- forM :: Monad m => [a] -> (a -> m b) -> m [b]
--- forM a f = mapM f a
-
--- getRecursive :: FilePath -> IO [FilePath]
--- getRecursive fp = do
---   paths <- filter (\n -> notElem n [".", ".."]) $ getDirectoryContents fp
---   let datum = map ((</>) fp) paths
---   forM datum $ \hp -> do
---     existance <- doesDirectoryExist hp
---     if existance
---       then getRecursive hp
---       else return [hp]
---   return $ concat datum

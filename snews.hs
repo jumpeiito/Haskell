@@ -74,13 +74,13 @@ dayMaker td = do
     printer (titleFunc akpage) (textFunc akpage) cont
 
 main = do
-  sjis <- I.mkTextEncoding "CP932"
   I.hSetEncoding I.stdout I.utf8
   td   <- todayDay
   --------------------------------------------------
   opt <- O.customExecParser (O.prefs O.showHelpOnError) myParserInfo
   --------------------------------------------------
-  when (sjis' opt) $ I.hSetEncoding I.stdout sjis
+  sjis <- I.mkTextEncoding "CP932"
+  when (sjis' opt)  $ I.hSetEncoding I.stdout sjis
   --------------------------------------------------
   case (today' opt, date' opt) of
     (True, _) -> dayMaker td
