@@ -7,6 +7,7 @@ import Data.Text.Internal               (Text (..))
 import Debug.Trace                      (trace)
 import Text.Printf                      (printf)
 import Control.Monad
+import qualified Data.Map               as Map
 import qualified System.IO              as I
 import qualified Control.Monad.State    as St
 import qualified Data.Text              as Tx
@@ -18,6 +19,11 @@ import qualified Text.StringLike        as Like
 type DictLine a   = Array Int a
 type Dictionary a = [DictLine a]
 
+otherChar = Map.fromList [('\12534', '\12465'),
+                          ('\12465', '\12534'),
+                          ('\28149', '\28181'),
+                          ('\28181', '\28149')]
+  
 data Answer a = Absolute a
   | Probably (a, Int)
   deriving (Show, Eq)
@@ -68,7 +74,11 @@ makeDict = do
 ----------------------------------------------------------------------------------------------------
 searchA :: Like.StringLike a => a -> Dictionary Text -> Answer (Dictionary Text)
 searchA key dict = case (ordinary, verse) of
-  ([_], [_]) -> Absolute ordinary
+  ([o], [v]) -> if o == v
+                then Absolute [o]
+                else Probably ([o, v], 2)
+  ([o], _)   -> Absolute [o]
+  (_, [v])   -> Absolute [v]
   _          -> let ret = uniq $ ordinary ++ verse in
                 Probably (ret, length ret)
   where key'     = cutNumber key
@@ -83,25 +93,37 @@ cutNumber = toText . cut . toStr
         toStr key  = cast key :: String
 
 searchCore :: Text -> Dictionary Text -> Dictionary Text
-searchCore key dict = (`St.execState` dict) $ searchST key'
-  where key' = Like.castString key
+searchCore key dict = cut . (`St.execState` dict) $ searchST key
+  where cut = overLengthAvoid 1000
 
-telem :: Char -> Text -> Bool
-telem c tx = isJust (Tx.findIndex (==c) tx)
+charLookup :: Char -> Map.Map Char Char -> Char
+charLookup c m =
+  case Map.lookup c m of
+    Just k  -> k
+    Nothing -> 'z'
 
 searchST :: Text -> St.State (Dictionary Text) ()
 searchST bs
-  | bs == mempty = St.modify id
+  | bs == mempty = return ()
   | otherwise    = do
       let Just (ch, rest) = Tx.uncons bs
       dic <- St.get
-      let filt = filter (\line -> ch `telem` (line!0)) dic
+      let look line = ch `telem` (line!0) || (charLookup ch otherChar) `telem` (line!0)
+      let filt = filter look dic
       case dic of
-        [_] -> St.put dic
+        [_] -> return ()
         _   -> do
           if null filt
-            then St.put dic
+            then return ()
             else St.put (searchCore rest filt)
+
+overLengthAvoid :: Int -> [a] -> [a]
+overLengthAvoid over x = if (length x) > over
+                         then []
+                         else x
+
+telem :: Char -> Text -> Bool
+telem c tx = isJust (Tx.findIndex (==c) tx)
 ----------------------------------------------------------------------------------------------------
 addHit :: Char -> Hitting -> Hitting
 addHit char hit' =
@@ -139,16 +161,22 @@ givePoint baseStr gen = (`St.execState` initHit) $ do
 
 -- guessHit :: String -> [[String]] -> 
 -- todo: refine
-giveContinualPoint :: String -> String -> Int
-giveContinualPoint "" _ = 0
-giveContinualPoint bsx@(b:bs) gen
-  | bsx `isInfixOf` gen = length bsx
-  | otherwise = giveContinualPoint bs gen
+-- giveContinualPoint :: String -> String -> Int
+-- giveContinualPoint key target = undefined
 
--- test "" _ = 0
--- test s g = (`St.execState` 0) $ do
-  
-  
+giveContinualPoint key target = sum $ take 2 $ reverse $ sort $ map length $ filtering list
+  where filtering = filter (`isInfixOf` target)
+        list      = (partialList key) ++ (verseList key)
+
+_partialList :: ([Int] -> [Int]) -> String -> [String]
+_partialList f xl = map take (f [1..(length xl)]) <*> [xl]
+
+partialList :: String -> [String]
+partialList = _partialList id 
+
+verseList :: String -> [String]
+verseList = _partialList reverse
+
 removeChar :: Char -> String -> String
 removeChar char str = loop str []
   where loop (x:xs) r
@@ -164,19 +192,17 @@ main = do
     putStr   $ (cast ad) ++ ", "
     putStrLn $ toString $ guessHit (cast ad) <$> searchA ad dict
 
--- testIO :: IO ()
--- testIO = do
---   zips <- readUTF8File ".zipcode.out"
---   return $ map (listArray (0,1) . split ',') $ lines zips
+----------------------------------------------------------------------------------------------------
+---------- for debug -------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 
--- testIO2 = do
---   zips <- B.pack <$> readUTF8File ".zipcode.out"
---   let dic = map (split ',') $ B.lines zips
---   return dic
+testIO :: String -> IO ()
+testIO str = do
+  dict <- makeDict
+  I.hSetEncoding I.stdout I.utf8
+  let ans = searchA str dict
+  let toStr ary = mconcat [ary!0, cast " --> ", ary!1]
+  case ans of
+    Absolute [ary]  -> Txio.putStrLn $ toStr ary
+    Probably (a, _) -> mapM_ (Txio.putStrLn . toStr) a
 
--- testIO3 = do
---   dict <- testIO-- deserializeDict ".dict"
---   target <- readUTF8File ".test.address"
---   let result    = map (\n -> (n, Just $ length $ search' n dict)) $ lines target
---   hSetEncoding stdout utf8
---   mapM_ tuplePrint result
