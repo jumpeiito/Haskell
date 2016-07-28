@@ -7,3 +7,10 @@ snews.exe: snews.hs *.hs */*.hs
 
 tags: *.hs
 	./hasktags.exe -e *.hs */*.hs
+
+zipcode.exe: zipcode.hs util.hs
+	ghc -O3 zipcode.hs
+
+# 実行するときは./zipcode.exe +RTS -p
+zipcode-profile: zipcode.hs util.hs
+	ghc -v -prof -fprof-auto -rtsopts zipcode.hs

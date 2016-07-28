@@ -1,9 +1,9 @@
-import Util
+import Util                             (readUTF8line, split, uniq)
 import Data.List                        (isInfixOf, sort)
 import Data.Ratio                       (Ratio (..), (%))
 import Data.Array                       (Array (..), listArray, (!))
-import Data.Maybe
-import Data.Monoid
+import Data.Maybe                       (isJust)
+import Data.Monoid                      ((<>))
 import Data.Text.Internal               (Text (..))
 import Debug.Trace                      (trace)
 import Text.Printf                      (printf)
@@ -85,14 +85,16 @@ searchA key dict = searchClassify ordinary verse
         ordinary = searchCore key' dict
         verse    = searchCore rev dict
 
+(<==>) :: Bool -> (a, a) -> a
+(<==>) f (a, b) = if f then a else b
+
 searchClassify :: Dictionary Text -> Dictionary Text -> Answer (Dictionary Text)
 searchClassify ord verse = case (ord, verse) of
-  ([o], [v]) -> if o == v then Absolute [o] else Probably ([o, v], 2)
+  ([o], [v]) -> (o == v) <==> (Absolute [o], Probably ([o, v], 2))
   ([o], _)   -> Absolute [o]
   (_, [v])   -> Absolute [v]
   _          -> let ret = uniq $ ord ++ verse in
                 Probably (ret, length ret)
-  
 
 cutNumber :: StringLike a => a -> Text
 cutNumber = toText . cut . toStr
@@ -102,7 +104,7 @@ cutNumber = toText . cut . toStr
 
 searchCore :: Text -> Dictionary Text -> Dictionary Text
 searchCore key dict = cut . (`St.execState` dict) $ searchST key
-  where cut = overLengthAvoid 1000
+  where cut = overLengthAvoid 100
 
 charLookup :: Char -> Map.Map Char Char -> Char
 charLookup c m =
@@ -110,19 +112,23 @@ charLookup c m =
     Just k  -> k
     Nothing -> 'z'
 
+innerlook :: Char -> DictLine Text -> Bool
+{-# INLINE innerlook #-}
+innerlook ch line = ch <?> line || (charLookup ch otherChar) <?> line
+  where (<?>) ch line = ch `telem` (line!0)
+
 searchST :: Text -> St.State (Dictionary Text) ()
 searchST bs
   | bs == mempty = return ()
   | otherwise    = do
       let Just (ch, rest) = Tx.uncons bs
       dic <- St.get
-      let look line = ch `telem` (line!0) || (charLookup ch otherChar) `telem` (line!0)
-      let filt = filter look dic
+      let filt = filter (innerlook ch) dic
       case dic of
         [_] -> return ()
         _   -> do
           if null filt
-            then return ()
+            then St.put (searchCore rest dic)
             else St.put (searchCore rest filt)
 
 overLengthAvoid :: Int -> [a] -> [a]
@@ -131,6 +137,7 @@ overLengthAvoid over x = if (length x) > over
                          else x
 
 telem :: Char -> Text -> Bool
+{-# INLINE telem #-}
 telem c tx = isJust (Tx.findIndex (==c) tx)
 ----------------------------------------------------------------------------------------------------
 kyotoCityP :: Parser (String, String)
@@ -161,8 +168,9 @@ addHit char hit' =
         newHit    = (hit hit') + 1
 
 guessHit :: StringLike a => String -> Dictionary a -> (String, String)
-guessHit f p = answer . head . reverse $ guessHitList f p
-  where answer t = (initial t, pcode t)
+guessHit f p = answer . head . reverse $ guessHitList key' p
+  where key'     = makeKey f
+        answer t = (initial t, pcode t)
 
 guessHitList :: StringLike a => String -> Dictionary a -> [Hitting]
 guessHitList target dict = sort $ map (givePoint target) dict
@@ -181,23 +189,19 @@ givePoint baseStr gen = (`St.execState` initHit) $ do
         postal  = cast (gen!1) :: String
         initHit = Hitting ad postal ad 0 (0%1) 0 0
 
--- guessHit :: String -> [[String]] -> 
--- todo: refine
--- giveContinualPoint :: String -> String -> Int
--- giveContinualPoint key target = undefined
-
+giveContinualPoint :: String -> [Char] -> Int
 giveContinualPoint key target = sum $ take 2 $ reverse $ sort $ map length $ filtering list
   where filtering = filter (`isInfixOf` target)
         list      = (partialList key) ++ (verseList key)
 
-_partialList :: ([Int] -> [Int]) -> String -> [String]
-_partialList f xl = map take (f [1..(length xl)]) <*> [xl]
+_partialList :: (Int -> String -> String) -> String -> [String]
+_partialList f xl = map f [0..(length xl)] <*> [xl]
 
 partialList :: String -> [String]
-partialList = _partialList id 
+partialList = _partialList take
 
 verseList :: String -> [String]
-verseList = _partialList reverse
+verseList = _partialList drop
 
 removeChar :: Char -> String -> String
 removeChar char str = loop str []
