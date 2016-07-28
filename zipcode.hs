@@ -3,9 +3,13 @@ import Data.List                        (isInfixOf, sort)
 import Data.Ratio                       (Ratio (..), (%))
 import Data.Array                       (Array (..), listArray, (!))
 import Data.Maybe
+import Data.Monoid
 import Data.Text.Internal               (Text (..))
 import Debug.Trace                      (trace)
 import Text.Printf                      (printf)
+import Text.StringLike                  (castString, StringLike (..))
+import Text.Parsec
+import Text.Parsec.String
 import Control.Monad
 import qualified Data.Map               as Map
 import qualified System.IO              as I
@@ -14,7 +18,6 @@ import qualified Data.Text              as Tx
 import qualified Data.Text.IO           as Txio
 import qualified Data.Text.Encoding     as Txe
 import qualified Data.ByteString.Char8  as B
-import qualified Text.StringLike        as Like
 
 type DictLine a   = Array Int a
 type Dictionary a = [DictLine a]
@@ -24,8 +27,7 @@ otherChar = Map.fromList [('\12534', '\12465'),
                           ('\28149', '\28181'),
                           ('\28181', '\28149')]
   
-data Answer a = Absolute a
-  | Probably (a, Int)
+data Answer a = Absolute a | Probably (a, Int)
   deriving (Show, Eq)
 
 data Hitting = Hitting { initial   :: String,
@@ -47,14 +49,14 @@ instance Ord Hitting where
     | pointHitting h1 == pointHitting h2 = EQ
     | otherwise                          = GT
 
-cast :: Like.StringLike a => Like.StringLike b => a -> b
-cast = Like.castString
+cast :: StringLike a => StringLike b => a -> b
+cast = castString
 
-toString :: Like.StringLike a => Answer (a, a) -> String
+toString :: StringLike a => Answer (a, a) -> String
 toString (Absolute (a, b)) = adWithPcode (a, b)
-toString (Probably ((a, b), i)) = "[" ++ adWithPcode (a, b) ++ ", " ++ show i ++ "]"
+toString (Probably ((a, b), i)) = "[" ++ adWithPcode (a, b) ++ ", " ++ show i ++ "] Probably"
 
-adWithPcode :: Like.StringLike a => (a, a) -> String
+adWithPcode :: StringLike a => (a, a) -> String
 adWithPcode (ad, p) = mconcat [cast ad, " --> ", cast p]
 
 pointHitting :: Hitting -> Ratio Int
@@ -65,28 +67,34 @@ pointHitting d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * co
         --           else 1
         ratio'  = 1
 ----------------------------------------------------------------------------------------------------
--- makeDict :: (ReadFile a, Like.StringLike a, Splittable a) => IO (Dictionary a)
 makeDict :: IO (Dictionary Text)
 makeDict = do
   zips <- readUTF8line ".zipcode.out"
   return $ map toArray zips
   where toArray = (listArray (0,1) . split ',')
 ----------------------------------------------------------------------------------------------------
-searchA :: Like.StringLike a => a -> Dictionary Text -> Answer (Dictionary Text)
-searchA key dict = case (ordinary, verse) of
-  ([o], [v]) -> if o == v
-                then Absolute [o]
-                else Probably ([o, v], 2)
-  ([o], _)   -> Absolute [o]
-  (_, [v])   -> Absolute [v]
-  _          -> let ret = uniq $ ordinary ++ verse in
-                Probably (ret, length ret)
-  where key'     = cutNumber key
+makeKey :: StringLike a => a -> String
+makeKey key = case parse kyotoCityP "" (cast key) of
+  Right (region, rest) -> region <> rest
+  Left _               -> cast key
+
+searchA :: StringLike a => a -> Dictionary Text -> Answer (Dictionary Text)
+searchA key dict = searchClassify ordinary verse
+  where key'     = cutNumber $ makeKey key
         rev      = Tx.reverse key'
         ordinary = searchCore key' dict
         verse    = searchCore rev dict
 
-cutNumber :: Like.StringLike a => a -> Text
+searchClassify :: Dictionary Text -> Dictionary Text -> Answer (Dictionary Text)
+searchClassify ord verse = case (ord, verse) of
+  ([o], [v]) -> if o == v then Absolute [o] else Probably ([o, v], 2)
+  ([o], _)   -> Absolute [o]
+  (_, [v])   -> Absolute [v]
+  _          -> let ret = uniq $ ord ++ verse in
+                Probably (ret, length ret)
+  
+
+cutNumber :: StringLike a => a -> Text
 cutNumber = toText . cut . toStr
   where toText key = cast key :: Text
         cut        = takeWhile (`notElem` "0123456789０１２３４５６７８９")
@@ -125,6 +133,20 @@ overLengthAvoid over x = if (length x) > over
 telem :: Char -> Text -> Bool
 telem c tx = isJust (Tx.findIndex (==c) tx)
 ----------------------------------------------------------------------------------------------------
+kyotoCityP :: Parser (String, String)
+kyotoCityP = do
+  region <- choice [string "北区", string "上京区", string "中京区", string "下京区",
+                    string "左京区", string "右京区", string "西京区", string "南区",
+                    string "伏見区", string "東山区"]
+  _      <- streetP
+  rest   <- many anyChar
+  return (region, rest)
+
+streetP :: Parser String
+streetP = do
+  choice $ map try [string "上る", string "下る", string "上ル", string "下ル"]
+  <|> (anyChar >> streetP)
+----------------------------------------------------------------------------------------------------
 addHit :: Char -> Hitting -> Hitting
 addHit char hit' =
   Hitting { initial   = initial hit',
@@ -138,14 +160,14 @@ addHit char hit' =
   where newTarget = removeChar char (target hit')
         newHit    = (hit hit') + 1
 
-guessHit :: Like.StringLike a => String -> Dictionary a -> (String, String)
+guessHit :: StringLike a => String -> Dictionary a -> (String, String)
 guessHit f p = answer . head . reverse $ guessHitList f p
   where answer t = (initial t, pcode t)
 
-guessHitList :: Like.StringLike a => String -> Dictionary a -> [Hitting]
+guessHitList :: StringLike a => String -> Dictionary a -> [Hitting]
 guessHitList target dict = sort $ map (givePoint target) dict
 
-givePoint :: Like.StringLike a => String -> DictLine a -> Hitting
+givePoint :: StringLike a => String -> DictLine a -> Hitting
 givePoint baseStr gen = (`St.execState` initHit) $ do
   forM_ baseStr $ \char -> do
     hit <- St.get
@@ -155,8 +177,8 @@ givePoint baseStr gen = (`St.execState` initHit) $ do
     St.put newHit
   hit <- St.get
   St.put $ hit { continual = giveContinualPoint baseStr ad }
-  where ad      = Like.castString (gen!0) :: String
-        postal  = Like.castString (gen!1) :: String
+  where ad      = cast (gen!0) :: String
+        postal  = cast (gen!1) :: String
         initHit = Hitting ad postal ad 0 (0%1) 0 0
 
 -- guessHit :: String -> [[String]] -> 
@@ -190,12 +212,11 @@ main = do
   I.hSetEncoding I.stdout I.utf8
   forM_ target $ \ad -> do
     putStr   $ (cast ad) ++ ", "
-    putStrLn $ toString $ guessHit (cast ad) <$> searchA ad dict
+    putStrLn $ Main.toString $ guessHit (cast ad) <$> searchA ad dict
 
 ----------------------------------------------------------------------------------------------------
 ---------- for debug -------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
-
 testIO :: String -> IO ()
 testIO str = do
   dict <- makeDict
