@@ -2,8 +2,9 @@ import Util                             (readUTF8line, split, uniq)
 import Data.List                        (isInfixOf, sort)
 import Data.Ratio                       (Ratio (..), (%))
 import Data.Array                       (Array (..), listArray, (!))
-import Data.Maybe                       (isJust)
+import Data.Maybe                       (isJust, fromMaybe)
 import Data.Monoid                      ((<>))
+import Data.Traversable
 import Data.Text.Internal               (Text (..))
 import Debug.Trace                      (trace)
 import Text.Printf                      (printf)
@@ -41,7 +42,7 @@ data Hitting = Hitting { initial   :: String,
 
 instance Functor Answer where
   f `fmap` Absolute a = Absolute $ f a
-  f `fmap` Probably (a, b) = Probably $ (f a, b)
+  f `fmap` Probably (a, b) = Probably (f a, b)
 
 instance Ord Hitting where
   compare h1@(Hitting {}) h2@(Hitting {})
@@ -61,7 +62,7 @@ adWithPcode (ad, p) = mconcat [cast ad, " --> ", cast p]
 
 pointHitting :: Hitting -> Ratio Int
 pointHitting d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * continual & d)
-  where (&) f d = (f d) % 1
+  where (&) f d = f d % 1
         -- ratio'  = if "伏見区" `isInfixOf` initial d
         --           then 10
         --           else 1
@@ -71,7 +72,7 @@ makeDict :: IO (Dictionary Text)
 makeDict = do
   zips <- readUTF8line ".zipcode.out"
   return $ map toArray zips
-  where toArray = (listArray (0,1) . split ',')
+  where toArray = listArray (0,1) . split ','
 ----------------------------------------------------------------------------------------------------
 makeKey :: StringLike a => a -> String
 makeKey key = case parse kyotoCityP "" (cast key) of
@@ -103,41 +104,45 @@ cutNumber = toText . cut . toStr
         toStr key  = cast key :: String
 
 searchCore :: Text -> Dictionary Text -> Dictionary Text
-searchCore key dict = cut . (`St.execState` dict) $ searchST key
+searchCore key dict = cut . (`St.execState` dict) $ searchST2 key
   where cut = overLengthAvoid 100
 
 charLookup :: Char -> Map.Map Char Char -> Char
-charLookup c m =
-  case Map.lookup c m of
-    Just k  -> k
-    Nothing -> 'z'
+charLookup c m = fromMaybe 'z' (Map.lookup c m)
 
 innerlook :: Char -> DictLine Text -> Bool
-{-# INLINE innerlook #-}
-innerlook ch line = ch <?> line || (charLookup ch otherChar) <?> line
+-- {-# INLINE innerlook #-}
+innerlook ch line = ch <?> line || charLookup ch otherChar <?> line
   where (<?>) ch line = ch `telem` (line!0)
 
-searchST :: Text -> St.State (Dictionary Text) ()
-searchST bs
-  | bs == mempty = return ()
-  | otherwise    = do
-      let Just (ch, rest) = Tx.uncons bs
-      dic <- St.get
-      let filt = filter (innerlook ch) dic
-      case dic of
-        [_] -> return ()
-        _   -> do
-          if null filt
-            then St.put (searchCore rest dic)
-            else St.put (searchCore rest filt)
+-- searchST :: Text -> St.State (Dictionary Text) ()
+-- searchST bs
+--   | bs == mempty = return ()
+--   | otherwise    = do
+--       let Just (ch, rest) = Tx.uncons bs
+--       dic <- St.get
+--       let filt = filter (innerlook ch) dic
+--       case dic of
+--         [_] -> return ()
+--         _   -> St.put (null filt <==> (searchCore rest dic,
+--                                        searchCore rest filt))
+
+searchST2 :: Text -> St.State (Dictionary Text) ()
+searchST2 t = do
+  let len = Tx.length t
+  forM_ [0..(len-1)] $ \n -> do
+    dic <- St.get
+    let ch = Tx.index t n
+    case filter (innerlook ch) dic of
+      [x]  -> do { St.put [x]; return () }
+      []   -> St.put dic
+      filt -> St.put filt
 
 overLengthAvoid :: Int -> [a] -> [a]
-overLengthAvoid over x = if (length x) > over
-                         then []
-                         else x
+overLengthAvoid over x = (length x > over) <==> ([], x)
 
 telem :: Char -> Text -> Bool
-{-# INLINE telem #-}
+-- {-# INLINE telem #-}
 telem c tx = isJust (Tx.findIndex (==c) tx)
 ----------------------------------------------------------------------------------------------------
 kyotoCityP :: Parser (String, String)
@@ -160,15 +165,15 @@ addHit char hit' =
             pcode     = pcode hit',
             target    = newTarget,
             hit       = newHit,
-            hitratio  = (newHit - (length newTarget)) % newHit,
+            hitratio  = (newHit - length newTarget) % newHit,
             nohit     = nohit hit',
             continual = continual hit'
           }
   where newTarget = removeChar char (target hit')
-        newHit    = (hit hit') + 1
+        newHit    = hit hit' + 1
 
 guessHit :: StringLike a => String -> Dictionary a -> (String, String)
-guessHit f p = answer . head . reverse $ guessHitList key' p
+guessHit f p = answer . last $ guessHitList key' p
   where key'     = makeKey f
         answer t = (initial t, pcode t)
 
@@ -179,7 +184,7 @@ givePoint :: StringLike a => String -> DictLine a -> Hitting
 givePoint baseStr gen = (`St.execState` initHit) $ do
   forM_ baseStr $ \char -> do
     hit <- St.get
-    let newHit = if ([char] `isInfixOf` (target hit))
+    let newHit = if [char] `isInfixOf` target hit
                  then addHit char hit
                  else hit { nohit = nohit hit + 1 }
     St.put newHit
@@ -189,10 +194,10 @@ givePoint baseStr gen = (`St.execState` initHit) $ do
         postal  = cast (gen!1) :: String
         initHit = Hitting ad postal ad 0 (0%1) 0 0
 
-giveContinualPoint :: String -> [Char] -> Int
-giveContinualPoint key target = sum $ take 2 $ reverse $ sort $ map length $ filtering list
+giveContinualPoint :: String -> String -> Int
+giveContinualPoint key target = sum $ take 2 $ sortBy (flip compare) (map length $ filtering list)
   where filtering = filter (`isInfixOf` target)
-        list      = (partialList key) ++ (verseList key)
+        list      = partialList key ++ verseList key
 
 _partialList :: (Int -> String -> String) -> String -> [String]
 _partialList f xl = map f [0..(length xl)] <*> [xl]
@@ -215,7 +220,7 @@ main = do
   target <- readUTF8line ".test.address" :: IO [Text]
   I.hSetEncoding I.stdout I.utf8
   forM_ target $ \ad -> do
-    putStr   $ (cast ad) ++ ", "
+    putStr   $ cast ad ++ ", "
     putStrLn $ Main.toString $ guessHit (cast ad) <$> searchA ad dict
 
 ----------------------------------------------------------------------------------------------------
@@ -231,3 +236,20 @@ testIO str = do
     Absolute [ary]  -> Txio.putStrLn $ toStr ary
     Probably (a, _) -> mapM_ (Txio.putStrLn . toStr) a
 
+testIO2' :: Text -> St.StateT (Dictionary Text) IO ()
+testIO2' key = do
+  let len = Tx.length key
+  forM_ [0..(len - 1)] $ \n -> do
+    dic <- St.get
+    let ch   = Tx.index key n
+    case filter (innerlook ch) dic of
+      [x]  -> do { St.put [x]; return () }
+      []   -> St.put dic
+      filt -> do
+        St.liftIO $ putStr $ show (length filt) ++ " --> "
+        St.put filt
+
+testIO2 :: String -> IO (Dictionary Text)
+testIO2 s = do
+  io <- makeDict
+  (`St.execStateT` io) $ testIO2' (cutNumber $ makeKey s)

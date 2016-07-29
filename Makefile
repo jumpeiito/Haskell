@@ -13,4 +13,4 @@ zipcode.exe: zipcode.hs util.hs
 
 # 実行するときは./zipcode.exe +RTS -p
 zipcode-profile: zipcode.hs util.hs
-	ghc -v -prof -fprof-auto -rtsopts zipcode.hs
+	ghc -prof -fprof-auto -rtsopts zipcode.hs
