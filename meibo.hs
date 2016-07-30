@@ -5,7 +5,7 @@ import Strdt
 import Telephone
 import Data.Time
 import Data.List
-import Data.Maybe                       (isJust, fromJust)
+import Data.Maybe                       (isJust, fromJust, fromMaybe)
 import Text.Parsec                      hiding (Line)
 import Text.Parsec.String
 import Control.Applicative              hiding (many, (<|>))
@@ -19,22 +19,22 @@ import qualified Control.Monad.State    as MS
 -- file = ".test"
 
 data Line = Line { bunkai :: String,
-                     bknum  :: String,
-                     han    :: String,
-                     kind   :: String,
-                     hancho :: Maybe String,
-                     gen    :: String,
-                     name   :: String,
-                     nameP  :: (String, String),
-                     ad     :: String,
-                     tel    :: [Telephone],
-                     work   :: String,
-                     exp    :: String,
-                     furi   :: String,
-                     birthS :: String,
-                     birth  :: Maybe Day,
-                     year   :: Maybe Integer
-                   } deriving (Show, Eq)
+                   bknum  :: String,
+                   han    :: String,
+                   kind   :: String,
+                   hancho :: Maybe String,
+                   gen    :: String,
+                   name   :: String,
+                   nameP  :: (String, String),
+                   ad     :: String,
+                   tel    :: [Telephone],
+                   work   :: String,
+                   exp    :: String,
+                   furi   :: String,
+                   birthS :: String,
+                   birth  :: Maybe Day,
+                   year   :: Maybe Integer
+                 } deriving (Show, Eq)
 
 data Key =
   Bunkai String
@@ -162,13 +162,12 @@ fTrans2 :: [String] -> MS.State (String, [String]) ()
 fTrans2 ls = do
   MS.forM ls $ \n -> do
     (num, ret) <- MS.get
-    case (n <-?-> 4, n <-?-> 1) of
+    case (n `blankP` 4, n `blankP` 1) of
       (True, _) -> MS.put (num,   n `lineMerge` ret)
       (_, True) -> MS.put (num,   inner num n : ret)
       (_, _)    -> MS.put (n<@>1, n:ret)
   return ()
-  where (<-?->) = blankP
-        inner n l = case toL l of
+  where inner n l = case toL l of
           h:_:r -> intercalate "," $ h:n:r
           _ -> ""
 
@@ -229,8 +228,7 @@ safeHead [] = Nothing
 safeHead (x:_) = Just x
 
 (-->) :: Maybe t -> (t -> String) -> String
-Just s  --> f = f s
-Nothing --> _ = ""
+x --> f = fromMaybe "" (f <$> x)
 
 hanchoList :: (t, [Line]) -> [String]
 hanchoList (_, v) = [bkn, bnk, hn, name', fam', len]
@@ -239,7 +237,7 @@ hanchoList (_, v) = [bkn, bnk, hn, name', fam', len]
         bnk   = hncho --> bunkai
         bkn   = hncho --> bknum
         hn    = hncho --> han
-        fam'  = case nameP <$> hncho of Just (f1, _) -> f1; Nothing -> ""
+        fam'  = hncho --> (fst . nameP)
         len   = show $ length v
 
 hanInfo :: (t, [Line]) -> String

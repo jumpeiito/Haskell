@@ -7,14 +7,14 @@ import Data.Time
 import Control.Applicative hiding ((<|>), many)
 import Control.Monad
 import Control.Monad.Writer
-import qualified Control.Monad.State as St
 import System.Directory
 import qualified Data.Map as Map
+import qualified Control.Monad.State as St
 import System.IO (IOMode (..), hGetContents, hSetEncoding, openFile, hClose, mkTextEncoding, stdout, utf8, hPutStrLn, Handle)
-import qualified Data.ByteString.Char8 as B
-import qualified Data.Text.Internal as Txi
-import qualified Data.Text.IO as Txio
 import qualified Data.Text as Tx
+import qualified Data.Text.IO as Txio
+import qualified Data.Text.Internal as Txi
+import qualified Data.ByteString.Char8 as B
 import qualified Text.StringLike as Like
 import Text.ParserCombinators.Parsec
 
@@ -51,8 +51,29 @@ class Like.StringLike a => Join a where
 
 instance Join String where
   joiner glue [] = ""
-  joiner glue (x:xs) = x <> glue <> joiner glue xs
+  joiner glue [x] = x
+  joiner glue (x:y:xs) = x <> glue <> y <> rest
+    where rest = if null xs
+                 then ""
+                 else glue <> joiner glue xs
 
+allf :: FilePath -> IO [FilePath]
+allf dir = do
+  let cut = map ((dir <>) . ("/" <>)) . filter (`notElem` [".", ".."])
+  paths    <- cut <$> getDirectoryContents dir
+  ans <- forM paths $ \p -> do
+    bool <- doesDirectoryExist p
+    if bool
+      then allf p
+      else return [p]
+  return $ concat ans
+
+alld :: FilePath -> IO [FilePath]
+alld dir = do
+  files <- allf dir
+  filterM doesDirectoryExist files
+  
+  
 makeMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k [a]
 makeMap kF vF [] = Map.empty
 makeMap kF vF (x:xs) =
