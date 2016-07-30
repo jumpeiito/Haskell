@@ -1,10 +1,9 @@
 import Util                             (readUTF8line, split, uniq)
-import Data.List                        (isInfixOf, sort)
+import Data.List                        (isInfixOf, sort, sortBy)
 import Data.Ratio                       (Ratio (..), (%))
 import Data.Array                       (Array (..), listArray, (!))
 import Data.Maybe                       (isJust, fromMaybe)
 import Data.Monoid                      ((<>))
-import Data.Traversable
 import Data.Text.Internal               (Text (..))
 import Debug.Trace                      (trace)
 import Text.Printf                      (printf)
@@ -55,7 +54,8 @@ cast = castString
 
 toString :: StringLike a => Answer (a, a) -> String
 toString (Absolute (a, b)) = adWithPcode (a, b)
-toString (Probably ((a, b), i)) = "[" ++ adWithPcode (a, b) ++ ", " ++ show i ++ "] Probably"
+toString (Probably ((a, b), i)) = mconcat ["[" , adWithPcode (a, b), ", ",
+                                           show i, "] Probably"]
 
 adWithPcode :: StringLike a => (a, a) -> String
 adWithPcode (ad, p) = mconcat [cast ad, " --> ", cast p]
@@ -108,24 +108,13 @@ searchCore key dict = cut . (`St.execState` dict) $ searchST2 key
   where cut = overLengthAvoid 100
 
 charLookup :: Char -> Map.Map Char Char -> Char
+{-# INLINE charLookup #-}
 charLookup c m = fromMaybe 'z' (Map.lookup c m)
 
 innerlook :: Char -> DictLine Text -> Bool
--- {-# INLINE innerlook #-}
+{-# INLINE innerlook #-}
 innerlook ch line = ch <?> line || charLookup ch otherChar <?> line
   where (<?>) ch line = ch `telem` (line!0)
-
--- searchST :: Text -> St.State (Dictionary Text) ()
--- searchST bs
---   | bs == mempty = return ()
---   | otherwise    = do
---       let Just (ch, rest) = Tx.uncons bs
---       dic <- St.get
---       let filt = filter (innerlook ch) dic
---       case dic of
---         [_] -> return ()
---         _   -> St.put (null filt <==> (searchCore rest dic,
---                                        searchCore rest filt))
 
 searchST2 :: Text -> St.State (Dictionary Text) ()
 searchST2 t = do
@@ -142,7 +131,7 @@ overLengthAvoid :: Int -> [a] -> [a]
 overLengthAvoid over x = (length x > over) <==> ([], x)
 
 telem :: Char -> Text -> Bool
--- {-# INLINE telem #-}
+{-# INLINE telem #-}
 telem c tx = isJust (Tx.findIndex (==c) tx)
 ----------------------------------------------------------------------------------------------------
 kyotoCityP :: Parser (String, String)
@@ -161,14 +150,9 @@ streetP = do
 ----------------------------------------------------------------------------------------------------
 addHit :: Char -> Hitting -> Hitting
 addHit char hit' =
-  Hitting { initial   = initial hit',
-            pcode     = pcode hit',
-            target    = newTarget,
-            hit       = newHit,
-            hitratio  = (newHit - length newTarget) % newHit,
-            nohit     = nohit hit',
-            continual = continual hit'
-          }
+  hit' { target   = newTarget,
+         hit      = newHit,
+         hitratio = (newHit - length newTarget) % newHit }
   where newTarget = removeChar char (target hit')
         newHit    = hit hit' + 1
 
@@ -249,7 +233,10 @@ testIO2' key = do
         St.liftIO $ putStr $ show (length filt) ++ " --> "
         St.put filt
 
-testIO2 :: String -> IO (Dictionary Text)
+testIO2 :: String -> IO ()
 testIO2 s = do
-  io <- makeDict
-  (`St.execStateT` io) $ testIO2' (cutNumber $ makeKey s)
+  io  <- makeDict
+  ary <- (`St.execStateT` io) $ testIO2' (cutNumber $ makeKey s)
+  I.hSetEncoding I.stdout I.utf8
+  I.putChar '\n'
+  mapM_ (Txio.putStrLn . (!0)) ary
