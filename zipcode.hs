@@ -20,7 +20,7 @@ import qualified Data.Text.Encoding     as Txe
 import qualified Data.ByteString.Char8  as B
 
 type DictLine a   = Array Int a
-type Dictionary a = [DictLine a]
+type Dictionary   = [DictLine Text]
 
 otherChar = Map.fromList [('\12534', '\12465'),
                           ('\12465', '\12534'),
@@ -63,12 +63,12 @@ adWithPcode (ad, p) = mconcat [cast ad, " --> ", cast p]
 pointHitting :: Hitting -> Ratio Int
 pointHitting d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * continual & d)
   where (&) f d = f d % 1
-        -- ratio'  = if "伏見区" `isInfixOf` initial d
-        --           then 10
-        --           else 1
-        ratio'  = 1
+        ratio'  = if "伏見区" `isInfixOf` initial d
+                  then 2
+                  else 1
+        -- ratio'  = 1
 ----------------------------------------------------------------------------------------------------
-makeDict :: IO (Dictionary Text)
+makeDict :: IO (Dictionary)
 makeDict = do
   zips <- readUTF8line ".zipcode.out"
   return $ map toArray zips
@@ -79,7 +79,7 @@ makeKey key = case parse kyotoCityP "" (cast key) of
   Right (region, rest) -> region <> rest
   Left _               -> cast key
 
-searchA :: StringLike a => a -> Dictionary Text -> Answer (Dictionary Text)
+searchA :: StringLike a => a -> Dictionary -> Answer Dictionary
 searchA key dict = searchClassify ordinary verse
   where key'     = cutNumber $ makeKey key
         rev      = Tx.reverse key'
@@ -89,7 +89,7 @@ searchA key dict = searchClassify ordinary verse
 (<==>) :: Bool -> (a, a) -> a
 (<==>) f (a, b) = if f then a else b
 
-searchClassify :: Dictionary Text -> Dictionary Text -> Answer (Dictionary Text)
+searchClassify :: Dictionary -> Dictionary -> Answer Dictionary
 searchClassify ord verse = case (ord, verse) of
   ([o], [v]) -> (o == v) <==> (Absolute [o], Probably ([o, v], 2))
   ([o], _)   -> Absolute [o]
@@ -103,7 +103,7 @@ cutNumber = toText . cut . toStr
         cut        = takeWhile (`notElem` "0123456789０１２３４５６７８９")
         toStr key  = cast key :: String
 
-searchCore :: Text -> Dictionary Text -> Dictionary Text
+searchCore :: Text -> Dictionary -> Dictionary
 searchCore key dict = cut . (`St.execState` dict) $ searchST2 key
   where cut = overLengthAvoid 100
 
@@ -116,7 +116,7 @@ innerlook :: Char -> DictLine Text -> Bool
 innerlook ch line = ch <?> line || charLookup ch otherChar <?> line
   where (<?>) ch line = ch `telem` (line!0)
 
-searchST2 :: Text -> St.State (Dictionary Text) ()
+searchST2 :: Text -> St.State Dictionary ()
 searchST2 t = do
   let len = Tx.length t
   forM_ [0..(len-1)] $ \n -> do
@@ -156,12 +156,12 @@ addHit char hit' =
   where newTarget = removeChar char (target hit')
         newHit    = hit hit' + 1
 
-guessHit :: StringLike a => String -> Dictionary a -> (String, String)
+guessHit :: String -> Dictionary -> (String, String)
 guessHit f p = answer . last $ guessHitList key' p
   where key'     = makeKey f
         answer t = (initial t, pcode t)
 
-guessHitList :: StringLike a => String -> Dictionary a -> [Hitting]
+guessHitList :: String -> Dictionary -> [Hitting]
 guessHitList target dict = sort $ map (givePoint target) dict
 
 givePoint :: StringLike a => String -> DictLine a -> Hitting
@@ -220,7 +220,7 @@ testIO str = do
     Absolute [ary]  -> Txio.putStrLn $ toStr ary
     Probably (a, _) -> mapM_ (Txio.putStrLn . toStr) a
 
-testIO2' :: Text -> St.StateT (Dictionary Text) IO ()
+testIO2' :: Text -> St.StateT Dictionary IO ()
 testIO2' key = do
   let len = Tx.length key
   forM_ [0..(len - 1)] $ \n -> do
