@@ -3,24 +3,22 @@
 import Util
 import Strdt
 import Telephone
-
 import Data.Time
 import Data.List
-import Data.Maybe
--- import Data.Monoid
-import Control.Applicative  hiding (many, (<|>))
-import qualified Control.Monad.State as MS
-import Control.Monad.Writer
-import Text.Parsec          hiding (Line)
+import Data.Maybe                       (isJust, fromJust)
+import Text.Parsec                      hiding (Line)
 import Text.Parsec.String
+import Control.Applicative              hiding (many, (<|>))
+import Control.Monad.Writer
 import System.Process
 import System.Environment
-import qualified Data.Map   as Map
-import qualified System.IO  as I
+import qualified Data.Map               as Map
+import qualified System.IO              as I
+import qualified Control.Monad.State    as MS
 
 -- file = ".test"
 
-data Line s = Line { bunkai :: String,
+data Line = Line { bunkai :: String,
                      bknum  :: String,
                      han    :: String,
                      kind   :: String,
@@ -54,7 +52,7 @@ data Key =
   | And [Key]
   | Not Key deriving (Show, Eq, Read)
 
-test :: Day -> Parser (Line s)
+test :: Day -> Parser (Line)
 test day = do
   bnk   <- choice [string "石田", string "日野", string "小栗栖",
                    string "一言寺", string "三宝院", string "点在"] <* sep'
@@ -174,23 +172,23 @@ fTrans2 ls = do
           h:_:r -> intercalate "," $ h:n:r
           _ -> ""
 
-secondTrans :: Day -> [String] -> [Line s]
+secondTrans :: Day -> [String] -> [Line]
 secondTrans _ [] = []
 secondTrans day (x:xs) = case parse (test day) "" x of
   Right s -> s : secondTrans day xs
   Left _  -> secondTrans day xs
 
-trans :: Day -> [String] -> [Line s]
+trans :: Day -> [String] -> [Line]
 trans day = secondTrans day . firstTrans
 
-fixTel, mobileTel :: Line s -> [Telephone]
+fixTel, mobileTel :: Line -> [Telephone]
 fixTel = fixFilter . tel
 mobileTel = mobileFilter . tel
 
-mobileBlankP :: Line s -> Bool
+mobileBlankP :: Line -> Bool
 mobileBlankP = null . mobileTel
 
-addressMap :: [Line s] -> Map.Map String [Line s]
+addressMap :: [Line] -> Map.Map String [Line]
 addressMap = makeMap ad id 
 
 testFilter lines = filter hofoo lines
@@ -203,14 +201,14 @@ testFilter lines = filter hofoo lines
 lineToTel :: [Telephone] -> String
 lineToTel = intercalate "・" . map telString
 
-lineMobile, lineFix :: Line s -> String
+lineMobile, lineFix :: Line -> String
 lineMobile = lineToTel . mobileTel
 lineFix    = lineToTel . fixTel
 
-functionsToString :: [Line s -> String] -> Line s -> String
+functionsToString :: [Line -> String] -> Line -> String
 functionsToString fs l = intercalate "," $ map (\f -> f l) fs
 
-mainString :: Line s -> String
+mainString :: Line -> String
 mainString =
   functionsToString [bunkai, han, kind,  name, furi,
                      blank, ad', lineMobile, lineFix, work, Main.exp,
@@ -218,15 +216,12 @@ mainString =
   where ad' line = deleteStrMap [".", "・", "･", " ", "　"] $ ad line
         blank _           = ""
 ----------------------------------------------------------------------------------------------------
--- makeTelList :: [Line s] -> [Line s]
--- makeTelList (f:fs) = coref 
-----------------------------------------------------------------------------------------------------
-hanchoMap :: [Line s] -> Map.Map Int [Line s]
+hanchoMap :: [Line] -> Map.Map Int [Line]
 hanchoMap = makeMap f id
   where f line' = (100 * toInt (bknum line')) + toInt (han line')
         toInt s = read s :: Int
         
-hanchoFilter :: [Line s] -> [Line s]
+hanchoFilter :: [Line] -> [Line]
 hanchoFilter = filter (isJust . hancho)
 
 safeHead :: [a] -> Maybe a
@@ -237,7 +232,7 @@ safeHead (x:_) = Just x
 Just s  --> f = f s
 Nothing --> _ = ""
 
-hanchoList :: (t, [Line s]) -> [String]
+hanchoList :: (t, [Line]) -> [String]
 hanchoList (_, v) = [bkn, bnk, hn, name', fam', len]
   where hncho = safeHead $ hanchoFilter v
         name' = hncho --> name
@@ -247,7 +242,7 @@ hanchoList (_, v) = [bkn, bnk, hn, name', fam', len]
         fam'  = case nameP <$> hncho of Just (f1, _) -> f1; Nothing -> ""
         len   = show $ length v
 
-hanInfo :: (t, [Line s]) -> String
+hanInfo :: (t, [Line]) -> String
 hanInfo = intercalate "," . hanchoList
 
 hanDay :: [String] -> String -> String
@@ -260,7 +255,7 @@ hanDay lis bk
   where bknumber = read bk :: Int
         dayGen   = lis!!(bknumber - 1)
 
-hanOutput :: (Int, [String]) -> (t, [Line s]) -> String
+hanOutput :: (Int, [String]) -> (t, [Line]) -> String
 hanOutput (month, day) = opfunc . hanchoList
   where arguments (bn:_:h:_:n:l:_) =
           intercalate "}{" [h,l,n,show month,hanDay day bn]
@@ -293,37 +288,37 @@ fromBirthday table d = coref table
           | betweenP2 (start, end) d = k
           | otherwise = coref xs
 
-checK :: [(String, Day, Day)] -> Line s -> Bool
+checK :: [(String, Day, Day)] -> Line -> Bool
 checK table l = (kind l) == (kind2 l)
   where kind2 line = fromJust $ fromBirthday table <$> birth line
 
-checkFilter :: [(String, Day, Day)] -> [Line s] -> [Line s]
+checkFilter :: [(String, Day, Day)] -> [Line] -> [Line]
 checkFilter table = filter (not . checK table)
 ----------------------------------------------------------------------------------------------------
-translateFunc, translateFuncPartial :: (Line s -> String) -> String -> Line s -> Bool
+translateFunc, translateFuncPartial :: (Line -> String) -> String -> Line -> Bool
 translateFunc func key n = key == func n
 
 translateFuncPartial func key n = key `isInfixOf` func n
 
-translateFuncTel :: (Line s -> [Telephone]) -> String -> Line s -> Bool
+translateFuncTel :: (Line -> [Telephone]) -> String -> Line -> Bool
 translateFuncTel func key n = key `isInfixOf` telpn n
   where telpn = intercalate "," . map telString . func
 
-translateFuncYear :: String -> Line s -> Bool
+translateFuncYear :: String -> Line -> Bool
 translateFuncYear y n = case year n of
   Nothing -> False
   Just x  -> (read y :: Integer) == x
 
-translateFuncOld :: (Maybe Day, Maybe Day) -> Line s -> Bool
+translateFuncOld :: (Maybe Day, Maybe Day) -> Line -> Bool
 translateFuncOld (start, end) n = fromJust $ (&&) <$> startBool n <*> endBool n
   where startBool n' = (>=) <$> birth n' <*> start
         endBool n'   = (<=) <$> birth n' <*> end
 
-translateFold :: (Bool -> Bool -> Bool) -> Bool -> [Key] -> Line s -> Bool
+translateFold :: (Bool -> Bool -> Bool) -> Bool -> [Key] -> Line -> Bool
 translateFold func bool list line =
   foldl func bool $ map (`translate` line) list
 
-translate :: Key -> Line s -> Bool
+translate :: Key -> Line -> Bool
 translate (Or  list)  = translateFold (||) False list
 translate (And list)  = translateFold (&&) True list
 translate (Not term)  = not . translate term
@@ -339,7 +334,7 @@ translate (Work s)    = translateFuncPartial work s
 translate (Year s)    = translateFuncYear s
 translate (Old s)     = translateFuncOld s
 
-seek :: Key -> [Line s] -> [Line s]
+seek :: Key -> [Line] -> [Line]
 seek term = filter (translate term) 
 ----------------------------------------------------------------------------------------------------
 keyParseLine = sepBy keyParseTerm $ char ','
@@ -412,7 +407,7 @@ keyParse str = case parse keyParseLine "" str of
   Right x -> head x
   Left _  -> And []
 
-seekS :: String -> [Line s] -> [Line s]
+seekS :: String -> [Line] -> [Line]
 seekS str = seek (keyParse str)
 ----------------------------------------------------------------------------------------------------
 runRuby :: IO (I.Handle, I.Handle, I.Handle, ProcessHandle)
@@ -440,17 +435,3 @@ main = do
         mainOut   = printer mainString
         mapToList = Map.assocs . hanchoMap
 
--- data Join a = Join String deriving (Show, Eq)
-
--- instance Monoid (Join a) where
---   mempty = Join ""
---   Join "" `mappend` (Join y) = Join y
---   (Join x) `mappend` Join "" = Join x
---   (Join x) `mappend` (Join y) = Join $ x ++ "," ++ y
-
-hoge :: MS.State [String] Int
-hoge = do
-  x <- MS.get
-  MS.forM ["hoge", "foo", "buz"] (\n -> MS.modify (++[n]))
-  y <- MS.get
-  return $ length y

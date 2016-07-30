@@ -46,6 +46,13 @@ uniq s = reverse . (`St.execState` []) $ do
       else St.put r
   return ()
 
+class Like.StringLike a => Join a where
+  joiner :: String -> [a] -> a
+
+instance Join String where
+  joiner glue [] = ""
+  joiner glue (x:xs) = x <> glue <> joiner glue xs
+
 makeMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k [a]
 makeMap kF vF [] = Map.empty
 makeMap kF vF (x:xs) =
@@ -59,27 +66,41 @@ makeCountMap kF (x:xs) =
 class ReadFile a where
   readUTF8     :: FilePath -> IO a
   readUTF8line :: FilePath -> IO [a]
+  readSJIS     :: FilePath -> IO a
+  readSJISline :: FilePath -> IO [a]
 
-baseReadUTF8 :: Like.StringLike a => (Handle -> IO a) -> FilePath -> IO a
-baseReadUTF8 f fp = do
+baseReadFile :: Like.StringLike a => String -> (Handle -> IO a) -> FilePath -> IO a
+baseReadFile coding f fp = do
     h <- openFile fp ReadMode
-    encoding <- mkTextEncoding "cp65001"
+    encoding <- mkTextEncoding coding
     hSetEncoding h encoding
     r <- f h
     hClose h
     return r
 
+baseReadUTF8 :: Like.StringLike a => (Handle -> IO a) -> FilePath -> IO a
+baseReadUTF8 = baseReadFile "cp65001"
+
+baseReadSJIS :: Like.StringLike a => (Handle -> IO a) -> FilePath -> IO a
+baseReadSJIS = baseReadFile "cp932"
+
 instance ReadFile String where
   readUTF8        = baseReadUTF8 hGetContents
   readUTF8line fp = lines <$> readUTF8 fp
+  readSJIS        = baseReadSJIS hGetContents
+  readSJISline fp = lines <$> readSJIS fp
 
 instance ReadFile B.ByteString where
   readUTF8        = baseReadUTF8 B.hGetContents
   readUTF8line fp = B.lines <$> readUTF8 fp
+  readSJIS        = baseReadSJIS B.hGetContents
+  readSJISline fp = B.lines <$> readSJIS fp
     
 instance ReadFile Txi.Text where
   readUTF8        = baseReadUTF8 Txio.hGetContents
   readUTF8line fp = Tx.lines <$> readUTF8 fp
+  readSJIS        = baseReadSJIS Txio.hGetContents
+  readSJISline fp = Tx.lines <$> readSJIS fp
 
 readUTF8File :: FilePath -> IO String
 readUTF8File fp = do
