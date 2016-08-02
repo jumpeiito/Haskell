@@ -8,6 +8,7 @@ import Data.Maybe                       (isJust, mapMaybe)
 import Text.Printf                      (printf)
 import Control.Monad.Writer
 import Control.Applicative              hiding (many, (<|>))
+import Text.StringLike                  (castString, StringLike (..))
 import Text.Parsec
 import Text.Parsec.String
 import qualified Data.ByteString.Char8  as B
@@ -15,7 +16,6 @@ import qualified Data.Map               as Map
 import qualified Util                   as U
 import qualified System.IO              as I
 import qualified Control.Monad.State    as St
-import qualified Text.StringLike        as Like
 
 orgDir :: FilePath
 orgDir = "f:/Org/news/"
@@ -33,7 +33,10 @@ data Lines s =
                  paper' :: s }
   | OrgError deriving (Show, Eq)
 
-instance (Like.StringLike s, Monoid s) => Monoid (Lines s) where
+type Days = [Int]
+type Contents a = [Lines a]
+
+instance (StringLike s, Monoid s) => Monoid (Lines s) where
   mempty = makeOrgArticle
   OrgDate s          `mappend` art@(OrgArticle{}) = art { time = strdt s :: Maybe Day }
   OrgTitle s         `mappend` art@(OrgArticle{}) = takeHeader art s
@@ -41,7 +44,7 @@ instance (Like.StringLike s, Monoid s) => Monoid (Lines s) where
   art@(OrgArticle{}) `mappend` OrgArticle{} = art
   _ `mappend` _ = mempty
 
-makeOrgArticle :: (Like.StringLike a, Monoid a) => Lines a
+makeOrgArticle :: (StringLike a, Monoid a) => Lines a
 makeOrgArticle = OrgArticle { time   = Nothing,
                               header = mempty,
                               body   = mempty,
@@ -79,62 +82,49 @@ makeMonthList day year month
 aChar :: Parser String
 aChar = many1 (noneOf "\r\n")
 
-titleP = do
-  string "** "
-  t <- aChar
-  return $ OrgTitle t
+titleP, dateP, lineP :: Parser (Lines String)
+titleP = OrgTitle <$> (string "** " *> aChar)
+dateP  = OrgDate  <$> (string "*"   *> manyTill (oneOf "0123456789/-") eof)
+lineP  = OrgLine  <$> manyTill anyChar eof
 
-dateP :: Parser (Lines String)
-dateP = do
-  string "* "
-  d <- manyTill (oneOf "0123456789/-") eof
-  return $ OrgDate d
-
-lineP :: Parser (Lines String)
-lineP = do
-  s <- manyTill anyChar eof
-  return $ OrgLine s
-
-toLine :: Like.StringLike a => a -> Lines String
+toLine :: StringLike a => a -> Lines String
 toLine s = case parse selected "" target of
   Right line -> line
   Left _     -> OrgError
   where selected = choice [try titleP, try dateP, lineP]
-        target   = Like.castString s
+        target   = castString s
 ----------------------------------------------------------------------------------------------------
 type PaperMap a = Map.Map Int [a]
 
-papers :: Like.StringLike a => [a]
-papers = map Like.castString $ 
+papers :: StringLike a => [a]
+papers = map castString $ 
          (++"新聞") <$> ["朝日", "毎日", "読売", "日経", "産経"]
 
-takeHeader :: (Like.StringLike a, Monoid a) => Lines a -> a -> Lines a
+takeHeader :: (StringLike a, Monoid a) => Lines a -> a -> Lines a
 takeHeader art head' =
   art { header = head', paper' = p }
   where p = takePaper head'
 
-takePaper :: (Like.StringLike a, Monoid a) => a -> a
+takePaper :: (StringLike a, Monoid a) => a -> a
 takePaper s = undefined-- case parse takePaperParse mempty s of
   -- Right s' -> s'
   -- Left _   -> mempty
 
 takePaperParse :: Parser String
 takePaperParse = try inner <|> (anyChar >> takePaperParse)
-  where inner = do
-        char '['
-        rel <- many1 (noneOf "]")
-        char ']'
-        return rel
+  where inner = between (char '[')
+                        (char ']')
+                        (many1 (noneOf "]"))
 
-makePaperMap :: (Like.StringLike a, Monoid a) => [Lines a] -> PaperMap a
+makePaperMap :: (StringLike a, Monoid a) => Contents a -> PaperMap a
 makePaperMap = U.makeMap (timeToDay . time) paper'
   where timeToDay Nothing = 0
         timeToDay (Just d) = toDay d
 
-paperElem :: (Like.StringLike a, Monoid a) => Int -> PaperMap a -> a -> Bool
+paperElem :: (StringLike a, Monoid a) => Int -> PaperMap a -> a -> Bool
 paperElem day mp p = isJust $ elem p <$> Map.lookup day mp
 
-notElemDayPaper :: (Like.StringLike a, Monoid a) => [Int] -> [Lines a] -> [(Int, [a])]
+notElemDayPaper :: (StringLike a, Monoid a) => Days -> Contents a -> [(Int, [a])]
 notElemDayPaper dayList x = execWriter $ do
   let mp = makePaperMap x
   let pl = papers
@@ -145,7 +135,7 @@ notElemDayPaper dayList x = execWriter $ do
       else tell [(day, restPaper)]
   return ()
 ----------------------------------------------------------------------------------------------------
-dateFold :: (Like.StringLike a, Monoid a) => [Lines a] -> [Lines a]
+dateFold :: (StringLike a, Monoid a) => Contents a -> Contents a
 dateFold s = thd . (`St.execState` (mempty, mempty, [])) $ do
   St.forM_ s $ \n -> do
     (prev, art, big) <- St.get
@@ -156,14 +146,14 @@ dateFold s = thd . (`St.execState` (mempty, mempty, [])) $ do
   return ()
   where thd (_, _, a) = a
 
-orgDateList :: [Lines s] -> [Int]
+orgDateList :: Contents a -> Days
 orgDateList = map toDay . U.uniq . mapMaybe time
 
-notElemDay :: [Int] -> [Lines s] -> [Int]
+notElemDay :: Days -> Contents a -> Days
 notElemDay dayList x = [ y | y <- dayList, y `notElem` orgDateList x]
 ----------------------------------------------------------------------------------------------------
-orgLineList :: (Like.StringLike a, Monoid a) => a -> [Lines String]
-orgLineList = dateFold . map toLine . lines . Like.castString
+orgLineList :: (StringLike a, Monoid a) => a -> Contents String
+orgLineList = dateFold . map toLine . lines . castString
 
 parseToDayList :: Integer -> Int -> IO [Day]
 parseToDayList year month = do

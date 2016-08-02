@@ -68,7 +68,7 @@ pointHitting d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * co
                   else 1
         -- ratio'  = 1
 ----------------------------------------------------------------------------------------------------
-makeDict :: IO (Dictionary)
+makeDict :: IO Dictionary
 makeDict = do
   zips <- readUTF8line ".zipcode.out"
   return $ map toArray zips

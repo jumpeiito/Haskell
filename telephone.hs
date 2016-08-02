@@ -1,4 +1,4 @@
-module Telephone (telParse, telString, Telephone,
+module Telephone (telParse, telString, Telephone (..),
                  fixFilter, mobileFilter) where
 
 import Control.Applicative hiding (many, (<|>))
@@ -25,29 +25,21 @@ fixParseHeader =
            return $ header ++ [nextch] }
 
 parenExp :: Parser String
-parenExp = do
-  char '('
-  exp' <- many $ noneOf ")"
-  char ')'
-  return $ "(" ++ exp' ++ ")"
+parenExp = core >>= return . ("(" ++) . (++ ")")
+  where core = between (char '(')
+                       (char ')')
+                       (many $ noneOf ")")
 
 faxExp :: Parser String
-faxExp = do { string "(F)"; return "(F)"}
+faxExp = string "(F)"
 
 headStr :: [String] -> String
 headStr [] = ""
 headStr s  = head s
 
-tailStr :: Parser String
-tailStr = do
-  exp' <- many parenExp
-  manyNoNumPlus
-  return $ headStr exp'
-
-tailFaxStr = do
-  exp' <- faxExp
-  manyNoNumPlus
-  return $ exp'
+tailStr, tailFaxStr :: Parser String
+tailStr    = headStr <$> (many parenExp <* manyNoNumPlus)
+tailFaxStr = faxExp <* manyNoNumPlus
 
 mobileParse, fixParse, telFuncCore :: Parser Telephone
 mobileParse = do
@@ -76,15 +68,6 @@ fixParse3 = do
   exp <- tailFaxStr
   return $ Fax $ num ++ exp
   
--- fixParse = try (do { num1 <- manyNoNum *> fixParseHeader;
---                      rest <- count 9 (oneOf $ "-" ++ num);
---                      exp' <- tailStr;
---                      return $ Fix $ num1 ++ rest ++ exp' })
---            <|> try (do { num1 <- manyNoNum *> count 3 digit;
---                          sep  <- char '-';
---                          num2 <- count 4 digit;
---                          exp' <- tailStr;
---                          return $ Fix $ num1 ++ [sep] ++ num2 ++ exp'})
 fixParse = try fixParse3 <|> fixParse2
 
 
