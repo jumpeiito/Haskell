@@ -1,9 +1,10 @@
-import Util                             (withAppendFile)
+import Util                             (withAppendFile, readUTF8, readUTF8File)
 import Strdt                            (strdt, toYear, toMonth, todayDay)
 import OrgParse                         (parseToDayList)
 import NewsArticle.Base
 import Control.Monad                    (forM_, when)
 import Data.Time                        (Day (..))
+import Data.Maybe                       (fromMaybe)
 import Data.Monoid                      ((<>))
 import Text.Printf                      (printf)
 import Text.HTML.TagSoup
@@ -82,18 +83,20 @@ main = do
   sjis <- I.mkTextEncoding "CP932"
   when (sjis' opt)  $ I.hSetEncoding I.stdout sjis
   --------------------------------------------------
-  case (today' opt, date' opt) of
-    (True, _) -> dayMaker td
-    (_, d)    -> case (strdt d :: Maybe Day) of
-                   Just d' -> do
-                     let (y, m) = (toYear d', toMonth d')
-                     dlist  <- parseToDayList y m
-                     forM_ dlist dayMaker
-                   Nothing -> return ()
+  case (today' opt, force opt, date' opt) of
+    (True, _, _) -> dayMaker td
+    (_, d, _)    -> dayMaker (fromMaybe td (strdt d ::Maybe Day))
+    (_, _, d)    -> case (strdt d :: Maybe Day) of
+                      Just d' -> do
+                        let (y, m) = (toYear d', toMonth d')
+                        dlist  <- parseToDayList y m
+                        forM_ dlist dayMaker
+                      Nothing -> return ()
 
 data Options = Options { today' :: Bool,
                          date'  :: String,
-                         sjis'  :: Bool
+                         sjis'  :: Bool,
+                         force  :: String
                        } deriving (Show)
 
 todayP :: O.Parser Bool
@@ -106,12 +109,20 @@ dateP = O.strOption $ mconcat
         , O.metavar "YEAR MONTH (6 digit chars)."
         , O.value ""
         , O.showDefaultWith id]
+
+forceP :: O.Parser String
+forceP = O.strOption $ mconcat
+        [ O.short 'f', O.long "force"
+        , O.help "If given date (8 digit chars, not including hyphons), output articles."
+        , O.metavar ""
+        , O.value ""
+        , O.showDefaultWith id]
         
 sjisP :: O.Parser Bool
 sjisP = O.switch $ O.short 's' <> O.long "sjis" <> O.help "Output with char-set sjis"
 
 optionsP :: O.Parser Options
-optionsP = (<*>) O.helper $ Options <$> todayP <*> dateP <*> sjisP
+optionsP = (<*>) O.helper $ Options <$> todayP <*> dateP <*> sjisP <*> forceP
 
 myParserInfo :: O.ParserInfo Options
 myParserInfo = O.info optionsP $ mconcat 

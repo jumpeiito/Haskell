@@ -227,8 +227,11 @@ testIO2' key = do
     dic <- St.get
     let ch   = Tx.index key n
     case filter (innerlook ch) dic of
-      [x]  -> do { St.put [x]; return () }
       []   -> St.put dic
+      [x]  -> do
+        St.liftIO $ putStr "*"
+        St.put [x]
+        return () 
       filt -> do
         St.liftIO $ putStr $ show (length filt) ++ " --> "
         St.put filt

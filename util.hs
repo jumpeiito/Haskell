@@ -4,18 +4,20 @@ module Util where
 
 import Data.List
 import Data.Time
+import Debug.Trace
 import Control.Applicative hiding ((<|>), many)
+import Control.Exception
 import Control.Monad
 import Control.Monad.Writer
 import System.Directory
-import qualified Data.Map as Map
-import qualified Control.Monad.State as St
-import System.IO (IOMode (..), hGetContents, hSetEncoding, openFile, hClose, mkTextEncoding, stdout, utf8, hPutStrLn, Handle)
-import qualified Data.Text as Tx
-import qualified Data.Text.IO as Txio
-import qualified Data.Text.Internal as Txi
-import qualified Data.ByteString.Char8 as B
-import qualified Text.StringLike as Like
+import qualified Data.Map               as Map
+import qualified Control.Monad.State    as St
+import qualified System.IO              as I
+import qualified Data.Text              as Tx
+import qualified Data.Text.IO           as Txio
+import qualified Data.Text.Internal     as Txi
+import qualified Data.ByteString.Char8  as B
+import qualified Text.StringLike        as Like
 import Text.ParserCombinators.Parsec
 
 class Splittable a where
@@ -68,12 +70,15 @@ allf dir = do
       else return [p]
   return $ concat ans
 
+alld' :: FilePath -> IO [FilePath]
+alld' dir = do
+  let cut = map ((dir <>) . ("/" <>)) . filter (`notElem` [".", ".."])
+  contents <- cut <$> getDirectoryContents dir
+  filterM doesDirectoryExist contents
+
 alld :: FilePath -> IO [FilePath]
-alld dir = do
-  files <- allf dir
-  filterM doesDirectoryExist files
-  
-  
+alld dir = alld' dir >>= mapM alld' >>= return . concat
+
 makeMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k [a]
 makeMap kF vF [] = Map.empty
 makeMap kF vF (x:xs) =
@@ -90,25 +95,25 @@ class ReadFile a where
   readSJIS     :: FilePath -> IO a
   readSJISline :: FilePath -> IO [a]
 
-baseReadFile :: Like.StringLike a => String -> (Handle -> IO a) -> FilePath -> IO a
-baseReadFile coding f fp = do
-    h <- openFile fp ReadMode
-    encoding <- mkTextEncoding coding
-    hSetEncoding h encoding
-    r <- f h
-    hClose h
-    return r
+baseReadFile :: Like.StringLike a => String -> (I.Handle -> IO a) -> FilePath -> IO a
+baseReadFile coding f fp =
+  bracket (I.openFile fp I.ReadMode)
+          (I.hClose)
+          (\h -> do
+              encoding <- I.mkTextEncoding coding
+              I.hSetEncoding h encoding
+              f h >>= evaluate)
 
-baseReadUTF8 :: Like.StringLike a => (Handle -> IO a) -> FilePath -> IO a
+baseReadUTF8 :: Like.StringLike a => (I.Handle -> IO a) -> FilePath -> IO a
 baseReadUTF8 = baseReadFile "cp65001"
 
-baseReadSJIS :: Like.StringLike a => (Handle -> IO a) -> FilePath -> IO a
+baseReadSJIS :: Like.StringLike a => (I.Handle -> IO a) -> FilePath -> IO a
 baseReadSJIS = baseReadFile "cp932"
 
 instance ReadFile String where
-  readUTF8        = baseReadUTF8 hGetContents
+  readUTF8        = baseReadUTF8 I.hGetContents
   readUTF8line fp = lines <$> readUTF8 fp
-  readSJIS        = baseReadSJIS hGetContents
+  readSJIS        = baseReadSJIS I.hGetContents
   readSJISline fp = lines <$> readSJIS fp
 
 instance ReadFile B.ByteString where
@@ -125,52 +130,53 @@ instance ReadFile Txi.Text where
 
 readUTF8File :: FilePath -> IO String
 readUTF8File fp = do
-  h <- openFile fp ReadMode
-  encoding <- mkTextEncoding "cp65001"
-  hSetEncoding h encoding
-  hGetContents h
+  h <- I.openFile fp I.ReadMode
+  encoding <- I.mkTextEncoding "cp65001"
+  I.hSetEncoding h encoding
+  I.hGetContents h
 
 readUTF8ByteFile :: FilePath -> IO B.ByteString
 readUTF8ByteFile fp = do
-  h <- openFile fp ReadMode
-  encoding <- mkTextEncoding "cp65001"
-  hSetEncoding h encoding
+  h <- I.openFile fp I.ReadMode
+  encoding <- I.mkTextEncoding "cp65001"
+  I.hSetEncoding h encoding
   B.hGetContents h
 
-withOutFile :: FilePath -> (Handle -> IO ()) -> IO ()
+withOutFile :: FilePath -> (I.Handle -> IO ()) -> IO ()
 withOutFile oFile func = do
-  h <- openFile oFile WriteMode
-  encoding <- mkTextEncoding "cp65001"
-  hSetEncoding h encoding
+  h <- I.openFile oFile I.WriteMode
+  encoding <- I.mkTextEncoding "cp65001"
+  I.hSetEncoding h encoding
   func h
-  hClose h
+  I.hClose h
 
-withAppendFile :: FilePath -> (Handle -> IO ()) -> IO ()
+withAppendFile :: FilePath -> (I.Handle -> IO ()) -> IO ()
 withAppendFile oFile func = do
-  h <- openFile oFile WriteMode
-  encoding <- mkTextEncoding "cp65001"
-  hSetEncoding h encoding
+  h <- I.openFile oFile I.WriteMode
+  encoding <- I.mkTextEncoding "cp65001"
+  I.hSetEncoding h encoding
   func h
-  hClose h
+  I.hClose h
 
 writeUTF8File :: FilePath -> String -> IO ()
 writeUTF8File fp contents = do
-  h <- (openFile fp WriteMode)
-  encoding <- mkTextEncoding "cp65001"
-  hSetEncoding h encoding
-  hPutStrLn h contents
-  hClose h
+  h <- (I.openFile fp I.WriteMode)
+  encoding <- I.mkTextEncoding "cp65001"
+  I.hSetEncoding h encoding
+  I.hPutStrLn h contents
+  I.hClose h
 
 appendUTF8File :: FilePath -> String -> IO ()
 appendUTF8File fp contents = do
-  h <- (openFile fp AppendMode)
-  encoding <- mkTextEncoding "cp65001"
-  hSetEncoding h encoding
-  hPutStrLn h contents
-  hClose h
+  h <- (I.openFile fp I.AppendMode)
+  encoding <- I.mkTextEncoding "cp65001"
+  I.hSetEncoding h encoding
+  I.hPutStrLn h contents
+  I.hClose h
 
 (</>) :: FilePath -> String -> FilePath
 (</>) dirname filename =
   if "/" `isSuffixOf` dirname
   then dirname ++ filename
   else dirname ++ "/" ++ filename
+
