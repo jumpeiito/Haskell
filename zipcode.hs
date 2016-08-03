@@ -1,4 +1,4 @@
-import Util                             (readUTF8line, split, uniq)
+import Util                             (readUTF8line, split, uniq, include)
 import Data.List                        (isInfixOf, sort, sortBy)
 import Data.Ratio                       (Ratio (..), (%))
 import Data.Array                       (Array (..), listArray, (!))
@@ -39,6 +39,8 @@ data Hitting = Hitting { initial   :: String,
                          continual :: Int
                        } deriving (Show, Eq)
 
+data District = District String [String] deriving (Show)
+
 instance Functor Answer where
   f `fmap` Absolute a = Absolute $ f a
   f `fmap` Probably (a, b) = Probably (f a, b)
@@ -48,6 +50,17 @@ instance Ord Hitting where
     | pointHitting h1 < pointHitting h2  = LT
     | pointHitting h1 == pointHitting h2 = EQ
     | otherwise                          = GT
+
+fromDistrict :: District -> [String]
+fromDistrict (District _ x) = x
+
+kyotoDistrict, daigoDistrict :: District
+kyotoDistrict = District "京都市"
+                         ["北区", "上京区", "中京区", "下京区", "左京区", "右京区",
+                          "西京区", "南区", "伏見区", "東山区", "山科区"]
+
+daigoDistrict = District "京都市伏見区"
+                         ["醍醐", "石田", "日野", "小栗栖"]
 
 cast :: StringLike a => StringLike b => a -> b
 cast = castString
@@ -73,6 +86,13 @@ makeDict = do
   zips <- readUTF8line ".zipcode.out"
   return $ map toArray zips
   where toArray = listArray (0,1) . split ','
+
+makeDistrictDict :: District -> IO Dictionary
+makeDistrictDict district = do
+  filter (include dis . Tx.unpack . (!0)) <$> makeDict
+  where dis = let District add lis = district
+              in map (add++) lis
+  
 ----------------------------------------------------------------------------------------------------
 makeKey :: StringLike a => a -> String
 makeKey key = case parse kyotoCityP "" (cast key) of
@@ -108,11 +128,11 @@ searchCore key dict = cut . (`St.execState` dict) $ searchST2 key
   where cut = overLengthAvoid 100
 
 charLookup :: Char -> Map.Map Char Char -> Char
-{-# INLINE charLookup #-}
+-- {-# INLINE charLookup #-}
 charLookup c m = fromMaybe 'z' (Map.lookup c m)
 
 innerlook :: Char -> DictLine Text -> Bool
-{-# INLINE innerlook #-}
+-- {-# INLINE innerlook #-}
 innerlook ch line = ch <?> line || charLookup ch otherChar <?> line
   where (<?>) ch line = ch `telem` (line!0)
 
@@ -131,16 +151,13 @@ overLengthAvoid :: Int -> [a] -> [a]
 overLengthAvoid over x = (length x > over) <==> ([], x)
 
 telem :: Char -> Text -> Bool
-{-# INLINE telem #-}
+-- {-# INLINE telem #-}
 telem c tx = isJust (Tx.findIndex (==c) tx)
 ----------------------------------------------------------------------------------------------------
 kyotoCityP :: Parser (String, String)
 kyotoCityP = do
-  region <- choice [string "北区", string "上京区", string "中京区", string "下京区",
-                    string "左京区", string "右京区", string "西京区", string "南区",
-                    string "伏見区", string "東山区"]
-  _      <- streetP
-  rest   <- many anyChar
+  region <- choice $ map string (fromDistrict kyotoDistrict)
+  rest   <- streetP *> many anyChar
   return (region, rest)
 
 streetP :: Parser String
@@ -243,3 +260,4 @@ testIO2 s = do
   I.hSetEncoding I.stdout I.utf8
   I.putChar '\n'
   mapM_ (Txio.putStrLn . (!0)) ary
+
