@@ -88,9 +88,8 @@ dateP  = OrgDate  <$> (string "*"   *> manyTill (oneOf "0123456789/-") eof)
 lineP  = OrgLine  <$> manyTill anyChar eof
 
 toLine :: StringLike a => a -> Lines String
-toLine s = case parse selected "" target of
-  Right line -> line
-  Left _     -> OrgError
+toLine s = either (const OrgError) id 
+                  $ parse selected "" target
   where selected = choice [try titleP, try dateP, lineP]
         target   = castString s
 ----------------------------------------------------------------------------------------------------
@@ -101,8 +100,7 @@ papers = map castString $
          (++"新聞") <$> ["朝日", "毎日", "読売", "日経", "産経"]
 
 takeHeader :: (StringLike a, Monoid a) => Lines a -> a -> Lines a
-takeHeader art head' =
-  art { header = head', paper' = p }
+takeHeader art head' = art { header = head', paper' = p }
   where p = takePaper head'
 
 takePaper :: (StringLike a, Monoid a) => a -> a
@@ -131,19 +129,17 @@ notElemDayPaper dayList x = execWriter $ do
   forM_ dayList $ \day -> do
     let restPaper = filter (not . paperElem day mp) pl
     if null restPaper
-      then tell []
+      then tell mempty
       else tell [(day, restPaper)]
-  return ()
 ----------------------------------------------------------------------------------------------------
 dateFold :: (StringLike a, Monoid a) => Contents a -> Contents a
-dateFold s = thd . (`St.execState` (mempty, mempty, [])) $ do
+dateFold s = thd . (`St.execState` (mempty, mempty, [])) $ 
   St.forM_ s $ \n -> do
     (prev, art, big) <- St.get
     case n of
       OrgDate s  -> St.put (n, n <> mempty, big <> [art])
       OrgTitle s -> St.put (prev, n <> (prev <> mempty), big <> [art])
       _          -> St.put (prev, n <> art, big)
-  return ()
   where thd (_, _, a) = a
 
 orgDateList :: Contents a -> Days
@@ -162,5 +158,3 @@ parseToDayList year month = do
   let daylist = makeMonthList today year month
   contents <- orgLineList <$> U.readUTF8File file
   return $ map (fromGregorian year month) $ notElemDay daylist contents
-
-

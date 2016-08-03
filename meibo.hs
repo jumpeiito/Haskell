@@ -109,9 +109,8 @@ _nameParse = do
   return (fam, fir)
 
 nameParse :: String -> (String, String)
-nameParse n = case parse _nameParse "" n of
-  Right p -> p
-  Left _  -> ("", "")
+nameParse n = either (const ("", "")) id
+                     $ parse _nameParse "" n
 ----------------------------------------------------------------------------------------------------
 deleteStr :: String -> String -> String
 deleteStr key target = snd $ runWriter (delStr key target)
@@ -401,9 +400,8 @@ keyParseTerm =
   <|> try keyParseTermWord
 
 keyParse :: String -> Key
-keyParse str = case parse keyParseLine "" str of
-  Right x -> head x
-  Left _  -> And []
+keyParse str = either (const $ And []) head
+                      $ parse keyParseLine "" str
 
 seekS :: String -> [Line] -> [Line]
 seekS str = seek (keyParse str)

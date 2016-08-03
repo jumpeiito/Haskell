@@ -17,6 +17,7 @@ module NewsArticle.Base (ListedPage (..),
                          getText,
                          utf8Text) where
 
+import Util
 import Data.Time                        (Day (..))
 import Data.List                        (foldl', isInfixOf)
 import Data.ByteString.Char8            (ByteString (..), pack)
@@ -76,17 +77,6 @@ find' akeys tb@(TagBranch _ _ ys)
 
 solver :: Like.StringLike a => [ArticleKey] -> TagTree a -> Bool
 solver akeys = Data.List.foldl' (|||) (const False) $ map solveArticleKey akeys
-
-(&&&), (|||) :: Monad m => m Bool -> m Bool -> m Bool
-(&&&) x y = do
-  f1 <- x
-  f2 <- y
-  return $ f1 && f2
-
-(|||) x y = do
-  f1 <- x
-  f2 <- y
-  return $ f1 || f2
 
 solveArticleKey :: Like.StringLike a => ArticleKey -> TagTree a -> Bool
 solveArticleKey (l, r) = solveAKey l &&& solveAKey r

@@ -5,8 +5,8 @@ module Util where
 import Data.List
 import Data.Time
 import Debug.Trace
-import Control.Applicative hiding ((<|>), many)
-import Control.Exception
+import Control.Applicative              hiding ((<|>), many)
+import Control.Exception                hiding (try)
 import Control.Monad
 import Control.Monad.Writer
 import System.Directory
@@ -18,7 +18,9 @@ import qualified Data.Text.IO           as Txio
 import qualified Data.Text.Internal     as Txi
 import qualified Data.ByteString.Char8  as B
 import qualified Text.StringLike        as Like
-import Text.ParserCombinators.Parsec
+import Text.Parsec
+import Text.Parsec.String
+import Text.ParserCombinators.Parsec    hiding (try, Parser)
 
 class Splittable a where
   split :: Char -> a -> [a]
@@ -180,3 +182,22 @@ appendUTF8File fp contents = do
   then dirname ++ filename
   else dirname ++ "/" ++ filename
 
+(&&&), (|||) :: Monad m => m Bool -> m Bool -> m Bool
+(&&&) x y = do
+  f1 <- x
+  f2 <- y
+  return $ f1 && f2
+
+(|||) x y = do
+  f1 <- x
+  f2 <- y
+  return $ f1 || f2
+
+_include :: [String] -> Parser String
+_include xs = do
+  try $ choice $ map (try . string) xs
+  <|> (anyChar >> _include xs)
+
+include :: [String] -> String -> Bool
+include xs target = either (const False) (const True)
+                           $ parse (_include xs) "" target
