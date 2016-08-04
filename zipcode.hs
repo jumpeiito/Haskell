@@ -57,8 +57,14 @@ kyotoDistrict = District "京都市"
                           "西京区", "南区", "伏見区", "東山区", "山科区"]
 
 daigoDistrict = District "京都市伏見区"
-                         ["醍醐", "石田", "日野", "小栗栖"]
+                         ["醍醐", "石田", "日野", "小栗栖", "桃山"]
 
+shigaDistrict = District "滋賀県"
+                         ["大津市", "草津市"]
+
+ujiDistrict  = District "京都府"                         
+                        ["宇治市"]
+  
 cast :: StringLike a => StringLike b => a -> b
 cast = castString
 
@@ -223,6 +229,8 @@ main = do
   dict <- makeDict
   dic2 <- makeDistrictDict daigoDistrict
   dic3 <- makeDistrictDict kyotoDistrict
+  dic4 <- makeDistrictDict shigaDistrict
+  dic5 <- makeDistrictDict ujiDistrict
   --------------------------------------------------
   trgt <- readUTF8line ".test.address" :: IO [Text]
   I.hSetEncoding I.stdout I.utf8
@@ -230,6 +238,8 @@ main = do
     let ad' = Tx.unpack ad
     let dic = casePair [(include (fromDistrict daigoDistrict) ad', dic2),
                         (include (fromDistrict kyotoDistrict) ad', dic3),
+                        (include (fromDistrict shigaDistrict) ad', dic4),
+                        (include (fromDistrict ujiDistrict) ad', dic5),
                         (True, dict)]
     putStr   $ ad' ++ ", "
     putStrLn $ Main.toString $ guessHit (cast ad) <$> searchA ad dic
