@@ -3,9 +3,9 @@
 module Util where
 
 import Data.List
-import Data.Time
-import Debug.Trace
-import Control.Applicative              hiding ((<|>), many)
+-- import Data.Time
+-- import Debug.Trace
+-- import Control.Applicative              hiding ((<|>), many)
 import Control.Exception                hiding (try)
 import Control.Monad
 import Control.Monad.Writer
@@ -20,18 +20,18 @@ import qualified Data.ByteString.Char8  as B
 import qualified Text.StringLike        as Like
 import Text.Parsec
 import Text.Parsec.String
-import Text.ParserCombinators.Parsec    hiding (try, Parser)
+-- import Text.ParserCombinators.Parsec    hiding (try, Parser)
 
 class Splittable a where
   split :: Char -> a -> [a]
 
 instance Splittable String where
   split sep str = reverse . fst . (`St.execState` (mempty, mempty)) $ do
-    forM_ str $ \char -> do
+    forM_ str $ \ch -> do
       (big, small) <- St.get
-      if char == sep
+      if ch == sep
         then St.put (reverse small:big, [])
-        else St.put (big, char : small)
+        else St.put (big, ch : small)
     (big, small) <- St.get
     St.put (reverse small:big, [])
 
@@ -54,8 +54,8 @@ class Like.StringLike a => Join a where
   joiner :: String -> [a] -> a
 
 instance Join String where
-  joiner glue [] = ""
-  joiner glue [x] = x
+  joiner _ [] = ""
+  joiner _ [x] = x
   joiner glue (x:y:xs) = x <> glue <> y <> rest
     where rest = if null xs
                  then ""
@@ -82,12 +82,12 @@ alld :: FilePath -> IO [FilePath]
 alld dir = alld' dir >>= mapM alld' >>= return . concat
 
 makeMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k [a]
-makeMap kF vF [] = Map.empty
+makeMap _ _ [] = Map.empty
 makeMap kF vF (x:xs) =
   Map.insertWith' (++) (kF x) [vF x] $ makeMap kF vF xs
 
 makeCountMap :: (Num a, Ord k) => (t -> k) -> [t] -> Map.Map k a
-makeCountMap kF [] = Map.empty
+makeCountMap _ [] = Map.empty
 makeCountMap kF (x:xs) =
    Map.insertWith' (+) (kF x) 1 $ makeCountMap kF xs
 

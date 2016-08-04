@@ -70,7 +70,6 @@ fixParse3 = do
   
 fixParse = try fixParse3 <|> fixParse2
 
-
 telFuncCore = do
   try mobileParse
   <|> try fixParse
