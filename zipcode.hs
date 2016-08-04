@@ -1,12 +1,10 @@
 import Util                             (readUTF8line, split, uniq, include)
 import Data.List                        (isInfixOf, sort, sortBy)
-import Data.Ratio                       (Ratio (..), (%))
-import Data.Array                       (Array (..), listArray, (!))
+import Data.Ratio                       (Ratio, (%))
+import Data.Array                       (Array, listArray, (!))
 import Data.Maybe                       (isJust, fromMaybe)
 import Data.Monoid                      ((<>))
 import Data.Text.Internal               (Text (..))
-import Debug.Trace                      (trace)
-import Text.Printf                      (printf)
 import Text.StringLike                  (castString, StringLike (..))
 import Text.Parsec
 import Text.Parsec.String
@@ -16,12 +14,11 @@ import qualified System.IO              as I
 import qualified Control.Monad.State    as St
 import qualified Data.Text              as Tx
 import qualified Data.Text.IO           as Txio
-import qualified Data.Text.Encoding     as Txe
-import qualified Data.ByteString.Char8  as B
 
 type DictLine a   = Array Int a
 type Dictionary   = [DictLine Text]
 
+otherChar :: Map.Map Char Char
 otherChar = Map.fromList [('\12534', '\12465'),
                           ('\12465', '\12534'),
                           ('\28149', '\28181'),
@@ -75,8 +72,8 @@ adWithPcode (ad, p) = mconcat [cast ad, " --> ", cast p]
 
 pointHitting :: Hitting -> Ratio Int
 pointHitting d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * continual & d)
-  where (&) f d = f d % 1
-        ratio'  = if "伏見区" `isInfixOf` initial d
+  where (&) f d' = f d' % 1
+        ratio'   = if "伏見区" `isInfixOf` initial d
                   then 2
                   else 1
         -- ratio'  = 1
@@ -128,13 +125,13 @@ searchCore key dict = cut . (`St.execState` dict) $ searchST2 key
   where cut = overLengthAvoid 100
 
 charLookup :: Char -> Map.Map Char Char -> Char
--- {-# INLINE charLookup #-}
+{-# INLINE charLookup #-}
 charLookup c m = fromMaybe 'z' (Map.lookup c m)
 
 innerlook :: Char -> DictLine Text -> Bool
--- {-# INLINE innerlook #-}
-innerlook ch line = ch <?> line || charLookup ch otherChar <?> line
-  where (<?>) ch line = ch `telem` (line!0)
+{-# INLINE innerlook #-}
+innerlook ch line = ch <<?>> line || charLookup ch otherChar <<?>> line
+  where (<<?>>) c l = c `telem` (l!0)
 
 searchST2 :: Text -> St.State Dictionary ()
 searchST2 t = do
@@ -151,7 +148,7 @@ overLengthAvoid :: Int -> [a] -> [a]
 overLengthAvoid over x = (length x > over) <==> ([], x)
 
 telem :: Char -> Text -> Bool
--- {-# INLINE telem #-}
+{-# INLINE telem #-}
 telem c tx = isJust (Tx.findIndex (==c) tx)
 ----------------------------------------------------------------------------------------------------
 kyotoCityP :: Parser (String, String)
@@ -166,11 +163,11 @@ streetP = do
   <|> (anyChar >> streetP)
 ----------------------------------------------------------------------------------------------------
 addHit :: Char -> Hitting -> Hitting
-addHit char hit' =
+addHit ch hit' =
   hit' { target   = newTarget,
          hit      = newHit,
          hitratio = (newHit - length newTarget) % newHit }
-  where newTarget = removeChar char (target hit')
+  where newTarget = removeChar ch (target hit')
         newHit    = hit hit' + 1
 
 guessHit :: String -> Dictionary -> (String, String)
@@ -179,25 +176,25 @@ guessHit f p = answer . last $ guessHitList key' p
         answer t = (initial t, pcode t)
 
 guessHitList :: String -> Dictionary -> [Hitting]
-guessHitList target dict = sort $ map (givePoint target) dict
+guessHitList trgt dict = sort $ map (givePoint trgt) dict
 
 givePoint :: StringLike a => String -> DictLine a -> Hitting
 givePoint baseStr gen = (`St.execState` initHit) $ do
-  forM_ baseStr $ \char -> do
-    hit <- St.get
-    let newHit = if [char] `isInfixOf` target hit
-                 then addHit char hit
-                 else hit { nohit = nohit hit + 1 }
+  forM_ baseStr $ \ch -> do
+    hit' <- St.get
+    let newHit = if [ch] `isInfixOf` target hit'
+                 then addHit ch hit'
+                 else hit' { nohit = nohit hit' + 1 }
     St.put newHit
-  hit <- St.get
-  St.put $ hit { continual = giveContinualPoint baseStr ad }
+  hit' <- St.get
+  St.put $ hit' { continual = giveContinualPoint baseStr ad }
   where ad      = cast (gen!0) :: String
         postal  = cast (gen!1) :: String
         initHit = Hitting ad postal ad 0 (0%1) 0 0
 
 giveContinualPoint :: String -> String -> Int
-giveContinualPoint key target = sum $ take 2 $ sortBy (flip compare) (map length $ filtering list)
-  where filtering = filter (`isInfixOf` target)
+giveContinualPoint key trgt = sum $ take 2 $ sortBy (flip compare) (map length $ filtering list)
+  where filtering = filter (`isInfixOf` trgt)
         list      = partialList key ++ verseList key
 
 _partialList :: (Int -> String -> String) -> String -> [String]
@@ -210,19 +207,32 @@ verseList :: String -> [String]
 verseList = _partialList drop
 
 removeChar :: Char -> String -> String
-removeChar char str = loop str []
-  where loop (x:xs) r
-          | char == x = reverse r ++ xs
+removeChar ch str = loop str []
+  where loop [] _ = mempty
+        loop (x:xs) r
+          | ch == x = reverse r ++ xs
           | otherwise = loop xs (x:r)
+
+casePair :: Monoid a => [(Bool, a)] -> a
+casePair [] = mempty
+casePair (p:ps) = if bool then second else casePair ps
+  where (bool, second) = p
 
 main :: IO ()
 main = do
   dict <- makeDict
-  target <- readUTF8line ".test.address" :: IO [Text]
+  dic2 <- makeDistrictDict daigoDistrict
+  dic3 <- makeDistrictDict kyotoDistrict
+  --------------------------------------------------
+  trgt <- readUTF8line ".test.address" :: IO [Text]
   I.hSetEncoding I.stdout I.utf8
-  forM_ target $ \ad -> do
-    putStr   $ cast ad ++ ", "
-    putStrLn $ Main.toString $ guessHit (cast ad) <$> searchA ad dict
+  forM_ trgt $ \ad -> do
+    let ad' = Tx.unpack ad
+    let dic = casePair [(include (fromDistrict daigoDistrict) ad', dic2),
+                        (include (fromDistrict kyotoDistrict) ad', dic3),
+                        (True, dict)]
+    putStr   $ ad' ++ ", "
+    putStrLn $ Main.toString $ guessHit (cast ad) <$> searchA ad dic
 
 ----------------------------------------------------------------------------------------------------
 ---------- for debug -------------------------------------------------------------------------------
