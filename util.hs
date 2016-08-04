@@ -3,9 +3,6 @@
 module Util where
 
 import Data.List
--- import Data.Time
--- import Debug.Trace
--- import Control.Applicative              hiding ((<|>), many)
 import Control.Exception                hiding (try)
 import Control.Monad
 import Control.Monad.Writer
@@ -20,7 +17,6 @@ import qualified Data.ByteString.Char8  as B
 import qualified Text.StringLike        as Like
 import Text.Parsec
 import Text.Parsec.String
--- import Text.ParserCombinators.Parsec    hiding (try, Parser)
 
 class Splittable a where
   split :: Char -> a -> [a]

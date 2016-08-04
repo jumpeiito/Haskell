@@ -246,6 +246,8 @@ testIO str = do
   case ans of
     Absolute [ary]  -> Txio.putStrLn $ toStr ary
     Probably (a, _) -> mapM_ (Txio.putStrLn . toStr) a
+    Absolute []     -> Txio.putStrLn mempty
+    Absolute (_ : (_ : _)) -> Txio.putStrLn mempty
 
 testIO2' :: Text -> St.StateT Dictionary IO ()
 testIO2' key = do

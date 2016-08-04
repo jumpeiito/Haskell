@@ -1,4 +1,4 @@
-import Util                             (withAppendFile, readUTF8, readUTF8File)
+import Util                             (withAppendFile, readUTF8File)
 import Strdt                            (strdt, toYear, toMonth, todayDay)
 import OrgParse                         (parseToDayList)
 import NewsArticle.Base
@@ -7,7 +7,6 @@ import Data.Time                        (Day (..))
 import Data.Maybe                       (fromMaybe)
 import Data.Monoid                      ((<>))
 import Text.Printf                      (printf)
-import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import qualified Options.Applicative    as O
 import qualified NewsArticle.Akahata    as Ak
@@ -17,8 +16,8 @@ import qualified System.IO              as I
 import qualified Data.Text.IO           as Txio
 import qualified Data.Text.ICU.Convert  as C
 import qualified Data.ByteString.Char8  as B
-import qualified Text.StringLike        as Like
 ----------------------------------------------------------------------------------------------------
+orgdir :: FilePath
 orgdir = "f:/org/news/"
 ----------------------------------------------------------------------------------------------------
 orgName :: Day -> String
@@ -50,10 +49,9 @@ getPageContents url = do
   return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
 
-singleHTML tree = head tree'
-  where tree' = findTree [(Name "body", Always)] `concatMap` tree
+singleHTML tr = head tree'
+  where tree' = findTree [(Name "body", Always)] `concatMap` tr
 
--- printer :: Page B.ByteString -> IO ()
 printer f1 f2 page = do
   Txio.putStrLn $ f1 page
   mapM_ Txio.putStrLn $ f2 page
@@ -63,17 +61,16 @@ dayMaker td = do
   I.putStrLn $ "* " <> show td
   let common = Cm.makeListedPage td
   cmpage <- getPageContents $ topURL common
-  let pages = pageF common cmpage
-  forM_ pages $ printer getTitle getText
+  forM_ (pageF common cmpage) $ printer getTitle getText
   --------------------------------------------------
-  let akahata = Ak.makeListedPage td
-  page <- getPageContents $ topURL akahata
-  let urls = urlF akahata page
+  let akahata = Ak.makeListedPage td :: ListedPage B.ByteString
+  urls <- return . urlF akahata =<< (getPageContents $ topURL akahata)
   let akpage = Ak.makePage ""
   forM_ urls $ \url -> do
     cont <- getPageContents url
     printer (titleFunc akpage) (textFunc akpage) cont
 
+main :: IO ()
 main = do
   I.hSetEncoding I.stdout I.utf8
   td   <- todayDay
@@ -132,3 +129,9 @@ myParserInfo = O.info optionsP $ mconcat
     , O.footer ""
     , O.progDesc ""
     ]    
+----------------------------------------------------------------------------------------------------
+testIO :: IO [TagTree String]
+testIO = do
+  contents <- readUTF8File "5.html"
+  let page = translateTags contents
+  return $ page

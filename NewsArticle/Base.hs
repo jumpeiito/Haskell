@@ -20,11 +20,9 @@ module NewsArticle.Base (ListedPage (..),
 import Util
 import Data.Time                        (Day (..))
 import Data.List                        (foldl', isInfixOf)
-import Data.ByteString.Char8            (ByteString (..), pack)
 import Data.Text.Internal               (Text (..))
 import Data.Text.Encoding               (decodeUtf8)
 import Control.Monad.Writer
-import Control.Applicative              hiding (many, (<|>))
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import Text.Parsec
@@ -71,6 +69,7 @@ findTree _ _ = []
 (==>) = findTree
 
 find' :: Like.StringLike a => [ArticleKey] -> TagTree a -> Writer [TagTree a] ()
+find' _ (TagLeaf _) = tell mempty
 find' akeys tb@(TagBranch _ _ ys)
   | solver akeys tb = tell [tb]
   | otherwise = forM_ ys (tell . findTree akeys)
@@ -139,6 +138,8 @@ directionTranslate = map translate'
 directionList :: Like.StringLike a => DirectionType a
 directionList = directionTranslate normalDirection
 
+-- direction :: Like.StringLike a =>
+--              DirectionType a -> [(DirectionType a -> Bool, WriterDirection)] -> WriterDirection
 direction _ [] = Skip
 direction tb ((f, direct):xs)
   | f tb = direct

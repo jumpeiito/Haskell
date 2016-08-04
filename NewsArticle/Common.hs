@@ -1,21 +1,13 @@
 module NewsArticle.Common (makeListedPage) where
 
-import Util                             (withAppendFile)
 import Strdt                            (dayStr8)
 import Data.Time                        (Day (..))
 import Data.Monoid                      ((<>))
-import Data.Maybe                       (fromJust)
 import Data.Text.Internal               (Text (..))
 import NewsArticle.Base
 import Text.HTML.TagSoup.Tree
-import qualified Data.ByteString.Char8  as B
 import qualified Data.Text              as Tx
 import qualified Text.StringLike        as Like
-
-----------------------------------------------------------------------------------------------------
-import System.Process
-import qualified Data.Text.IO as Txio
-import qualified System.IO as I
 ----------------------------------------------------------------------------------------------------
 
 makeListedPage :: (Monoid a, Like.StringLike a) => Day -> ListedPage a
@@ -43,17 +35,3 @@ takeText = map (<> Tx.pack "\n")               .
            makeTree
   where makeTree = concatMap $ findTree [(Name "div", Attr "text")]
 ----------------------------------------------------------------------------------------------------
-testIO21 = do
-  (_, p, _, _) <- runInteractiveProcess "f:/tools/cat.exe" ["./6.html"] Nothing Nothing
-  page <- B.hGetContents p
-  I.hSetEncoding I.stdout I.utf8
-  -- let l = takeText $ translateTags page
-  -- Txio.putStrLn (head l)
-  -- print (head l)
-  -- (B.putStrLn) $ takeTitle $ translateTags page
-  return $ translateTags page
-
-testIO22 = do
-  withAppendFile "f:/Haskell/NewsArticle/test" $ \handle -> do
-    I.hSeek handle I.AbsoluteSeek 10
-    I.hPutStrLn handle "** testoutput **"

@@ -7,14 +7,11 @@ import Data.Time                        (Day (..), fromGregorian)
 import Data.Maybe                       (isJust, mapMaybe)
 import Text.Printf                      (printf)
 import Control.Monad.Writer
-import Control.Applicative              hiding (many, (<|>))
 import Text.StringLike                  (castString, StringLike (..))
 import Text.Parsec
 import Text.Parsec.String
-import qualified Data.ByteString.Char8  as B
 import qualified Data.Map               as Map
 import qualified Util                   as U
-import qualified System.IO              as I
 import qualified Control.Monad.State    as St
 
 orgDir :: FilePath
@@ -137,8 +134,8 @@ dateFold s = thd . (`St.execState` (mempty, mempty, [])) $
   St.forM_ s $ \n -> do
     (prev, art, big) <- St.get
     case n of
-      OrgDate s  -> St.put (n, n <> mempty, big <> [art])
-      OrgTitle s -> St.put (prev, n <> (prev <> mempty), big <> [art])
+      OrgDate _  -> St.put (n, n <> mempty, big <> [art])
+      OrgTitle _ -> St.put (prev, n <> (prev <> mempty), big <> [art])
       _          -> St.put (prev, n <> art, big)
   where thd (_, _, a) = a
 

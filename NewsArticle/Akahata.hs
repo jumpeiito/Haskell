@@ -5,7 +5,6 @@ import Strdt                            (strdt, nendo, dayStrWithSep)
 import Data.Time                        (Day (..))
 import Data.Monoid                      ((<>))
 import Data.Maybe                       (fromJust)
-import Data.ByteString.Char8            (ByteString (..), pack, unpack)
 import Data.Text.Internal               (Text (..))
 import NewsArticle.Base
 import Text.HTML.TagSoup
