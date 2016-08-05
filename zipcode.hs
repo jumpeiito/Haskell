@@ -85,9 +85,7 @@ adWithPcode (ad, p) = mconcat [cast ad, " --> ", cast p]
 -- [FAd, FS " --> ", FPt]
 ----------------------------------------------------------------------------------------------------
 makeDict :: IO Dictionary
-makeDict = do
-  zips <- readUTF8line ".zipcode.out"
-  return $ map toArray zips
+makeDict = map toArray <$> readUTF8line ".zipcode.out"
   where toArray = listArray (0,1) . split ','
 
 makeDistrictDict :: District -> IO Dictionary
@@ -159,10 +157,9 @@ telem :: Char -> Text -> Bool
 telem c tx = isJust (Tx.findIndex (==c) tx)
 ----------------------------------------------------------------------------------------------------
 kyotoCityP :: Parser (String, String)
-kyotoCityP = do
-  region <- choice $ map string (fromDistrict kyotoDistrict)
-  rest   <- streetP *> many anyChar
-  return (region, rest)
+kyotoCityP = 
+  (,) <$> (choice $ map string $ fromDistrict kyotoDistrict)
+      <*> (streetP *> many anyChar)
 
 streetP :: Parser String
 streetP = do

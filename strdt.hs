@@ -5,11 +5,9 @@ module Strdt (strdt, dtmap, Date, NendoDate,
               howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep
              ) where 
 
-import Util                             ((++++))
 import Data.Time
 import Data.List
 import Data.Maybe
-import Control.Applicative              hiding ((<|>), many)
 import Text.ParserCombinators.Parsec
 import Text.Printf
 import qualified Text.StringLike        as Like
@@ -54,8 +52,8 @@ instance Like.StringLike a => StringDate a (Maybe NendoDate) where
   strdt str =
     _strdt str `dtmap` returner
     where returner d = (nendoCalc d, toYearInt d, toMonth d, toDay d)
-          nendoCalc d = (toYearInt d) - (sep d)
-          sep d | (toMonth d) <= 3 = 1
+          nendoCalc d = toYearInt d - sep d
+          sep d | toMonth d <= 3 = 1
                 | otherwise = 0
 
 separator :: String
@@ -76,47 +74,44 @@ date8 = readDate <$> count 4 digit
 date6 :: Parser Day
 date6 = readDate <$> count 4 digit
                  <*> count 2 digit
-                 <*> (return "1")
+                 <*> return "1"
+
+sepYear, sepMonth :: Parser Char
+sepYear  = oneOf $ separator ++ "年"
+sepMonth = oneOf $ separator ++ "月"
 
 dateNormal :: Parser Day
-dateNormal = do
-  year  <- count 4 digit <* (oneOf $ separator ++ "年")
-  month <- many digit    <* (oneOf $ separator ++ "月")
-  day   <- (try $ count 2 digit) <|> (count 1 digit)
-  return $ readDate year month day
+dateNormal = readDate <$> count 4 digit <* sepYear
+                      <*> many digit    <* sepMonth
+                      <*> try (count 2 digit <|> count 1 digit)
+
+gengouToYear :: (String, Integer) -> Integer
+gengouToYear (g, y)
+  | g `isInfixOf` "Mm明" || g == "明治" = 1867 + y
+  | g `isInfixOf` "Tt大" || g == "大正" = 1911 + y
+  | g `isInfixOf` "Ss昭" || g == "昭和" = 1925 + y
+  | g `isInfixOf` "Hh平" || g == "平成" = 1988 + y
+  | otherwise                          = 1988 + y
+
+stringToGengouYear :: String -> String -> String
+stringToGengouYear g y = show $ gengouToYear (g, read y :: Integer)
 
 dateJapaneseShort :: Parser Day
-dateJapaneseShort = do
-  gengou <- oneOf "MTSHmtsh明大昭平"
-  y      <- many1 digit <* (oneOf $ separator ++ "年")
-  month  <- many1 digit <* (oneOf $ separator ++ "月")
-  day    <- many digit
-  let y'   = read y :: Integer
-      year = case [gengou] of
-        g' | g' `isInfixOf` "Mm明" -> 1867 + y'
-        g' | g' `isInfixOf` "Tt大" -> 1911 + y'
-        g' | g' `isInfixOf` "Ss昭" -> 1925 + y'
-        g' | g' `isInfixOf` "Hh平" -> 1988 + y'
-        _ -> 1988 + y'
-  return $ readDate (show year) month day
-          
+dateJapaneseShort = readDate <$> (stringToGengouYear <$> g <*> y)
+                             <*> many1 digit <* sepMonth
+                             <*> many digit
+  where g = (:[]) <$> oneOf "MTSHmtsh明大昭平"
+        y = many1 digit <* sepYear
+
 dateJapaneseLong :: Parser Day
-dateJapaneseLong = do
-  gengou <- choice [string "明治", string "大正", string "昭和", string "平成"]
-  y      <- many1 digit <* (oneOf $ separator ++ "年")
-  month  <- many1 digit <* (oneOf $ separator ++ "月")
-  day    <- many digit
-  let y'   = read y :: Integer
-      year = case gengou of
-        "明治" -> 1867 + y'
-        "大正" -> 1911 + y'
-        "昭和" -> 1925 + y'
-        "平成" -> 1988 + y'
-        _ -> 1988 + y'
-  return $ readDate (show year) month day
+dateJapaneseLong = readDate <$> (stringToGengouYear <$> g <*> y)
+                            <*> many1 digit <* sepMonth
+                            <*> many digit
+  where g = choice [string "明治", string "大正", string "昭和", string "平成"]
+        y = many1 digit <* sepYear
 
 calc :: Parser Day
-calc = do
+calc = 
   try date8
   <|> try dateNormal
   <|> try dateJapaneseShort
@@ -177,7 +172,7 @@ todayDay = do
   d   <- getCurrentTime
   let cur  = addUTCTime (9*60*60) d
   let dstr = formatTime defaultTimeLocale "%Y%m%d" cur
-  return $ fromJust $ (strdt dstr :: Maybe Day)
+  return $ fromJust (strdt dstr :: Maybe Day)
 
 -- gregorianDate :: CalendarTime -> (Integer, Int, Int)
 -- gregorianDate cal = (fromIntegral $ ctYear cal, toNumber $ ctMonth cal, ctDay cal)
