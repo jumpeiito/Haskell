@@ -25,7 +25,7 @@ otherChar = Map.fromList [('\12534', '\12465'),
                           ('\28181', '\28149')]
   
 data Answer a = Absolute a | Probably (a, Int)
-  deriving (Show, Eq)
+                deriving (Show, Eq)
 
 data Hitting = Hitting { initial   :: String,
                          pcode     :: String,
@@ -38,6 +38,8 @@ data Hitting = Hitting { initial   :: String,
 
 data District = District String [String] deriving (Show)
 
+data Formatta = FAd | FPt | FS String deriving Show
+
 instance Functor Answer where
   f `fmap` Absolute a = Absolute $ f a
   f `fmap` Probably (a, b) = Probably (f a, b)
@@ -48,23 +50,27 @@ instance Ord Hitting where
     | pointHitting h1 == pointHitting h2 = EQ
     | otherwise                          = GT
 
+pointHitting :: Hitting -> Ratio Int
+pointHitting d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * continual & d)
+  where (&) f d' = f d' % 1
+        ratio'   = if "伏見区" `isInfixOf` initial d
+                   then 2
+                   else 1
+        -- ratio'  = 1
+----------------------------------------------------------------------------------------------------
 fromDistrict :: District -> [String]
 fromDistrict (District _ x) = x
 
-kyotoDistrict, daigoDistrict :: District
+kyotoDistrict, daigoDistrict, shigaDistrict, ujiDistrict :: District
 kyotoDistrict = District "京都市"
                          ["北区", "上京区", "中京区", "下京区", "左京区", "右京区",
                           "西京区", "南区", "伏見区", "東山区", "山科区"]
-
 daigoDistrict = District "京都市伏見区"
                          ["醍醐", "石田", "日野", "小栗栖", "桃山"]
-
-shigaDistrict = District "滋賀県"
-                         ["大津市", "草津市"]
-
-ujiDistrict  = District "京都府"                         
-                        ["宇治市"]
-  
+shigaDistrict = District "滋賀県" ["大津市", "草津市", "栗東市"]
+ujiDistrict   = District "京都府" ["宇治市", "城陽市", "八幡市",
+                                  "向日市", "長岡京市", "京田辺市"]
+----------------------------------------------------------------------------------------------------
 cast :: StringLike a => StringLike b => a -> b
 cast = castString
 
@@ -72,17 +78,11 @@ toString :: StringLike a => Answer (a, a) -> String
 toString (Absolute (a, b)) = adWithPcode (a, b)
 toString (Probably ((a, b), i)) = mconcat ["[" , adWithPcode (a, b), ", ",
                                            show i, "] Probably"]
+-- [FS "[", FS $ adWithPcode (a, b), 
 
 adWithPcode :: StringLike a => (a, a) -> String
 adWithPcode (ad, p) = mconcat [cast ad, " --> ", cast p]
-
-pointHitting :: Hitting -> Ratio Int
-pointHitting d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * continual & d)
-  where (&) f d' = f d' % 1
-        ratio'   = if "伏見区" `isInfixOf` initial d
-                  then 2
-                  else 1
-        -- ratio'  = 1
+-- [FAd, FS " --> ", FPt]
 ----------------------------------------------------------------------------------------------------
 makeDict :: IO Dictionary
 makeDict = do
@@ -117,8 +117,8 @@ searchClassify ord verse = case (ord, verse) of
   ([o], [v]) -> (o == v) <==> (Absolute [o], Probably ([o, v], 2))
   ([o], _)   -> Absolute [o]
   (_, [v])   -> Absolute [v]
-  _          -> let ret = uniq $ ord ++ verse in
-                Probably (ret, length ret)
+  _          -> let ret = uniq $ ord ++ verse
+                in Probably (ret, length ret)
 
 cutNumber :: StringLike a => a -> Text
 cutNumber = toText . cut . toStr
@@ -136,7 +136,8 @@ charLookup c m = fromMaybe 'z' (Map.lookup c m)
 
 innerlook :: Char -> DictLine Text -> Bool
 {-# INLINE innerlook #-}
-innerlook ch line = ch <<?>> line || charLookup ch otherChar <<?>> line
+innerlook ch line = ch <<?>> line ||
+                    charLookup ch otherChar <<?>> line
   where (<<?>>) c l = c `telem` (l!0)
 
 searchST2 :: Text -> St.State Dictionary ()
@@ -186,14 +187,12 @@ guessHitList trgt dict = sort $ map (givePoint trgt) dict
 
 givePoint :: StringLike a => String -> DictLine a -> Hitting
 givePoint baseStr gen = (`St.execState` initHit) $ do
-  forM_ baseStr $ \ch -> do
-    hit' <- St.get
-    let newHit = if [ch] `isInfixOf` target hit'
-                 then addHit ch hit'
-                 else hit' { nohit = nohit hit' + 1 }
-    St.put newHit
   hit' <- St.get
   St.put $ hit' { continual = giveContinualPoint baseStr ad }
+  forM_ baseStr $ \ch -> do
+    h <- St.get
+    St.put ([ch] `isInfixOf` target h <==> (addHit ch h,
+                                            h { nohit = nohit h + 1 }))
   where ad      = cast (gen!0) :: String
         postal  = cast (gen!1) :: String
         initHit = Hitting ad postal ad 0 (0%1) 0 0
@@ -239,7 +238,7 @@ main = do
     let dic = casePair [(include (fromDistrict daigoDistrict) ad', dic2),
                         (include (fromDistrict kyotoDistrict) ad', dic3),
                         (include (fromDistrict shigaDistrict) ad', dic4),
-                        (include (fromDistrict ujiDistrict) ad', dic5),
+                        (include (fromDistrict ujiDistrict)   ad', dic5),
                         (True, dict)]
     putStr   $ ad' ++ ", "
     putStrLn $ Main.toString $ guessHit (cast ad) <$> searchA ad dic
@@ -270,7 +269,6 @@ testIO2' key = do
       [x]  -> do
         St.liftIO $ putStr "*"
         St.put [x]
-        return () 
       filt -> do
         St.liftIO $ putStr $ show (length filt) ++ " --> "
         St.put filt

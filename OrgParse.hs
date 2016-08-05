@@ -67,6 +67,7 @@ monthEnd year month
     month == 9  ||
     month == 11 = 30
   | month == 2 = if leapYear year then 29 else 28
+  | otherwise = -1
 
 makeMonthList :: Day -> Integer -> Int -> [Int]
 makeMonthList day year month
@@ -151,7 +152,7 @@ orgLineList = dateFold . map toLine . lines . castString
 parseToDayList :: Integer -> Int -> IO [Day]
 parseToDayList year month = do
   today    <- todayDay
-  let file    = orgFileName year month
+  contents <- orgLineList <$> U.readUTF8File (orgFileName year month)
   let daylist = makeMonthList today year month
-  contents <- orgLineList <$> U.readUTF8File file
-  return $ map (fromGregorian year month) $ notElemDay daylist contents
+  let days    = notElemDay daylist contents
+  return $ map (fromGregorian year month) days

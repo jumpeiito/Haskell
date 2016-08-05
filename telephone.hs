@@ -1,7 +1,6 @@
 module Telephone (telParse, telString, Telephone (..),
                  fixFilter, mobileFilter) where
 
-import Control.Applicative hiding (many, (<|>))
 import Text.Parsec
 import Text.Parsec.String
 
@@ -10,6 +9,7 @@ data Telephone =
   | Mobile String
   | Fax String deriving (Eq, Show)
 
+num :: [Char]
 num = ['0'..'9']
 
 manyNoNum, manyNoNumPlus :: Parser String
@@ -49,6 +49,7 @@ mobileParse = do
   exp' <- tailStr
   return $ Mobile (num1 ++ "-" ++ num2 ++ "-" ++ num3 ++ exp')
 
+fixNumberParse :: Parser String
 fixNumberParse =
   try (do { num1 <- manyNoNum *> fixParseHeader;
             rest <- count 9 (oneOf $ "-" ++ num);
@@ -58,15 +59,15 @@ fixNumberParse =
                 num2 <- count 4 digit;
                 return $ num1 ++ [sep] ++ num2})
 
-fixParse2 = do
-  num <- fixNumberParse
-  exp <- tailStr
-  return $ Fix $ num ++ exp
+addParser :: Parser String -> Parser String -> Parser String
+addParser f1 f2 = do
+  x1 <- f1
+  x2 <- f2
+  return $ x1 ++ x2
 
-fixParse3 = do
-  num <- fixNumberParse
-  exp <- tailFaxStr
-  return $ Fax $ num ++ exp
+fixParse2, fixParse3 :: Parser Telephone
+fixParse2 = Fix <$> addParser fixNumberParse tailStr
+fixParse3 = Fax <$> addParser fixNumberParse tailFaxStr 
   
 fixParse = try fixParse3 <|> fixParse2
 

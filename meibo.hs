@@ -8,7 +8,6 @@ import Data.List
 import Data.Maybe                       (isJust, fromJust, fromMaybe)
 import Text.Parsec                      hiding (Line)
 import Text.Parsec.String
-import Control.Applicative              hiding (many, (<|>))
 import Control.Monad.Writer
 import System.Process
 import System.Environment
@@ -52,7 +51,7 @@ data Key =
   | And [Key]
   | Not Key deriving (Show, Eq, Read)
 
-test :: Day -> Parser (Line)
+test :: Day -> Parser Line
 test day = do
   bnk   <- choice [string "石田", string "日野", string "小栗栖",
                    string "一言寺", string "三宝院", string "点在"] <* sep'
@@ -146,6 +145,7 @@ syncF a b numList f = snd $ runWriter (syncFr a b 0)
           syncFr xs ys (n+1)
 
 lineMerge :: String -> [String] -> [String]
+lineMerge _ [] = []
 lineMerge str (l:ls) =
   intercalate "," syn : ls
   where str'     = toL str
@@ -154,18 +154,17 @@ lineMerge str (l:ls) =
         syn      = syncF header str' [5,6] plus
         
 firstTrans :: [String] -> [String]
-firstTrans lines = reverse answer
-  where (_, (_, answer)) = MS.runState (fTrans2 lines) ("0", [])
+firstTrans lyne = reverse answer
+  where (_, answer) = (`MS.execState` ("0", [])) $ fTrans2 lyne
 
-fTrans2 :: [String] -> MS.State (String, [String]) ()
-fTrans2 ls = do
+fTrans2 :: [String] -> MS.State (String, [String]) [()]
+fTrans2 ls = 
   MS.forM ls $ \n -> do
     (num, ret) <- MS.get
     case (n `blankP` 4, n `blankP` 1) of
       (True, _) -> MS.put (num,   n `lineMerge` ret)
       (_, True) -> MS.put (num,   inner num n : ret)
       (_, _)    -> MS.put (n<@>1, n:ret)
-  return ()
   where inner n l = case toL l of
           h:_:r -> intercalate "," $ h:n:r
           _ -> ""
@@ -189,11 +188,12 @@ mobileBlankP = null . mobileTel
 addressMap :: [Line] -> Map.Map String [Line]
 addressMap = makeMap ad id 
 
-testFilter lines = filter hofoo lines
+testFilter :: [Line] -> [Line]
+testFilter lines' = filter hofoo lines'
   where hofoo lyne = case (key lyne, mobileBlankP lyne) of
           (Just _, True) -> True
           _              -> False
-        mapp  = addressMap lines
+        mapp  = addressMap lines'
         key l = Map.lookup (ad l) mapp
 
 lineToTel :: [Telephone] -> String
@@ -286,7 +286,7 @@ fromBirthday table d = coref table
           | otherwise = coref xs
 
 checK :: [(String, Day, Day)] -> Line -> Bool
-checK table l = (kind l) == (kind2 l)
+checK table l = kind l == kind2 l
   where kind2 line = fromJust $ fromBirthday table <$> birth line
 
 checkFilter :: [(String, Day, Day)] -> [Line] -> [Line]
@@ -334,14 +334,13 @@ translate (Old s)     = translateFuncOld s
 seek :: Key -> [Line] -> [Line]
 seek term = filter (translate term) 
 ----------------------------------------------------------------------------------------------------
+keyParseLine :: Parser [Key]
 keyParseLine = sepBy keyParseTerm $ char ','
 
-keyParseBuilder (s, e) f op = do
-  char s
-  exp' <- f
-  char e
-  return $ op exp'
+keyParseBuilder :: (Char, Char) -> Parser a -> (a -> Key) -> Parser Key
+keyParseBuilder (s, e) f op = op <$> (char s *> f <* char e)
 
+aChar :: Parser Char
 aChar = noneOf "=,)]>"
 
 keyParseOr, keyParseAnd, keyParseNot, keyParseTermWord, keyParseTerm :: Parser Key
@@ -365,9 +364,8 @@ yearoldParse = do
   let e = strdt end :: Maybe Day
   return $ Old (s, e)
 
-returnParse parser code' = case parse parser "" code' of
-  Right c -> c
-  Left _  -> And []
+returnParse :: Parser Key -> String -> Key
+returnParse parser code' = either (const $ And []) id $ parse parser "" code'
 
 bkhanCode :: String -> Key
 bkhanCode = returnParse bkhanCodeParse
@@ -415,7 +413,7 @@ main = do
   (y', m', d')    <- today
   (_, sout, _, _) <- runRuby
   let currentDay = fromGregorian y' m' d'
-  mainList        <- trans currentDay <$> lines <$> I.hGetContents sout
+  mainList        <- trans currentDay . lines <$> I.hGetContents sout
   args            <- getArgs
 ----------------------------------------------------------------------------------------------------
   case args of

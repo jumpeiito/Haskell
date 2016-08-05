@@ -176,7 +176,6 @@ fBLparse = do
   try (string "" <* eof)
     <|> try (many1 $ oneOf " \r\n\t")
     <|> string "続きを読む"
-  return mempty
 ----------------------------------------------------------------------------------------------------
 translateTags :: Like.StringLike a => a -> [TagTree a]
 translateTags str = tagTree $ parseTags str
