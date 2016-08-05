@@ -5,6 +5,7 @@ module Strdt (strdt, dtmap, Date, NendoDate,
               howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep
              ) where 
 
+import Util                             ((++++))
 import Data.Time
 import Data.List
 import Data.Maybe
@@ -68,17 +69,14 @@ readDate y m d =
   in fromGregorian year month day
 
 date8 :: Parser Day
-date8 = do
-  year  <- count 4 digit
-  month <- count 2 digit
-  day   <- count 2 digit
-  return $ readDate year month day
+date8 = readDate <$> count 4 digit
+                 <*> count 2 digit
+                 <*> count 2 digit
   
 date6 :: Parser Day
-date6 = do
-  year  <- count 4 digit
-  month <- count 2 digit
-  return $ readDate year month "1"
+date6 = readDate <$> count 4 digit
+                 <*> count 2 digit
+                 <*> (return "1")
 
 dateNormal :: Parser Day
 dateNormal = do

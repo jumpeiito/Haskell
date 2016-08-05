@@ -179,15 +179,8 @@ appendUTF8File fp contents = do
   else dirname ++ "/" ++ filename
 
 (&&&), (|||) :: Monad m => m Bool -> m Bool -> m Bool
-(&&&) x y = do
-  f1 <- x
-  f2 <- y
-  return $ f1 && f2
-
-(|||) x y = do
-  f1 <- x
-  f2 <- y
-  return $ f1 || f2
+(&&&) x y = (&&) <$> x <*> y
+(|||) x y = (||) <$> x <*> y
 
 _include :: [String] -> Parser String
 _include xs = do
@@ -197,3 +190,6 @@ _include xs = do
 include :: [String] -> String -> Bool
 include xs target = either (const False) (const True)
                            $ parse (_include xs) "" target
+
+(++++) :: Parser String -> Parser String -> Parser String
+(++++) p1 p2 = (++) <$> p1 <*> p2
