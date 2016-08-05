@@ -49,18 +49,6 @@ mobileParse = do
              count 4 digit                      ++++
              tailStr
 
-fixNumberParse :: Parser String
-fixNumberParse =
-  try ((manyNoNum *> fixParseHeader) ++++
-       count 9 (oneOf $ "-" ++ num))
-  <|> try ((manyNoNum *> count 3 digit) ++++
-           string "-" ++++
-           (count 4 digit))
-
-fixParse2, fixParse3 :: Parser Telephone
-fixParse2 = Fix <$> fixNumberParse ++++ tailStr
-fixParse3 = Fix <$> fixNumberParse ++++ tailFaxStr
-  
 fixParse = try fixParse3 <|> fixParse2
 
 telFuncCore = do
@@ -68,12 +56,23 @@ telFuncCore = do
   <|> try fixParse
   <|> (anyChar >> telFuncCore)
 
+fixNumberParse :: Parser String
+fixNumberParse =
+      try $ manyNoNum *> fixParseHeader ++++
+            count 9 (oneOf $ "-" ++ num)
+  <|> try (manyNoNum *> count 3 digit   ++++
+           string "-"                   ++++
+           count 4 digit)
+
+fixParse2, fixParse3 :: Parser Telephone
+fixParse2 = Fix <$> fixNumberParse ++++ tailStr
+fixParse3 = Fax <$> fixNumberParse ++++ tailFaxStr
+  
 telFunc :: Parser [Telephone]
 telFunc = many $ try telFuncCore
 
 telParse :: String -> [Telephone]
-telParse s = either (const mempty) id
-                    $ parse telFunc "" s
+telParse s = either (const []) id $ parse telFunc "" s
 
 telString :: Telephone -> String
 telString (Fix s) = s
