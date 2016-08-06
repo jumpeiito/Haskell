@@ -5,11 +5,13 @@ module Strdt (strdt, dtmap, Date, NendoDate,
               howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep
              ) where 
 
+import KanParse
 import Data.Time
 import Data.List
 import Data.Maybe
 import Text.ParserCombinators.Parsec
 import Text.Printf
+import Control.Arrow
 import qualified Text.StringLike        as Like
 
 type Date      = (Int, Int, Int)
@@ -38,21 +40,21 @@ instance Like.StringLike a => StringDate a (Maybe String) where
 
 instance Like.StringLike a => StringDate a (Maybe Int) where
   strdt str =
-    _strdt str `dtmap` (\n -> fromInteger $ toYear n :: Int)
+    _strdt str `dtmap` (fromInteger . toYear)
 
 instance Like.StringLike a => StringDate a (Maybe (Int, Int)) where
   strdt str =
-    _strdt str `dtmap` (\d -> (toMonth d, toDay d))
+    _strdt str `dtmap` (toMonth &&& toDay)
 
 instance Like.StringLike a => StringDate a (Maybe Date) where
   strdt str =
-    _strdt str `dtmap` (\d -> (toYearInt d, toMonth d, toDay d))
+    _strdt str `dtmap` ((,,) <$> toYearInt <*> toMonth <*> toDay)
 
 instance Like.StringLike a => StringDate a (Maybe NendoDate) where
   strdt str =
     _strdt str `dtmap` returner
-    where returner d = (nendoCalc d, toYearInt d, toMonth d, toDay d)
-          nendoCalc d = toYearInt d - sep d
+    where returner  = (,,,) <$> nendoCalc <*> toYearInt <*> toMonth <*> toDay
+          nendoCalc = (-) <$> toYearInt <*> sep
           sep d | toMonth d <= 3 = 1
                 | otherwise = 0
 
@@ -61,9 +63,7 @@ separator = "./-"
 
 readDate :: String -> String -> String -> Day
 readDate y m d =
-  let (year, month, day) = (read y :: Integer,
-                            read m :: Int,
-                            read d :: Int)
+  let (year, month, day) = (read y, read m, read d)
   in fromGregorian year month day
 
 date8 :: Parser Day
@@ -125,7 +125,7 @@ toYear :: Day -> Integer
 toYear day = let (d, _, _) = toGregorian day in d
 
 toYearInt :: Day -> Int
-toYearInt day = (fromInteger $ toYear day) :: Int
+toYearInt day = fromInteger $ toYear day
 
 toMonth :: Day -> Int
 toMonth day = let (_, m, _) = toGregorian day in m
@@ -163,33 +163,9 @@ nendo d
   where month = toMonth d
         year  = fromInteger $ toYear d
 
--- todayDay :: IO Day
--- todayDay = do
---   (y, m, d) <- today
---   return (fromGregorian y m d)
 todayDay :: IO Day
 todayDay = do
   d   <- getCurrentTime
   let cur  = addUTCTime (9*60*60) d
   let dstr = formatTime defaultTimeLocale "%Y%m%d" cur
   return $ fromJust (strdt dstr :: Maybe Day)
-
--- gregorianDate :: CalendarTime -> (Integer, Int, Int)
--- gregorianDate cal = (fromIntegral $ ctYear cal, toNumber $ ctMonth cal, ctDay cal)
-
--- calendarNow :: IO CalendarTime
--- calendarNow = toCalendarTime =<< getClockTime
-
--- toNumber :: Month -> Int
--- toNumber January   = 1
--- toNumber February  = 2
--- toNumber March     = 3
--- toNumber April     = 4
--- toNumber May       = 5
--- toNumber June      = 6
--- toNumber July      = 7
--- toNumber August    = 8
--- toNumber September = 9
--- toNumber October   = 10
--- toNumber November  = 11
--- toNumber December  = 12
