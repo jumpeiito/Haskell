@@ -13,7 +13,6 @@ import qualified Data.Map               as Map
 import qualified System.IO              as I
 import qualified Control.Monad.State    as St
 import qualified Data.Text              as Tx
-import qualified Data.Text.IO           as Txio
 
 type DictLine a   = Array Int a
 type Dictionary   = [DictLine Text]
@@ -79,7 +78,6 @@ toString (Absolute (a, b)) = adWithPcode (a, b)
 toString (Probably ((a, b), i)) = mconcat ["[" , adWithPcode (a, b), ", ",
                                            show i, "] Probably"]
 -- [FS "[", FS $ adWithPcode (a, b), 
-
 adWithPcode :: StringLike a => (a, a) -> String
 adWithPcode (ad, p) = mconcat [cast ad, " --> ", cast p]
 -- [FAd, FS " --> ", FPt]
@@ -243,38 +241,3 @@ main = do
 ----------------------------------------------------------------------------------------------------
 ---------- for debug -------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
-testIO :: String -> IO ()
-testIO str = do
-  dict <- makeDict
-  I.hSetEncoding I.stdout I.utf8
-  let ans = searchA str dict
-  let toStr ary = mconcat [ary!0, cast " --> ", ary!1]
-  case ans of
-    Absolute [ary]  -> Txio.putStrLn $ toStr ary
-    Probably (a, _) -> mapM_ (Txio.putStrLn . toStr) a
-    Absolute []     -> Txio.putStrLn mempty
-    Absolute (_ : (_ : _)) -> Txio.putStrLn mempty
-
-testIO2' :: Text -> St.StateT Dictionary IO ()
-testIO2' key = do
-  let len = Tx.length key
-  forM_ [0..(len - 1)] $ \n -> do
-    dic <- St.get
-    let ch   = Tx.index key n
-    case filter (innerlook ch) dic of
-      []   -> St.put dic
-      [x]  -> do
-        St.liftIO $ putStr "*"
-        St.put [x]
-      filt -> do
-        St.liftIO $ putStr $ show (length filt) ++ " --> "
-        St.put filt
-
-testIO2 :: String -> IO ()
-testIO2 s = do
-  io  <- makeDict
-  ary <- (`St.execStateT` io) $ testIO2' (cutNumber $ makeKey s)
-  I.hSetEncoding I.stdout I.utf8
-  I.putChar '\n'
-  mapM_ (Txio.putStrLn . (!0)) ary
-

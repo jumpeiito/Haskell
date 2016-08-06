@@ -10,7 +10,7 @@ data Telephone =
   | Mobile String
   | Fax String deriving (Eq, Show)
 
-num :: [Char]
+num :: String
 num = ['0'..'9']
 
 manyNoNum, manyNoNumPlus :: Parser String
@@ -21,7 +21,7 @@ manyNoNum     = many $ noneOf num
 fixParseHeader :: Parser String
 fixParseHeader =
   try (string "06-")
-  <|> (string "07") ++++ ((:[]) <$> oneOf ['1'..'9'])
+  <|> string "07" ++++ ((:[]) <$> oneOf ['1'..'9'])
 
 parenExp :: Parser String
 parenExp = ("(" ++) . (++ ")") <$> core
@@ -41,7 +41,7 @@ tailStr    = headStr <$> (many parenExp <* manyNoNumPlus)
 tailFaxStr = faxExp <* manyNoNumPlus
 
 mobileParse, fixParse, telFuncCore :: Parser Telephone
-mobileParse = do
+mobileParse = 
   Mobile <$> (manyNoNum *> count 3 digit)       ++++
              string "-"                         ++++
              count 4 digit                      ++++
@@ -51,18 +51,16 @@ mobileParse = do
 
 fixParse = try fixParse3 <|> fixParse2
 
-telFuncCore = do
-  try mobileParse
-  <|> try fixParse
-  <|> (anyChar >> telFuncCore)
+telFuncCore = try mobileParse
+          <|> try fixParse
+          <|> (anyChar >> telFuncCore)
 
 fixNumberParse :: Parser String
-fixNumberParse =
-      try $ manyNoNum *> fixParseHeader ++++
-            count 9 (oneOf $ "-" ++ num)
-  <|> try (manyNoNum *> count 3 digit   ++++
-           string "-"                   ++++
-           count 4 digit)
+fixNumberParse = try $ manyNoNum *> fixParseHeader ++++
+                       count 9 (oneOf $ "-" ++ num)
+             <|> try (manyNoNum *> count 3 digit   ++++
+                      string "-"                   ++++
+                      count 4 digit)
 
 fixParse2, fixParse3 :: Parser Telephone
 fixParse2 = Fix <$> fixNumberParse ++++ tailStr

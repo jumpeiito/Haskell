@@ -76,13 +76,15 @@ date6 = readDate <$> count 4 digit
                  <*> count 2 digit
                  <*> return "1"
 
-sepYear, sepMonth :: Parser Char
-sepYear  = oneOf $ separator ++ "年"
-sepMonth = oneOf $ separator ++ "月"
+
+sepYear4, sepYear, sepMonth :: Parser String
+sepYear4 = count 4 digit <* oneOf (separator ++ "年")
+sepYear  = many1 digit   <* oneOf (separator ++ "年")
+sepMonth = many1 digit   <* oneOf (separator ++ "月")
 
 dateNormal :: Parser Day
-dateNormal = readDate <$> count 4 digit <* sepYear
-                      <*> many digit    <* sepMonth
+dateNormal = readDate <$> sepYear4
+                      <*> sepMonth
                       <*> try (count 2 digit <|> count 1 digit)
 
 gengouToYear :: (String, Integer) -> Integer
@@ -97,18 +99,16 @@ stringToGengouYear :: String -> String -> String
 stringToGengouYear g y = show $ gengouToYear (g, read y :: Integer)
 
 dateJapaneseShort :: Parser Day
-dateJapaneseShort = readDate <$> (stringToGengouYear <$> g <*> y)
-                             <*> many1 digit <* sepMonth
+dateJapaneseShort = readDate <$> (stringToGengouYear <$> g <*> sepYear)
+                             <*> sepMonth
                              <*> many digit
   where g = (:[]) <$> oneOf "MTSHmtsh明大昭平"
-        y = many1 digit <* sepYear
 
 dateJapaneseLong :: Parser Day
-dateJapaneseLong = readDate <$> (stringToGengouYear <$> g <*> y)
-                            <*> many1 digit <* sepMonth
+dateJapaneseLong = readDate <$> (stringToGengouYear <$> g <*> sepYear)
+                            <*> sepMonth
                             <*> many digit
   where g = choice [string "明治", string "大正", string "昭和", string "平成"]
-        y = many1 digit <* sepYear
 
 calc :: Parser Day
 calc = 

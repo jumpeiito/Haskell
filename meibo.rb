@@ -27,12 +27,12 @@ begin
   ex = WIN32OLE.new('Excel.Application')
   ex.Visible = false;
   ex.DisplayAlerts = false;
-  # if File.exists?("s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm")
-  #   bk = ex.Workbooks.Open("s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm")
-  # else
-  #   bk = ex.Workbooks.Open("f:/組合員名簿/組合員名簿.xlsm")
-  # end
-  bk = ex.Workbooks.Open("f:/組合員名簿.xlsm")
+  if File.exists?("s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm")
+    bk = ex.Workbooks.Open("s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm")
+  else
+    bk = ex.Workbooks.Open("f:/組合員名簿/組合員名簿.xlsm")
+  end
+  # bk = ex.Workbooks.Open("f:/組合員名簿.xlsm")
   ary = Array.new
   1.upto(6) do |i|
     sh = bk.Worksheets.Item(i)
