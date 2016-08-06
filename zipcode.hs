@@ -1,5 +1,6 @@
 import Util                             (readUTF8line, split, uniq, include)
 import ZipDist
+import ZipFormatta                      (fmtFold)
 import Data.List                        (isInfixOf, sort, sortBy)
 import Data.Ratio                       (Ratio, (%))
 import Data.Array                       (Array, listArray, (!))
@@ -40,10 +41,6 @@ data Hitting = Hitting { initial   :: String,
                          continual :: Int
                        } deriving (Show, Eq)
 
-
-
-data Formatta = FAd | FPt | FS String deriving Show
-
 instance Functor Answer where
   f `fmap` Absolute a = Absolute $ f a
   f `fmap` Probably (a, b) = Probably (f a, b)
@@ -66,20 +63,15 @@ cast :: StringLike a => StringLike b => a -> b
 cast = castString
 
 toString :: StringLike a => Answer (a, a) -> String
-toString (Absolute (a, b)) = adWithPcode (a, b)
-toString (Probably ((a, b), i)) = mconcat ["[" , adWithPcode (a, b), ", ",
-                                           show i, "] Probably"]
--- [FS "[", FS $ adWithPcode (a, b), 
-adWithPcode :: StringLike a => (a, a) -> String
-adWithPcode (ad, p) = mconcat [cast ad, " --> ", cast p]
--- [FAd, FS " --> ", FPt]
+toString (Absolute (a, b)) =      fmtFold a b "{ad} --> {pt}"
+toString (Probably ((a, b), i)) = (fmtFold a b "[{ad} --> {pt}], Probably ") ++ show i
 ----------------------------------------------------------------------------------------------------
 makeDict :: IO Dictionary
 makeDict = map toArray <$> readUTF8line ".zipcode.out"
   where toArray = listArray (0,1) . split ','
 
 makeDistrictDict :: District -> IO Dictionary
-makeDistrictDict district = do
+makeDistrictDict district = 
   filter (include dis . Tx.unpack . (!0)) <$> makeDict
   where dis = let District add lis = district
               in map (add++) lis
@@ -145,7 +137,7 @@ telem c tx = isJust (Tx.findIndex (==c) tx)
 ----------------------------------------------------------------------------------------------------
 kyotoCityP :: Parser (String, String)
 kyotoCityP = 
-  (,) <$> (choice $ map string $ fromDistrict kyotoDistrict)
+  (,) <$> choice (map string $ fromDistrict kyotoDistrict)
       <*> (streetP *> many anyChar)
 
 streetP :: Parser String
@@ -220,12 +212,12 @@ main = do
   I.hSetEncoding I.stdout I.utf8
   forM_ trgt $ \ad -> do
     let ad' = Tx.unpack ad
-    let dic = casePair [(include (fromDistrict fushimiDistrict)   ad', dic2),
-                        (include (fromDistrict kyotoDistrict)     ad', dic3),
-                        (include (fromDistrict shigaDistrict)     ad', dic4),
-                        (include (fromDistrict ujiDistrict)       ad', dic5),
-                        (include (fromDistrict yamashinaDistrict) ad', dic6),
-                        (True, dict)]
+    let dic = casePair [(fromDistrict fushimiDistrict   `include` ad', dic2),
+                        (fromDistrict kyotoDistrict     `include` ad', dic3),
+                        (fromDistrict shigaDistrict     `include` ad', dic4),
+                        (fromDistrict ujiDistrict       `include` ad', dic5),
+                        (fromDistrict yamashinaDistrict `include` ad', dic6),
+                        (True,                                         dict)]
     putStr   $ ad' ++ ", "
     putStrLn $ Main.toString $ guessHit (cast ad) <$> searchA ad dic
 
