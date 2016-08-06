@@ -1,4 +1,5 @@
 import Util                             (readUTF8line, split, uniq, include)
+import ZipDist
 import Data.List                        (isInfixOf, sort, sortBy)
 import Data.Ratio                       (Ratio, (%))
 import Data.Array                       (Array, listArray, (!))
@@ -13,6 +14,10 @@ import qualified Data.Map               as Map
 import qualified System.IO              as I
 import qualified Control.Monad.State    as St
 import qualified Data.Text              as Tx
+
+{-# INLINE charLookup #-}
+{-# INLINE innerlook #-}
+{-# INLINE telem #-}
 
 type DictLine a   = Array Int a
 type Dictionary   = [DictLine Text]
@@ -35,7 +40,7 @@ data Hitting = Hitting { initial   :: String,
                          continual :: Int
                        } deriving (Show, Eq)
 
-data District = District String [String] deriving (Show)
+
 
 data Formatta = FAd | FPt | FS String deriving Show
 
@@ -56,19 +61,6 @@ pointHitting d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * co
                    then 2
                    else 1
         -- ratio'  = 1
-----------------------------------------------------------------------------------------------------
-fromDistrict :: District -> [String]
-fromDistrict (District _ x) = x
-
-kyotoDistrict, daigoDistrict, shigaDistrict, ujiDistrict :: District
-kyotoDistrict = District "京都市"
-                         ["北区", "上京区", "中京区", "下京区", "左京区", "右京区",
-                          "西京区", "南区", "伏見区", "東山区", "山科区"]
-daigoDistrict = District "京都市伏見区"
-                         ["醍醐", "石田", "日野", "小栗栖", "桃山"]
-shigaDistrict = District "滋賀県" ["大津市", "草津市", "栗東市"]
-ujiDistrict   = District "京都府" ["宇治市", "城陽市", "八幡市",
-                                  "向日市", "長岡京市", "京田辺市"]
 ----------------------------------------------------------------------------------------------------
 cast :: StringLike a => StringLike b => a -> b
 cast = castString
@@ -127,11 +119,9 @@ searchCore key dict = cut . (`St.execState` dict) $ searchST2 key
   where cut = overLengthAvoid 100
 
 charLookup :: Char -> Map.Map Char Char -> Char
-{-# INLINE charLookup #-}
 charLookup c m = fromMaybe 'z' (Map.lookup c m)
 
 innerlook :: Char -> DictLine Text -> Bool
-{-# INLINE innerlook #-}
 innerlook ch line = ch <<?>> line ||
                     charLookup ch otherChar <<?>> line
   where (<<?>>) c l = c `telem` (l!0)
@@ -151,7 +141,6 @@ overLengthAvoid :: Int -> [a] -> [a]
 overLengthAvoid over x = (length x > over) <==> ([], x)
 
 telem :: Char -> Text -> Bool
-{-# INLINE telem #-}
 telem c tx = isJust (Tx.findIndex (==c) tx)
 ----------------------------------------------------------------------------------------------------
 kyotoCityP :: Parser (String, String)
@@ -221,19 +210,21 @@ casePair (p:ps) = if bool then second else casePair ps
 main :: IO ()
 main = do
   dict <- makeDict
-  dic2 <- makeDistrictDict daigoDistrict
+  dic2 <- makeDistrictDict fushimiDistrict
   dic3 <- makeDistrictDict kyotoDistrict
   dic4 <- makeDistrictDict shigaDistrict
   dic5 <- makeDistrictDict ujiDistrict
+  dic6 <- makeDistrictDict yamashinaDistrict
   --------------------------------------------------
   trgt <- readUTF8line ".test.address" :: IO [Text]
   I.hSetEncoding I.stdout I.utf8
   forM_ trgt $ \ad -> do
     let ad' = Tx.unpack ad
-    let dic = casePair [(include (fromDistrict daigoDistrict) ad', dic2),
-                        (include (fromDistrict kyotoDistrict) ad', dic3),
-                        (include (fromDistrict shigaDistrict) ad', dic4),
-                        (include (fromDistrict ujiDistrict)   ad', dic5),
+    let dic = casePair [(include (fromDistrict fushimiDistrict)   ad', dic2),
+                        (include (fromDistrict kyotoDistrict)     ad', dic3),
+                        (include (fromDistrict shigaDistrict)     ad', dic4),
+                        (include (fromDistrict ujiDistrict)       ad', dic5),
+                        (include (fromDistrict yamashinaDistrict) ad', dic6),
                         (True, dict)]
     putStr   $ ad' ++ ", "
     putStrLn $ Main.toString $ guessHit (cast ad) <$> searchA ad dic

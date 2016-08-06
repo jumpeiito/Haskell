@@ -13,9 +13,9 @@ snews.exe: snews.hs *.hs */*.hs
 tags: *.hs
 	./hasktags.exe -e *.hs */*.hs
 
-zipcode.exe: zipcode.hs util.hs
+zipcode.exe: zipcode.hs util.hs zipDist.hs
 	${ghc} -O3 zipcode.hs
 
-zipcode-profile: zipcode.hs util.hs
-	echo "実行するときは./zipcode.exe +RTS -p"
+zipcode-profile: zipcode.hs util.hs zipDist.hs
+	echo "実行するときは./zipcode.exe +RTS -p | nkfwin32.exe -Ws"
 	${ghc} -prof -fprof-auto -rtsopts zipcode.hs
