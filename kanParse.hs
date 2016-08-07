@@ -5,7 +5,6 @@ import Data.Maybe               (fromMaybe)
 import Data.Monoid
 import Text.Parsec
 import Text.Parsec.String
-import Control.Monad.State
 
 data KP = Keta Integer
   | Num     Integer
@@ -23,18 +22,25 @@ instance Monoid KP where
   Ksum (a, b, c) `mappend` Ksum (x, y, z) = Ksum (a+x, b+y, c+z)
   _              `mappend` _              = mempty
 
-kanjiNumMap, kanjiKetaMap :: M.Map Char Integer
-kanjiNumMap = M.fromList [('一', 1), ('二', 2), ('三', 3), ('四', 4),
-                          ('五', 5), ('六', 6), ('七', 7), ('八', 8),
-                          ('九', 9), ('〇', 0)]
+kanjiNumMap, kanjiKetaMap, kanjiBigKetaMap :: M.Map Char Integer
+kanjiNumMap = M.fromList [('一', 1), ('二', 2), ('三', 3), ('四', 4), ('五', 5), ('六', 6), ('七', 7), ('八', 8), ('九', 9), ('〇', 0),
+                          ('壱', 1), ('弍', 2), ('参', 3), ('肆', 4), ('伍', 5), ('陸', 6), ('漆', 7), ('捌', 8), ('玖', 9)]
 
 kanjiKetaMap = M.fromList [('十', 10),
+                           ('拾', 10),
                            ('百', 100),
-                           ('千', 1000)]
+                           ('佰', 100),
+                           ('千', 1000),
+                           ('仟', 1000),
+                           ('廿', 20),
+                           ('卅', 30)]
 
 kanjiBigKetaMap = M.fromList [('万', 10000),
+                              ('萬', 10000),
                               ('億', 100000000),
-                              ('兆', 1000000000000)]
+                              ('兆', 1000000000000),
+                              ('京', 10000000000000000),
+                              ('垓', 100000000000000000000)]
 
 kanjiParseBuilder :: (M.Map Char Integer) -> (Integer -> KP) -> Parser KP
 kanjiParseBuilder mp f = do

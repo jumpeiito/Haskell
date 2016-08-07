@@ -93,7 +93,7 @@ class ReadFile a where
   readSJIS     :: FilePath -> IO a
   readSJISline :: FilePath -> IO [a]
 
-baseReadFile :: Like.StringLike a => String -> (I.Handle -> IO a) -> FilePath -> IO a
+baseReadFile :: String -> (I.Handle -> IO a) -> FilePath -> IO a
 baseReadFile coding f fp =
   bracket (I.openFile fp I.ReadMode)
           (I.hClose)
@@ -102,10 +102,10 @@ baseReadFile coding f fp =
               I.hSetEncoding h encoding
               f h >>= evaluate)
 
-baseReadUTF8 :: Like.StringLike a => (I.Handle -> IO a) -> FilePath -> IO a
+baseReadUTF8 :: (I.Handle -> IO a) -> FilePath -> IO a
 baseReadUTF8 = baseReadFile "cp65001"
 
-baseReadSJIS :: Like.StringLike a => (I.Handle -> IO a) -> FilePath -> IO a
+baseReadSJIS :: (I.Handle -> IO a) -> FilePath -> IO a
 baseReadSJIS = baseReadFile "cp932"
 
 instance ReadFile String where

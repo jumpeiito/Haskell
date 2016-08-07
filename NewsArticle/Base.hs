@@ -180,7 +180,7 @@ fBLparse = do
 translateTags :: Like.StringLike a => a -> [TagTree a]
 translateTags str = tagTree $ parseTags str
 ----------------------------------------------------------------------------------------------------
-getF :: (Like.StringLike a, Monoid a) => (Page a -> [TagTree a] -> r) -> Page a -> r
+getF :: (Page a -> [TagTree a] -> r) -> Page a -> r
 getF f = f <@> (return . tagtree)
 
 (<@>) :: Monad m => m (t -> r) -> m t -> m r
@@ -189,8 +189,8 @@ getF f = f <@> (return . tagtree)
   tr' <- tr
   return $ f' tr'
 
-getTitle :: (Like.StringLike r, Monoid r) => Page r -> Text
-getText  :: (Like.StringLike r, Monoid r) => Page r -> [Text]
+getTitle :: Page r -> Text
+getText  :: Page r -> [Text]
 getTitle = getF titleFunc
 getText  = getF textFunc
 

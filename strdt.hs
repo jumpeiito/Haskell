@@ -63,8 +63,7 @@ separator = "./-"
 
 readDate :: String -> String -> String -> Day
 readDate y m d =
-  let (year, month, day) = (read y, read m, read d)
-  in fromGregorian year month day
+  fromGregorian (read y) (read m) (read d)
 
 date8 :: Parser Day
 date8 = readDate <$> count 4 digit
@@ -95,7 +94,7 @@ gengouToYear (g, y)
   | otherwise                          = 1988 + y
 
 stringToGengouYear :: String -> String -> String
-stringToGengouYear g y = show $ gengouToYear (g, read y :: Integer)
+stringToGengouYear g y = show $ gengouToYear (g, read y)
 
 gengouParse :: Parser String
 gengouParse =
@@ -154,9 +153,8 @@ nendoEnd :: Integer -> Day
 nendoEnd y = fromGregorian (y+1) 3 31
 
 today :: IO (Integer, Int, Int)
-today = do
-  d <- todayDay
-  return (toYear d, toMonth d, toDay d)
+today = f <$> todayDay
+  where f = (,,) <$> toYear <*> toMonth <*> toDay
 
 nendo :: Day -> Int
 nendo d

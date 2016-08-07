@@ -17,10 +17,6 @@ makeListedPage d = LP base' d url' (newsList base') (const [])
   where base' = "http://www.jcp.or.jp/akahata/"
         url'  = makeTopPageURL d base'
 
--- newsList :: Like.StringLike a => URL -> [TagTree a] -> [URL]
--- newsList base = map (fullURL base) . extractHref . extractTree
---   where extractTree = (findTree [(Always, Attr "newslist")] `concatMap`)
---         extractHref = (findAttribute (Like.castString "href")      `concatMap`)
 newsList :: Like.StringLike a => URL -> [TagTree a] -> [URL]
 newsList base = map (fullURL base) . extractHref . extractTree
   where extractTree = (findTree [(Name "a", Attr "important"),

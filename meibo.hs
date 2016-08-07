@@ -271,7 +271,7 @@ betweenP (start, end) key
   | start < key && key < end = True
   | otherwise = False
 
-betweenP2 :: Ord a => Eq a => (a, a) -> a -> Bool
+betweenP2 :: Ord a => (a, a) -> a -> Bool
 betweenP2 (start, end) key
   | start <= key && key <= end = True
   | otherwise = False
