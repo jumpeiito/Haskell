@@ -1,4 +1,4 @@
-module KanParse (kanParse) where
+module KanParse (kanParse, kanParseStr) where
 
 import qualified Data.Map       as M
 import Data.Maybe               (fromMaybe)
@@ -56,3 +56,6 @@ kpSum xk = x1 + x2 + x3
 
 kanParse :: Parser Integer
 kanParse = kpSum <$> kParse
+
+kanParseStr :: Parser String
+kanParseStr = show <$> kanParse

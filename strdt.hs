@@ -76,11 +76,10 @@ date6 = readDate <$> count 4 digit
                  <*> count 2 digit
                  <*> return "1"
 
-
 sepYear4, sepYear, sepMonth :: Parser String
-sepYear4 = count 4 digit <* oneOf (separator ++ "年")
-sepYear  = many1 digit   <* oneOf (separator ++ "年")
-sepMonth = many1 digit   <* oneOf (separator ++ "月")
+sepYear4 = (count 4 digit <|> kanParseStr) <* oneOf (separator ++ "年")
+sepYear  = (many1 digit   <|> kanParseStr) <* oneOf (separator ++ "年")
+sepMonth = (many1 digit   <|> kanParseStr) <* oneOf (separator ++ "月")
 
 dateNormal :: Parser Day
 dateNormal = readDate <$> sepYear4
@@ -98,17 +97,20 @@ gengouToYear (g, y)
 stringToGengouYear :: String -> String -> String
 stringToGengouYear g y = show $ gengouToYear (g, read y :: Integer)
 
+gengouParse :: Parser String
+gengouParse =
+  try (choice [string "明治", string "大正", string "昭和", string "平成"])
+  <|> (:[]) <$> oneOf "MTSHmtsh明大昭平"
+
 dateJapaneseShort :: Parser Day
-dateJapaneseShort = readDate <$> (stringToGengouYear <$> g <*> sepYear)
+dateJapaneseShort = readDate <$> (stringToGengouYear <$> gengouParse <*> sepYear)
                              <*> sepMonth
-                             <*> many digit
-  where g = (:[]) <$> oneOf "MTSHmtsh明大昭平"
+                             <*> (try (many1 digit) <|> kanParseStr)
 
 dateJapaneseLong :: Parser Day
-dateJapaneseLong = readDate <$> (stringToGengouYear <$> g <*> sepYear)
+dateJapaneseLong = readDate <$> (stringToGengouYear <$> gengouParse <*> sepYear)
                             <*> sepMonth
-                            <*> many digit
-  where g = choice [string "明治", string "大正", string "昭和", string "平成"]
+                            <*> (try (many1 digit) <|> kanParseStr)
 
 calc :: Parser Day
 calc = 
