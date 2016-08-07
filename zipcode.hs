@@ -8,12 +8,12 @@ import Data.Maybe                       (isJust, fromMaybe)
 import Data.Monoid                      ((<>))
 import Data.Text.Internal               (Text (..))
 import Text.StringLike                  (castString, StringLike (..))
-import Text.Parsec
+import Text.Parsec                      hiding (State)
 import Text.Parsec.String
 import Control.Monad
+import Control.Monad.State              (execState, put, get, State)
 import qualified Data.Map               as Map
 import qualified System.IO              as I
-import qualified Control.Monad.State    as St
 import qualified Data.Text              as Tx
 
 {-# INLINE charLookup #-}
@@ -47,17 +47,16 @@ instance Functor Answer where
 
 instance Ord Hitting where
   compare h1@(Hitting {}) h2@(Hitting {})
-    | pointHitting h1 < pointHitting h2  = LT
-    | pointHitting h1 == pointHitting h2 = EQ
-    | otherwise                          = GT
+    | point h1 < point h2  = LT
+    | point h1 == point h2 = EQ
+    | otherwise            = GT
 
-pointHitting :: Hitting -> Ratio Int
-pointHitting d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * continual & d)
+point :: Hitting -> Ratio Int
+point d = ratio' * (hit & d) + (10 * hitratio d) - (nohit & d) + (10 * continual & d)
   where (&) f d' = f d' % 1
         ratio'   = if "伏見区" `isInfixOf` initial d
                    then 2
                    else 1
-        -- ratio'  = 1
 ----------------------------------------------------------------------------------------------------
 cast :: StringLike a => StringLike b => a -> b
 cast = castString
@@ -67,8 +66,8 @@ toString (Absolute (a, b)) =      fmtFold a b "{ad} --> {pt}"
 toString (Probably ((a, b), i)) = (fmtFold a b "[{ad} --> {pt}], Probably ") ++ show i
 ----------------------------------------------------------------------------------------------------
 makeDict :: IO Dictionary
-makeDict = map toArray <$> readUTF8line ".zipcode.out"
-  where toArray = listArray (0,1) . split ','
+makeDict = map (listArray (0,1) . split ',')
+           <$> readUTF8line ".zipcode.out"
 
 makeDistrictDict :: District -> IO Dictionary
 makeDistrictDict district = 
@@ -107,7 +106,7 @@ cutNumber = toText . cut . toStr
         toStr key  = cast key :: String
 
 searchCore :: Text -> Dictionary -> Dictionary
-searchCore key dict = cut . (`St.execState` dict) $ searchST2 key
+searchCore key dict = cut . (`execState` dict) $ searchST2 key
   where cut = overLengthAvoid 100
 
 charLookup :: Char -> Map.Map Char Char -> Char
@@ -118,16 +117,16 @@ innerlook ch line = ch <<?>> line ||
                     charLookup ch otherChar <<?>> line
   where (<<?>>) c l = c `telem` (l!0)
 
-searchST2 :: Text -> St.State Dictionary ()
+searchST2 :: Text -> State Dictionary ()
 searchST2 t = do
   let len = Tx.length t
   forM_ [0..(len-1)] $ \n -> do
-    dic <- St.get
+    dic <- get
     let ch = Tx.index t n
     case filter (innerlook ch) dic of
-      [x]  -> do { St.put [x]; return () }
-      []   -> St.put dic
-      filt -> St.put filt
+      [x]  -> do { put [x]; return () }
+      []   -> put dic
+      filt -> put filt
 
 overLengthAvoid :: Int -> [a] -> [a]
 overLengthAvoid over x = (length x > over) <==> ([], x)
@@ -162,12 +161,12 @@ guessHitList :: String -> Dictionary -> [Hitting]
 guessHitList trgt dict = sort $ map (givePoint trgt) dict
 
 givePoint :: StringLike a => String -> DictLine a -> Hitting
-givePoint baseStr gen = (`St.execState` initHit) $ do
-  hit' <- St.get
-  St.put $ hit' { continual = giveContinualPoint baseStr ad }
+givePoint baseStr gen = (`execState` initHit) $ do
+  hit' <- get
+  put $ hit' { continual = giveContinualPoint baseStr ad }
   forM_ baseStr $ \ch -> do
-    h <- St.get
-    St.put ([ch] `isInfixOf` target h <==> (addHit ch h,
+    h <- get
+    put ([ch] `isInfixOf` target h <==> (addHit ch h,
                                             h { nohit = nohit h + 1 }))
   where ad      = cast (gen!0) :: String
         postal  = cast (gen!1) :: String
