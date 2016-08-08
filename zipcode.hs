@@ -12,6 +12,7 @@ import Text.Parsec                      hiding (State)
 import Text.Parsec.String
 import Control.Monad
 import Control.Monad.State              (execState, put, get, State)
+import Control.Parallel.Strategies
 import qualified Data.Map               as Map
 import qualified System.IO              as I
 import qualified Data.Text              as Tx
@@ -82,11 +83,15 @@ makeKey key = case parse kyotoCityP "" (cast key) of
   Left _               -> cast key
 
 searchA :: StringLike a => a -> Dictionary -> Answer Dictionary
-searchA key dict = searchClassify ordinary verse
-  where key'     = cutNumber $ makeKey key
-        rev      = Tx.reverse key'
-        ordinary = searchCore key' dict
-        verse    = searchCore rev dict
+searchA key dict = searchClassify o v
+  where key'   = cutNumber $ makeKey key
+        rev'   = Tx.reverse key'
+        (o, v) = runEval $ do
+          ord   <- rpar $ searchCore key' dict
+          verse <- rpar $ searchCore rev' dict
+          rseq ord
+          rseq verse
+          return $ (ord, verse)
 
 (<==>) :: Bool -> (a, a) -> a
 (<==>) f (a, b) = if f then a else b
@@ -223,3 +228,13 @@ main = do
 ----------------------------------------------------------------------------------------------------
 ---------- for debug -------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
+test1 key = do
+  dict <- makeDict
+  return $ searchCore (Tx.pack key) dict ++ searchCore (Tx.pack (reverse key)) dict
+
+test2 key = do
+  dict <- makeDict
+  return . runEval $ do
+    a <- rseq $ searchCore (Tx.pack key) dict
+    b <- rseq $ searchCore (Tx.pack (reverse key)) dict
+    return $ a ++ b
