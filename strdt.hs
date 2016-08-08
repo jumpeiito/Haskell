@@ -1,18 +1,17 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
-
 module Strdt (strdt, dtmap, Date, NendoDate,
               toYear, toYearInt, toMonth, toDay, nendo,
               howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep
              ) where 
 
-import KanParse
-import Data.Time
-import Data.List
-import Data.Maybe
-import Text.ParserCombinators.Parsec
-import Text.Printf
-import Control.Arrow
-import qualified Text.StringLike        as Like
+import           Control.Arrow
+import           Data.List
+import           Data.Maybe
+import           Data.Time
+import           KanParse
+import           Text.ParserCombinators.Parsec
+import           Text.Printf
+import qualified Text.StringLike as Like
 
 type Date      = (Int, Int, Int)
 type NendoDate = (Int, Int, Int, Int)

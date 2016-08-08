@@ -1,14 +1,14 @@
-import Util                             (withAppendFile, readUTF8File)
-import Strdt                            (strdt, toYear, toMonth, todayDay)
-import OrgParse                         (parseToDayList)
-import NewsArticle.Base
-import Control.Monad                    (forM, forM_, when)
-import Control.Concurrent.Async
-import Data.Time                        (Day (..))
-import Data.Maybe                       (fromMaybe)
-import Data.Monoid                      ((<>))
-import Text.Printf                      (printf)
-import Text.HTML.TagSoup.Tree
+import           Util                   (withAppendFile, readUTF8File)
+import           Strdt                  (strdt, toYear, toMonth, todayDay)
+import           OrgParse               (parseToDayList)
+import           NewsArticle.Base
+import           Control.Monad          (forM, forM_, when)
+import           Control.Concurrent.Async
+import           Data.Time              (Day (..))
+import           Data.Maybe             (fromMaybe)
+import           Data.Monoid            ((<>))
+import           Text.Printf            (printf)
+import           Text.HTML.TagSoup.Tree
 import qualified Options.Applicative    as O
 import qualified NewsArticle.Akahata    as Ak
 import qualified NewsArticle.Common     as Cm
@@ -59,17 +59,18 @@ printer f1 f2 page = do
 
 dayMaker :: Day -> IO ()
 dayMaker td = do
+  --(definition)-----------------------------------------
   I.putStrLn $ "* " <> show td
   let common  = Cm.makeListedPage td
   let akahata = Ak.makeListedPage td :: ListedPage B.ByteString
   let akpage  = Ak.makePage ""
-  --make a promise--------------------------------------
+  --(make a promise)--------------------------------------
   cmPromise  <- async $ getPageContents $ topURL common
   urlPromise <- async . return . urlF akahata =<< (getPageContents $ topURL akahata)
-  --common parts----------------------------------------
+  --(common parts)----------------------------------------
   cmContents <- wait cmPromise
   forM_ (pageF common cmContents) $ printer getTitle getText
-  --akahata parts---------------------------------------
+  --(akahata parts)---------------------------------------
   urls <- wait urlPromise
   conc <- forM urls (async . getPageContents)
   forM_ conc $ \asy -> do
@@ -89,8 +90,8 @@ main = do
   --------------------------------------------------
   case (today' opt, force opt, date' opt) of
     (True, _, _) -> dayMaker td
-    (_, d, _)    -> dayMaker (fromMaybe td (strdt d ::Maybe Day))
-    (_, _, d)    -> case (strdt d :: Maybe Day) of
+    (_, d, _)    -> dayMaker $ fromMaybe td (strdt d)
+    (_, _, d)    -> case strdt d of
                       Just d' -> do
                         let (y, m) = (toYear d', toMonth d')
                         dlist  <- parseToDayList y m

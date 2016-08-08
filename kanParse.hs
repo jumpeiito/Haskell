@@ -1,10 +1,10 @@
 module KanParse (kanParse, kanParseStr) where
 
 import qualified Data.Map       as M
-import Data.Maybe               (fromMaybe)
-import Data.Monoid
-import Text.Parsec
-import Text.Parsec.String
+import           Data.Maybe     (fromMaybe)
+import           Data.Monoid
+import           Text.Parsec
+import           Text.Parsec.String
 
 data KP = Keta Integer
   | Num     Integer
@@ -49,8 +49,8 @@ kanjiParseBuilder mp f = do
   return $ f n
 
 numParse, ketaParse, bigKetaParse :: Parser KP
-numParse     = kanjiParseBuilder kanjiNumMap Num
-ketaParse    = kanjiParseBuilder kanjiKetaMap Keta
+numParse     = kanjiParseBuilder kanjiNumMap     Num
+ketaParse    = kanjiParseBuilder kanjiKetaMap    Keta
 bigKetaParse = kanjiParseBuilder kanjiBigKetaMap BigKeta
   
 kParse :: Parser [KP]

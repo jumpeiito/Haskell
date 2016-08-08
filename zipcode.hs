@@ -1,18 +1,18 @@
-import Util                             (readUTF8line, split, uniq, include)
-import ZipDist
-import ZipFormatta                      (fmtFold)
-import Data.List                        (isInfixOf, sort, sortBy)
-import Data.Ratio                       (Ratio, (%))
-import Data.Array                       (Array, listArray, (!))
-import Data.Maybe                       (isJust, fromMaybe)
-import Data.Monoid                      ((<>))
-import Data.Text.Internal               (Text (..))
-import Text.StringLike                  (castString, StringLike (..))
-import Text.Parsec                      hiding (State)
-import Text.Parsec.String
-import Control.Monad
-import Control.Monad.State              (execState, put, get, State)
-import Control.Parallel.Strategies
+import           Util                   (readUTF8line, split, uniq, include)
+import           ZipDist
+import           ZipFormatta            (fmtFold)
+import           Data.List              (isInfixOf, sort, sortBy)
+import           Data.Ratio             (Ratio, (%))
+import           Data.Array             (Array, listArray, (!))
+import           Data.Maybe             (isJust, fromMaybe)
+import           Data.Monoid            ((<>))
+import           Data.Text.Internal     (Text (..))
+import           Text.StringLike        (castString, StringLike (..))
+import           Text.Parsec            hiding (State)
+import           Text.Parsec.String
+import           Control.Monad
+import           Control.Monad.State    (execState, put, get, State)
+import           Control.Parallel.Strategies
 import qualified Data.Map               as Map
 import qualified System.IO              as I
 import qualified Data.Text              as Tx
