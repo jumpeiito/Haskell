@@ -67,7 +67,7 @@ test day = do
   bir   <- cell
   let adtel  = ad' ++ "・" ++ tel'
   let telp   = telParse adtel
-  let birth' = strdt bir :: Maybe Day
+  let birth' = strdt bir
   return Line { bunkai = bnk,
                 bknum  = bunkaiNumber bnk,
                 han    = hn,
@@ -358,8 +358,8 @@ yearoldParse = do
   let ac = noneOf "=,)]>&"
   start <- many1 ac <* char '&'
   end   <- many1 ac
-  let s = strdt start :: Maybe Day
-  let e = strdt end :: Maybe Day
+  let s = strdt start
+  let e = strdt end
   return $ Old (s, e)
 
 returnParse :: Parser Key -> String -> Key

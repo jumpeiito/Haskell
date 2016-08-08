@@ -63,16 +63,15 @@ dayMaker td = do
   let common  = Cm.makeListedPage td
   let akahata = Ak.makeListedPage td :: ListedPage B.ByteString
   let akpage  = Ak.makePage ""
-  --------------------------------------------------
+  --make a promise--------------------------------------
   cmPromise  <- async $ getPageContents $ topURL common
   urlPromise <- async . return . urlF akahata =<< (getPageContents $ topURL akahata)
-  --------------------------------------------------
+  --common parts----------------------------------------
   cmContents <- wait cmPromise
   forM_ (pageF common cmContents) $ printer getTitle getText
-  --------------------------------------------------
+  --akahata parts---------------------------------------
   urls <- wait urlPromise
   conc <- forM urls (async . getPageContents)
-  --------------------------------------------------
   forM_ conc $ \asy -> do
     promise <- wait asy
     printer (titleFunc akpage) (textFunc akpage) promise

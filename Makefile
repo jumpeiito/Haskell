@@ -1,5 +1,7 @@
 ghc=`which ghc.exe`
 
+all: meibo.exe snews.exe tags zipcode.exe
+
 hancho.pdf:hancho.tex hancho.insert.tex
 	f:/tex/bin/platex.exe -kanji=utf8 hancho.tex
 	f:/tex/bin/dvipdfmx.exe -p "24cm,37cm" hancho.dvi
@@ -19,3 +21,4 @@ zipcode.exe: zipcode.hs util.hs zipDist.hs
 zipcode-profile: zipcode.hs util.hs zipDist.hs
 	echo "実行するときは./zipcode.exe +RTS -p | nkfwin32.exe -Ws"
 	${ghc} -prof -fprof-auto -rtsopts zipcode.hs
+

@@ -35,7 +35,7 @@ type Contents a = [Lines a]
 
 instance (StringLike s, Monoid s) => Monoid (Lines s) where
   mempty = makeOrgArticle
-  OrgDate s          `mappend` art@(OrgArticle{}) = art { time = strdt s :: Maybe Day }
+  OrgDate s          `mappend` art@(OrgArticle{}) = art { time = strdt s }
   OrgTitle s         `mappend` art@(OrgArticle{}) = takeHeader art s
   OrgLine s          `mappend` art@(OrgArticle{}) = art { body = body art ++ [s] }
   art@(OrgArticle{}) `mappend` OrgArticle{} = art
