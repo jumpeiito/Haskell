@@ -2,7 +2,8 @@ import Util                             (withAppendFile, readUTF8File)
 import Strdt                            (strdt, toYear, toMonth, todayDay)
 import OrgParse                         (parseToDayList)
 import NewsArticle.Base
-import Control.Monad                    (forM_, when)
+import Control.Monad                    (forM, forM_, when)
+import Control.Concurrent.Async
 import Data.Time                        (Day (..))
 import Data.Maybe                       (fromMaybe)
 import Data.Monoid                      ((<>))
@@ -59,16 +60,23 @@ printer f1 f2 page = do
 dayMaker :: Day -> IO ()
 dayMaker td = do
   I.putStrLn $ "* " <> show td
-  let common = Cm.makeListedPage td
-  cmpage <- getPageContents $ topURL common
-  forM_ (pageF common cmpage) $ printer getTitle getText
-  --------------------------------------------------
+  let common  = Cm.makeListedPage td
   let akahata = Ak.makeListedPage td :: ListedPage B.ByteString
-  urls <- return . urlF akahata =<< (getPageContents $ topURL akahata)
-  let akpage = Ak.makePage ""
-  forM_ urls $ \url -> do
-    cont <- getPageContents url
-    printer (titleFunc akpage) (textFunc akpage) cont
+  let akpage  = Ak.makePage ""
+  --------------------------------------------------
+  cmPromise  <- async $ getPageContents $ topURL common
+  urlPromise <- async . return . urlF akahata =<< (getPageContents $ topURL akahata)
+  --------------------------------------------------
+  cmContents <- wait cmPromise
+  forM_ (pageF common cmContents) $ printer getTitle getText
+  --------------------------------------------------
+  urls <- wait urlPromise
+  conc <- forM urls (async . getPageContents)
+  --------------------------------------------------
+  forM_ conc $ \asy -> do
+    promise <- wait asy
+    printer (titleFunc akpage) (textFunc akpage) promise
+    
 
 main :: IO ()
 main = do
