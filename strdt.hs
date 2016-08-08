@@ -168,4 +168,4 @@ todayDay = do
   d   <- getCurrentTime
   let cur  = addUTCTime (9*60*60) d
   let dstr = formatTime defaultTimeLocale "%Y%m%d" cur
-  return $ fromJust (strdt dstr :: Maybe Day)
+  return $ fromJust (strdt dstr)

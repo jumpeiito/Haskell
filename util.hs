@@ -5,6 +5,7 @@ module Util where
 import Data.List
 import Control.Exception                hiding (try)
 import Control.Monad
+import Control.Monad.Trans              (liftIO)
 import Control.Monad.Writer
 import System.Directory
 import qualified Data.Map               as Map
@@ -56,27 +57,55 @@ instance Join String where
     where rest = if null xs
                  then ""
                  else glue <> joiner glue xs
+----------------------------------------------------------------------------------------------------
+data FileDirect =
+  FD { dirP  :: FilePath -> Bool,
+       fileP :: FilePath -> Bool }
+
+(<~>), (<^>), (<!~>), (<!^>) :: FilePath -> FilePath -> Bool
+(<~>) = isInfixOf
+(<^>) = isSuffixOf
+(<!~>) a b = not $ isInfixOf a b
+(<!^>) a b = not $ isSuffixOf a b
 
 allf :: FilePath -> IO [FilePath]
-allf dir = do
-  let cut = map ((dir <>) . ("/" <>)) . filter (`notElem` [".", ".."])
-  paths    <- cut <$> getDirectoryContents dir
-  ans <- forM paths $ \p -> do
-    bool <- doesDirectoryExist p
-    if bool
-      then allf p
-      else return [p]
-  return $ concat ans
+allf fp = allfd fp (FD (const True) (const True))
 
-alld' :: FilePath -> IO [FilePath]
-alld' dir = do
-  let cut = map ((dir <>) . ("/" <>)) . filter (`notElem` [".", ".."])
-  contents <- cut <$> getDirectoryContents dir
-  filterM doesDirectoryExist contents
+allfd :: FilePath -> FileDirect -> IO [FilePath]
+allfd fp fd = snd <$> runWriterT (_allfd fp fd)
+
+_allfd :: FilePath -> FileDirect -> WriterT [FilePath] IO ()
+_allfd fp fd = _all_base fp fd f
+  where f path bool = do
+          case (bool, dirP fd fp, fileP fd path) of
+            (True, _, _)        -> do { r <- liftIO $ allfd path fd; tell r }
+            (False, True, True) -> tell [path]
+            (False, _, _)       -> tell mempty
+
+_all_base :: FilePath ->
+             FileDirect ->
+             (FilePath -> Bool -> WriterT [FilePath] IO b) ->
+             WriterT [FilePath] IO ()
+_all_base fp fd f = do
+  let filtering = filter (`notElem` [".", ".."])
+  let makePath  = map (\n -> fp ++ "/" ++ n)
+  let cut       = makePath . filtering
+  paths <- liftIO $ cut <$> getDirectoryContents fp
+  forM_ paths $ \path -> do
+    bool <- liftIO $ doesDirectoryExist path
+    f path bool
+----------------------------------------------------------------------------------------------------
+_alld :: FilePath -> WriterT [FilePath] IO ()
+_alld fp = _all_base fp fdn f
+  where fdn = FD (const True) (const True)
+        f path bool = do
+          when bool $ do
+            descend <- liftIO $ alld path
+            tell $ [path] ++ descend
 
 alld :: FilePath -> IO [FilePath]
-alld dir = alld' dir >>= mapM alld' >>= return . concat
-
+alld fp = snd <$> runWriterT (_alld fp)
+----------------------------------------------------------------------------------------------------
 makeMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k [a]
 makeMap _ _ [] = Map.empty
 makeMap kF vF (x:xs) =
