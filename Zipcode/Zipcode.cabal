@@ -24,7 +24,7 @@ cabal-version:       >=1.10
 executable Zipcode
   hs-source-dirs:      app, ../Util/Util
   main-is:             zipcode.hs
-  ghc-options:         -O3
+  ghc-options:         -O3 -threaded
   build-depends:       base
                      , Util
                      , ZipDist
