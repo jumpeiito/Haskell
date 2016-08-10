@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module OrgParse (dateFold, parseToDayList) where 
+module Snews.OrgParse (dateFold, parseToDayList) where 
 
-import Strdt                            (strdt, toYear, toMonth, toDay, todayDay)
+import Util.Strdt                       (strdt, toYear, toMonth, toDay, todayDay)
 import Data.Time                        (Day (..), fromGregorian)
 import Data.Maybe                       (isJust, mapMaybe)
 import Text.Printf                      (printf)

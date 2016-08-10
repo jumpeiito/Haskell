@@ -1,4 +1,4 @@
-module NewsArticle.Base (ListedPage (..),
+module Snews.NewsArticle.Base (ListedPage (..),
                          URL, ArticleKey, DirectionType,
                          Page (..),
                          Article (..),

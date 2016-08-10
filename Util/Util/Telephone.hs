@@ -1,5 +1,5 @@
-module Telephone (telParse, telString, Telephone (..),
-                 fixFilter, mobileFilter) where
+module Util.Telephone (telParse, telString, Telephone (..),
+                       fixFilter, mobileFilter) where
 
 import Util                     ((++++))
 import Text.Parsec

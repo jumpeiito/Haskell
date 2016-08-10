@@ -1,10 +1,10 @@
-module NewsArticle.Common (makeListedPage) where
+module Snews.NewsArticle.Common (makeListedPage) where
 
-import Strdt                            (dayStr8)
+import Util.Strdt                       (dayStr8)
 import Data.Time                        (Day (..))
 import Data.Monoid                      ((<>))
 import Data.Text.Internal               (Text (..))
-import NewsArticle.Base
+import Snews.NewsArticle.Base
 import Text.HTML.TagSoup.Tree
 import qualified Data.Text              as Tx
 import qualified Text.StringLike        as Like

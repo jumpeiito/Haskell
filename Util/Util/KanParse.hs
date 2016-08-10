@@ -1,4 +1,4 @@
-module KanParse (kanParse, kanParseStr) where
+module Util.KanParse (kanParse, kanParseStr) where
 
 import qualified Data.Map       as M
 import           Data.Maybe     (fromMaybe)

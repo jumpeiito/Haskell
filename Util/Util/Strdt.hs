@@ -1,14 +1,15 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
-module Strdt (strdt, dtmap, Date, NendoDate,
-              toYear, toYearInt, toMonth, toDay, nendo,
-              howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep
+module Util.Strdt (strdt, dtmap, Date, NendoDate,
+               toYear, toYearInt, toMonth, toDay, nendo,
+               howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep
              ) where 
 
+import           Util           hiding ((&&&))
 import           Control.Arrow
 import           Data.List
 import           Data.Maybe
 import           Data.Time
-import           KanParse
+import           Util.KanParse
 import           Text.ParserCombinators.Parsec
 import           Text.Printf
 import qualified Text.StringLike as Like

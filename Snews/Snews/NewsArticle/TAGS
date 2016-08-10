@@ -1,0 +1,108 @@
+
+Akahata.hs,528
+module NewsArticle.Akahata NewsArticle.Akahata0,1
+makeListedPage makeListedPage12,13
+makeListedPage makeListedPage13,14
+newsList newsList17,18
+newsList newsList18,19
+fullURL fullURL22,23
+fullURL fullURL23,24
+makeTopPageURL makeTopPageURL28,29
+makeTopPageURL makeTopPageURL29,30
+makeURLFunction makeURLFunction31,32
+makeURLFunction makeURLFunction32,33
+takeTitle takeTitle38,39
+takeTitle takeTitle39,40
+takeText takeText44,45
+takeText takeText45,46
+makePage makePage53,54
+makePage makePage54,55
+
+Base.hs,2204
+module NewsArticle.Base NewsArticle.Base0,1
+type URL URL26,27
+type ArticleKey ArticleKey27,28
+type DirectionType DirectionType28,29
+data ListedPage ListedPage30,31
+  LP LP31,32
+  LP { baseURL baseURL31,32
+       topDate topDate32,33
+       topURL topURL33,34
+       urlF urlF34,35
+       pageF pageF35,36
+data Page Page38,39
+  Page Page39,40
+  Page { pageUrl pageUrl39,40
+         titleFunc titleFunc40,41
+         textFunc textFunc41,42
+data Article Article43,44
+  Article Article44,45
+  Article { tree tree44,45
+            title title45,46
+            text text46,47
+            date date47,48
+            paper paper48,49
+data AKey AKey50,51
+data AKey = Name Name50,51
+data AKey = Name String | Attr Attr50,51
+data AKey = Name String | Attr String | Always Always50,51
+data WriterDirection WriterDirection52,53
+data WriterDirection = Skip Skip52,53
+data WriterDirection = Skip | Pack Pack52,53
+data WriterDirection = Skip | Pack String | Loop Loop52,53
+(=(54,55
+(==>), findTree findTree54,55
+(====>54,55
+findTree findTree55,56
+find' find'59,60
+find' find'60,61
+solver solver64,65
+solver solver65,66
+(&&&), (|||)|||67,68
+(&&&)&&&67,68
+solveArticleKey solveArticleKey78,79
+solveArticleKey solveArticleKey79,80
+solveAKey solveAKey81,82
+solveAKey solveAKey82,83
+pairF pairF87,88
+pairF pairF88,89
+findAttribute findAttribute90,91
+findAttribute findAttribute91,92
+assocKey assocKey100,101
+assocKey assocKey101,102
+stringFold stringFold106,107
+stringFold stringFold107,108
+sfold sfold109,110
+sfold sfold110,111
+treeText treeText118,119
+treeText treeText119,120
+treeTextMap treeTextMap120,121
+treeText2 treeText2121,122
+treeTextMap2 treeTextMap2122,123
+ttx ttx124,125
+ttx ttx125,126
+dList dList133,134
+dList dList134,135
+directionList directionList143,144
+directionList directionList144,145
+direction direction147,148
+strip strip152,153
+strip strip153,154
+filterBlankLines filterBlankLines158,159
+filterBlankLines filterBlankLines159,160
+fBLparse fBLparse164,165
+fBLparse fBLparse165,166
+translateTags translateTags171,172
+translateTags translateTags172,173
+
+Common.hs,315
+module NewsArticle.Common NewsArticle.Common0,1
+makeListedPage makeListedPage18,19
+makeListedPage makeListedPage19,20
+extractPage extractPage23,24
+extractPage extractPage24,25
+takeTitle takeTitle26,27
+takeTitle takeTitle27,28
+takeText takeText30,31
+takeText takeText31,32
+testIO21 testIO2137,38

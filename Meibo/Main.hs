@@ -1,8 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
+module Main where
 
 import Util
-import Strdt
-import Telephone
+import Util.Strdt
+import Util.Telephone
 import Data.Time
 import Data.List
 import Data.Maybe                       (isJust, fromJust, fromMaybe)
@@ -85,7 +86,7 @@ test day = do
                 year   = howOld <$> birth' <*> Just day,
                 Main.exp = exp2' }
     where sep  = ','
-          cell = many (noneOf [sep])
+          cell = many $ noneOf [sep]
           sep' = char sep
           
 removeSymbol :: String -> String
@@ -420,7 +421,6 @@ main = do
     ["check"]     -> let table = makeTable y' in (mainOut $ checkFilter table mainList)
     ["hch"]       -> printer hanInfo $ mapToList mainList
     "hchp":l      -> printer (hanOutput (m' , l)) $ mapToList mainList
-    -- "test"        -> mainOut $ testFilter mainList
     _             -> putStrLn ""
 ----------------------------------------------------------------------------------------------------
   where printer f = mapM_ (putStrLn . f)

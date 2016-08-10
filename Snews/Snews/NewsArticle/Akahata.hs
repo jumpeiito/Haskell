@@ -1,12 +1,12 @@
-module NewsArticle.Akahata (makePage, makeListedPage,
+module Snews.NewsArticle.Akahata (makePage, makeListedPage,
                            takeTitle, takeText) where
 
-import Strdt                            (strdt, nendo, dayStrWithSep)
+import Util.Strdt                       (strdt, nendo, dayStrWithSep)
 import Data.Time                        (Day (..))
 import Data.Monoid                      ((<>))
 import Data.Maybe                       (fromJust)
 import Data.Text.Internal               (Text (..))
-import NewsArticle.Base
+import Snews.NewsArticle.Base
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import qualified Data.Text              as Tx

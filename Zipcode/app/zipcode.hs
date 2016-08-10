@@ -1,3 +1,5 @@
+module Main where
+
 import           Util                   (readUTF8line, split, uniq, include)
 import           ZipDist
 import           ZipFormatta            (fmtFold)
@@ -68,7 +70,7 @@ toString (Probably ((a, b), i)) = (fmtFold a b "[{ad} --> {pt}], Probably ") ++ 
 ----------------------------------------------------------------------------------------------------
 makeDict :: IO Dictionary
 makeDict = map (listArray (0,1) . split ',')
-           <$> readUTF8line ".zipcode.out"
+           <$> readUTF8line "f:/Haskell/Zipcode/.zipcode.out"
 
 makeDistrictDict :: District -> IO Dictionary
 makeDistrictDict district = 
@@ -212,7 +214,7 @@ main = do
   dic5 <- makeDistrictDict ujiDistrict
   dic6 <- makeDistrictDict yamashinaDistrict
   --------------------------------------------------
-  trgt <- readUTF8line ".test.address" :: IO [Text]
+  trgt <- readUTF8line "f:/Haskell/Zipcode/.test.address" :: IO [Text]
   I.hSetEncoding I.stdout I.utf8
   forM_ trgt $ \ad -> do
     let ad' = Tx.unpack ad
@@ -235,6 +237,8 @@ test1 key = do
 test2 key = do
   dict <- makeDict
   return . runEval $ do
-    a <- rseq $ searchCore (Tx.pack key) dict
-    b <- rseq $ searchCore (Tx.pack (reverse key)) dict
+    a <- rpar $ searchCore (Tx.pack key) dict
+    b <- rpar $ searchCore (Tx.pack (reverse key)) dict
+    rseq a
+    rseq b
     return $ a ++ b

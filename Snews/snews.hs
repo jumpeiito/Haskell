@@ -1,7 +1,7 @@
 import           Util                   (withAppendFile, readUTF8File)
-import           Strdt                  (strdt, toYear, toMonth, todayDay)
-import           OrgParse               (parseToDayList)
-import           NewsArticle.Base
+import           Util.Strdt             (strdt, toYear, toMonth, todayDay)
+import           Snews.OrgParse               (parseToDayList)
+import           Snews.NewsArticle.Base
 import           Control.Monad          (forM, forM_, when)
 import           Control.Concurrent.Async
 import           Data.Time              (Day (..))
@@ -10,8 +10,8 @@ import           Data.Monoid            ((<>))
 import           Text.Printf            (printf)
 import           Text.HTML.TagSoup.Tree
 import qualified Options.Applicative    as O
-import qualified NewsArticle.Akahata    as Ak
-import qualified NewsArticle.Common     as Cm
+import qualified Snews.NewsArticle.Akahata    as Ak
+import qualified Snews.NewsArticle.Common     as Cm
 import qualified Network.HTTP           as Net
 import qualified System.IO              as I
 import qualified Data.Text.IO           as Txio
