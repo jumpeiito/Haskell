@@ -1,7 +1,7 @@
 module Util.KanParse (kanParse, kanParseStr) where
 
 import qualified Data.Map       as M
-import           Data.Maybe     (fromMaybe)
+import           Data.Maybe     (fromJust)
 import           Data.Monoid
 import           Text.Parsec
 import           Text.Parsec.String
@@ -45,7 +45,7 @@ kanjiBigKetaMap = M.fromList [('万', 10000),
 kanjiParseBuilder :: (M.Map Char Integer) -> (Integer -> KP) -> Parser KP
 kanjiParseBuilder mp f = do
   c <- oneOf $ M.keys mp
-  let n = fromMaybe 1 (M.lookup c mp)
+  let n = fromJust $ M.lookup c mp
   return $ f n
 
 numParse, ketaParse, bigKetaParse :: Parser KP

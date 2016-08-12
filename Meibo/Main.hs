@@ -104,7 +104,7 @@ bunkaiNumber s = case s of
 ----------------------------------------------------------------------------------------------------
 _nameParse :: Parser (String, String)
 _nameParse = (,) <$> (many1 (noneOf "　") <* char '　')
-                 <*> (many1 $ noneOf "　")
+                 <*> many1 (noneOf "　")
 
 nameParse :: String -> (String, String)
 nameParse n = either (const ("", "")) id

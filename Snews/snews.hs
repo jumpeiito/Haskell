@@ -1,22 +1,22 @@
-import           Util                   (withAppendFile, readUTF8File)
-import           Util.Strdt             (strdt, toYear, toMonth, todayDay)
-import           Snews.OrgParse               (parseToDayList)
+import           Util                           (withAppendFile, readUTF8File)
+import           Util.Strdt                     (strdt, toYear, toMonth, todayDay)
+import           Snews.OrgParse                 (parseToDayList)
 import           Snews.NewsArticle.Base
-import           Control.Monad          (forM, forM_, when)
+import           Control.Monad                  (forM, forM_, when)
 import           Control.Concurrent.Async
-import           Data.Time              (Day (..))
-import           Data.Maybe             (fromMaybe)
-import           Data.Monoid            ((<>))
-import           Text.Printf            (printf)
+import           Data.Time                      (Day (..))
+import           Data.Maybe                     (fromMaybe)
+import           Data.Monoid                    ((<>))
+import           Text.Printf                    (printf)
 import           Text.HTML.TagSoup.Tree
-import qualified Options.Applicative    as O
-import qualified Snews.NewsArticle.Akahata    as Ak
-import qualified Snews.NewsArticle.Common     as Cm
-import qualified Network.HTTP           as Net
-import qualified System.IO              as I
-import qualified Data.Text.IO           as Txio
-import qualified Data.Text.ICU.Convert  as C
-import qualified Data.ByteString.Char8  as B
+import qualified Options.Applicative            as O
+import qualified Snews.NewsArticle.Akahata      as Ak
+import qualified Snews.NewsArticle.Common       as Cm
+import qualified Network.HTTP                   as Net
+import qualified System.IO                      as I
+import qualified Data.Text.IO                   as Txio
+import qualified Data.Text.ICU.Convert          as C
+import qualified Data.ByteString.Char8          as B
 ----------------------------------------------------------------------------------------------------
 orgdir :: FilePath
 orgdir = "f:/org/news/"
@@ -137,6 +137,7 @@ myParserInfo = O.info optionsP $ mconcat
     , O.footer ""
     , O.progDesc ""
     ]    
+
 ----------------------------------------------------------------------------------------------------
 testIO :: IO [TagTree String]
 testIO = do

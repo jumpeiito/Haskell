@@ -70,7 +70,7 @@ toString (Probably ((a, b), i)) = (fmtFold a b "[{ad} --> {pt}], Probably ") ++ 
 ----------------------------------------------------------------------------------------------------
 makeDict :: IO Dictionary
 makeDict = map (listArray (0,1) . split ',')
-           <$> readUTF8line "f:/Haskell/Zipcode/.zipcode.out"
+           <$> readUTF8line "f:/Haskell/.zipcode.out"
 
 makeDistrictDict :: District -> IO Dictionary
 makeDistrictDict district = 
@@ -214,7 +214,7 @@ main = do
   dic5 <- makeDistrictDict ujiDistrict
   dic6 <- makeDistrictDict yamashinaDistrict
   --------------------------------------------------
-  trgt <- readUTF8line "f:/Haskell/Zipcode/.test.address" :: IO [Text]
+  trgt <- readUTF8line "f:/Haskell/.test.address" :: IO [Text]
   I.hSetEncoding I.stdout I.utf8
   forM_ trgt $ \ad -> do
     let ad' = Tx.unpack ad

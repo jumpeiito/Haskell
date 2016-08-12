@@ -222,3 +222,7 @@ include xs target = either (const False) (const True)
 
 (++++) :: Parser String -> Parser String -> Parser String
 (++++) p1 p2 = (++) <$> p1 <*> p2
+
+rotate :: Int -> [a] -> [a]
+rotate _ [] = []
+rotate n x = (drop n x) ++ (take n x)
