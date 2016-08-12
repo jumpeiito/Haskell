@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
 module Util.Strdt (strdt, dtmap, Date, NendoDate,
                toYear, toYearInt, toMonth, toDay, nendo,
                howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep
@@ -7,8 +7,10 @@ module Util.Strdt (strdt, dtmap, Date, NendoDate,
 import           Util           hiding ((&&&))
 import           Control.Arrow
 import           Data.List
+import           Data.Map
 import           Data.Maybe
 import           Data.Time
+import           Data.Time.Calendar.WeekDate
 import           Util.KanParse
 import           Text.ParserCombinators.Parsec
 import           Text.Printf
@@ -16,14 +18,14 @@ import qualified Text.StringLike as Like
 
 type Date      = (Int, Int, Int)
 type NendoDate = (Int, Int, Int, Int)
-data WeekDate = Sunday
-              | Monday
-              | Tuesday
-              | Wednesday
-              | Thursday
-              | Friday
-              | Saturday
-                deriving (Show, Eq, Ord)
+data DayWeek = Monday
+             | Tuesday
+             | Wednesday
+             | Thursday
+             | Friday
+             | Saturday
+             | Sunday
+             deriving (Show, Eq, Ord, Bounded, Enum)
 
 dtmap :: Either a b -> (b -> c) -> Maybe c
 (Right x) `dtmap` f = Just $ f x
@@ -83,7 +85,7 @@ sepMonth = (many1 digit   <|> kanParseStr) <* oneOf (separator ++ "月")
 dateNormal :: Parser Day
 dateNormal = readDate <$> sepYear4
                       <*> sepMonth
-                      <*> try (count 2 digit <|> count 1 digit)
+                      <*> ((try $ count 2 digit) <|> (count 1 digit))
 
 gengouToYear :: (String, Integer) -> Integer
 gengouToYear (g, y)
@@ -101,22 +103,16 @@ gengouParse =
   try (choice [string "明治", string "大正", string "昭和", string "平成"])
   <|> (:[]) <$> oneOf "MTSHmtsh明大昭平"
 
-dateJapaneseShort :: Parser Day
-dateJapaneseShort = readDate <$> (stringToGengouYear <$> gengouParse <*> sepYear)
-                             <*> sepMonth
-                             <*> (try (many1 digit) <|> kanParseStr)
-
-dateJapaneseLong :: Parser Day
-dateJapaneseLong = readDate <$> (stringToGengouYear <$> gengouParse <*> sepYear)
-                            <*> sepMonth
-                            <*> (try (many1 digit) <|> kanParseStr)
+dateJapanese :: Parser Day
+dateJapanese = readDate <$> (stringToGengouYear <$> gengouParse <*> sepYear)
+                        <*> sepMonth
+                        <*> (try (many1 digit) <|> kanParseStr)
 
 calc :: Parser Day
 calc = 
   try date8
   <|> try dateNormal
-  <|> try dateJapaneseShort
-  <|> try dateJapaneseLong
+  <|> try dateJapanese
   <|> date6 
 
 _strdt :: Like.StringLike a => a -> Either ParseError Day
@@ -169,3 +165,32 @@ todayDay = do
   let cur  = addUTCTime (9*60*60) d
   let dstr = formatTime defaultTimeLocale "%Y%m%d" cur
   return $ fromJust (strdt dstr)
+
+getWeekDate :: Day -> DayWeek
+getWeekDate d = case last $ showWeekDate d of
+                  '1' -> Monday
+                  '2' -> Tuesday
+                  '3' -> Wednesday
+                  '4' -> Thursday
+                  '5' -> Friday
+                  '6' -> Saturday
+                  '7' -> Sunday
+
+getWeekDateInt :: Day -> Int
+getWeekDateInt d = read [last $ showWeekDate d]
+
+class DiffDate a b where
+  differ :: a -> a -> b
+
+instance DiffDate Day Integer where
+  differ s1 s2 = 1 + (abs $ diffDays s1 s2)
+
+instance DiffDate String Integer where
+  differ s1 s2 = either (const 0) (+1)
+                 $ abs <$> (diffDays <$> _strdt s1 <*> _strdt s2) 
+
+instance DiffDate String [(DayWeek, Integer)] where
+  differ s1 s2 = toList $ makeCountMap id wlist
+    where diff  = fromInteger $ differ s1 s2
+          n     = fromMaybe 0 (getWeekDateInt <$> strdt s1)
+          wlist = take diff $ cycle (rotate (n - 1) [minBound..maxBound])
