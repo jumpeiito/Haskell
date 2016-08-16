@@ -1,8 +1,8 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
-module Util.Strdt (strdt, dtmap, Date, NendoDate,
-               toYear, toYearInt, toMonth, toDay, nendo,
-               howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep
-             ) where 
+module Util.Strdt (strdt, dtmap, Date, NendoDate,DayWeek (..),
+                   toYear, toYearInt, toMonth, toDay, nendo,
+                   howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep,
+                   getWeekDate, getWeekDateInt ) where 
 
 import           Util           hiding ((&&&))
 import           Control.Arrow
@@ -167,14 +167,7 @@ todayDay = do
   return $ fromJust (strdt dstr)
 
 getWeekDate :: Day -> DayWeek
-getWeekDate d = case last $ showWeekDate d of
-                  '1' -> Monday
-                  '2' -> Tuesday
-                  '3' -> Wednesday
-                  '4' -> Thursday
-                  '5' -> Friday
-                  '6' -> Saturday
-                  '7' -> Sunday
+getWeekDate d = toEnum $ ((-)1) $ getWeekDateInt d
 
 getWeekDateInt :: Day -> Int
 getWeekDateInt d = read [last $ showWeekDate d]

@@ -19,6 +19,7 @@ library
                        Util.KanParse
                        Util.Strdt
                        Util.Telephone
+                       Util.Holiday
   build-depends:       base >= 4.7 && < 5
                      , mtl
                      , directory
