@@ -90,13 +90,19 @@ main = do
   --------------------------------------------------
   case (today' opt, force opt, date' opt) of
     (True, _, _) -> dayMaker td
-    (_, d, _)    -> dayMaker $ fromMaybe td (strdt d)
-    (_, _, d)    -> case strdt d of
-                      Just d' -> do
-                        let (y, m) = (toYear d', toMonth d')
-                        dlist  <- parseToDayList y m
-                        forM_ dlist dayMaker
-                      Nothing -> return ()
+    -- (_, f, _)    -> dayMaker $ fromMaybe td (strdt f)
+    -- (_, _, d)    -> case strdt d of
+    --                   Just d' -> do
+    --                     let (y, m) = (toYear d', toMonth d')
+    --                     dlist  <- parseToDayList y m
+    --                     forM_ dlist dayMaker
+    --                   Nothing -> return ()
+    (_, f, d) -> case (strdt f, strdt d) of
+      (Just f', _) -> dayMaker f'
+      (_, Just d') -> do
+        let (y, m) = (toYear d', toMonth d')
+        dlist <- parseToDayList y m
+        forM_ dlist dayMaker
 
 data Options = Options { today' :: Bool,
                          date'  :: String,

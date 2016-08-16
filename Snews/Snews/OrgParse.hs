@@ -82,7 +82,7 @@ aChar = many1 (noneOf "\r\n")
 
 titleP, dateP, lineP :: Parser (Lines String)
 titleP = OrgTitle <$> (string "** " *> aChar)
-dateP  = OrgDate  <$> (string "*"   *> manyTill (oneOf "0123456789/-") eof)
+dateP  = OrgDate  <$> (string "* "  *> manyTill (oneOf "0123456789/-") eof)
 lineP  = OrgLine  <$> manyTill anyChar eof
 
 toLine :: StringLike a => a -> Lines String
@@ -101,10 +101,11 @@ takeHeader :: (StringLike a, Monoid a) => Lines a -> a -> Lines a
 takeHeader art head' = art { header = head', paper' = p }
   where p = takePaper head'
 
+-- takePaper :: (StringLike a, Monoid a) => a -> a
 takePaper :: (StringLike a, Monoid a) => a -> a
-takePaper s = undefined-- case parse takePaperParse mempty s of
-  -- Right s' -> s'
-  -- Left _   -> mempty
+takePaper s = case parse takePaperParse mempty (castString s) of
+  Right s' -> castString s'
+  Left _   -> mempty
 
 takePaperParse :: Parser String
 takePaperParse = try inner <|> (anyChar >> takePaperParse)
