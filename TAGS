@@ -1,5 +1,5 @@
 
-f:/Haskell/util.hs,1913
+f:/Haskell/util.hs,1971
 module Util Util2,3
 class Splittable Splittable21,22
 class Splittable Splittable21,22
@@ -49,24 +49,26 @@ baseReadSJIS baseReadSJIS136,137
 baseReadSJIS baseReadSJIS137,138
 readUTF8File readUTF8File157,158
 readUTF8File readUTF8File158,159
-readUTF8ByteFile readUTF8ByteFile164,165
-readUTF8ByteFile readUTF8ByteFile165,166
-withOutFile withOutFile171,172
-withOutFile withOutFile172,173
-withAppendFile withAppendFile179,180
-withAppendFile withAppendFile180,181
-writeUTF8File writeUTF8File187,188
-writeUTF8File writeUTF8File188,189
-appendUTF8File appendUTF8File195,196
-appendUTF8File appendUTF8File196,197
-(</>)</>203,204
-(&&&), (|||)|||209,210
-(&&&)&&&209,210
-_include _include213,214
-_include _include214,215
-include include218,219
-include include219,220
-(++++)++++222,223
+sjisLines sjisLines166,167
+sjisLines sjisLines167,168
+readUTF8ByteFile readUTF8ByteFile175,176
+readUTF8ByteFile readUTF8ByteFile176,177
+withOutFile withOutFile182,183
+withOutFile withOutFile183,184
+withAppendFile withAppendFile190,191
+withAppendFile withAppendFile191,192
+writeUTF8File writeUTF8File198,199
+writeUTF8File writeUTF8File199,200
+appendUTF8File appendUTF8File206,207
+appendUTF8File appendUTF8File207,208
+(</>)</>214,215
+(&&&), (|||)|||220,221
+(&&&)&&&220,221
+_include _include224,225
+_include _include225,226
+include include229,230
+include include230,231
+(++++)++++233,234
 
 f:/Haskell/navi2ch.hs,429
 type SimplePath SimplePath6,7
@@ -82,6 +84,34 @@ getFiles getFiles23,24
 getFiles getFiles24,25
 main main26,27
 main main27,28
+
+f:/Haskell/navi2ch/Setup.hs,15
+main main1,2
+
+f:/Haskell/navi2ch/app/Main.hs,456
+module Main Main2,3
+type SimplePath SimplePath15,16
+getTitleParse getTitleParse17,18
+getTitleParse getTitleParse18,19
+getFileSimplePathParser getFileSimplePathParser20,21
+getFileSimplePathParser getFileSimplePathParser21,22
+getTitle getTitle26,27
+getTitle getTitle27,28
+getFileSimplePath getFileSimplePath29,30
+getFileSimplePath getFileSimplePath30,31
+getFiles getFiles32,33
+getFiles getFiles33,34
+main main35,36
+main main36,37
+
+f:/Haskell/navi2ch/src/Lib.hs,65
+module LibLib0,1
+someFunc someFunc4,5
+someFunc someFunc5,6
+
+f:/Haskell/navi2ch/test/Spec.hs,30
+main main0,1
+main main1,2
 
 f:/Haskell/org.hs,954
 initOrg initOrg11,12
@@ -451,6 +481,135 @@ main main408,409
 main main409,410
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------416,417
 
+f:/Haskell/Util/Util/Holiday.hs,551
+module Util.Holiday Util.Holiday0,1
+type Year Year6,7
+type Month Month7,8
+type DDay DDay8,9
+data Holiday Holiday10,11
+  Fix Fix11,12
+  | Abstract Abstract12,13
+  | Calc Calc13,14
+holidays holidays15,16
+holidays holidays16,17
+succeed succeed34,35
+succeed succeed35,36
+calcDate calcDate39,40
+calcDate calcDate40,41
+yearInspect yearInspect45,46
+yearInspect yearInspect46,47
+vernalEquinox vernalEquinox49,50
+vernalEquinox vernalEquinox50,51
+autumnalEquinox autumnalEquinox62,63
+autumnalEquinox autumnalEquinox63,64
+
+f:/Haskell/Util/Util/KanParse.hs,897
+module Util.KanParse Util.KanParse0,1
+data KP KP8,9
+data KP = Keta Keta8,9
+  | Num Num9,10
+  | BigKeta BigKeta10,11
+  | Ksum Ksum11,12
+instance instance14,15
+kanjiNumMap, kanjiKetaMap, kanjiBigKetaMap kanjiBigKetaMap24,25
+kanjiNumMap, kanjiKetaMap,kanjiKetaMap24,25
+kanjiNumMap,kanjiNumMap24,25
+kanjiNumMap kanjiNumMap25,26
+kanjiKetaMap kanjiKetaMap28,29
+kanjiBigKetaMap kanjiBigKetaMap37,38
+kanjiParseBuilder kanjiParseBuilder44,45
+kanjiParseBuilder kanjiParseBuilder45,46
+numParse, ketaParse, bigKetaParse bigKetaParse50,51
+numParse, ketaParse,ketaParse50,51
+numParse,numParse50,51
+numParse numParse51,52
+ketaParse ketaParse52,53
+bigKetaParse bigKetaParse53,54
+kParse kParse55,56
+kParse kParse56,57
+kpSum kpSum58,59
+kpSum kpSum59,60
+kanParse kanParse62,63
+kanParse kanParse63,64
+kanParseStr kanParseStr65,66
+kanParseStr kanParseStr66,67
+
+f:/Haskell/Util/Util/Strdt.hs,2125
+module Util.Strdt Util.Strdt1,2
+type Date Date18,19
+type NendoDate NendoDate19,20
+data DayWeek DayWeek20,21
+data DayWeek = MondayMonday20,21
+             | TuesdayTuesday21,22
+             | WednesdayWednesday22,23
+             | ThursdayThursday23,24
+             | FridayFriday24,25
+             | SaturdaySaturday25,26
+             | SundaySunday26,27
+dtmap dtmap29,30
+(Right x) `dtmap`dtmap30,31
+class StringDate StringDate33,34
+class StringDate StringDate33,34
+  strdt strdt34,35
+instance instance36,37
+separator separator62,63
+separator separator63,64
+readDate readDate65,66
+readDate readDate66,67
+date8 date869,70
+date8 date870,71
+date6 date674,75
+date6 date675,76
+sepYear4, sepYear, sepMonth sepMonth79,80
+sepYear4, sepYear,sepYear79,80
+sepYear4,sepYear479,80
+sepYear4 sepYear480,81
+sepYear sepYear81,82
+sepMonth sepMonth82,83
+dateNormal dateNormal84,85
+dateNormal dateNormal85,86
+gengouToYear gengouToYear89,90
+  | g `isInfixOf`isInfixOf91,92
+stringToGengouYear stringToGengouYear97,98
+stringToGengouYear stringToGengouYear98,99
+gengouParse gengouParse100,101
+gengouParse gengouParse101,102
+dateJapanese dateJapanese105,106
+dateJapanese dateJapanese106,107
+calc calc110,111
+calc calc111,112
+_strdt _strdt117,118
+_strdt _strdt118,119
+toYear toYear120,121
+toYear toYear121,122
+toYearInt toYearInt123,124
+toYearInt toYearInt124,125
+toMonth toMonth126,127
+toMonth toMonth127,128
+toDay toDay129,130
+toDay toDay130,131
+howOld howOld132,133
+howOld howOld133,134
+dayStr8 dayStr8139,140
+dayStr8 dayStr8140,141
+dayStrWithSep dayStrWithSep143,144
+dayStrWithSep dayStrWithSep144,145
+nendoEnd nendoEnd147,148
+nendoEnd nendoEnd148,149
+today today150,151
+today today151,152
+nendo nendo154,155
+nendo nendo155,156
+todayDay todayDay161,162
+todayDay todayDay162,163
+getWeekDate getWeekDate168,169
+getWeekDate getWeekDate169,170
+getWeekDateInt getWeekDateInt171,172
+getWeekDateInt getWeekDateInt172,173
+class DiffDate DiffDate174,175
+class DiffDate DiffDate174,175
+  differ differ175,176
+
 f:/Haskell/Util/Util/Telephone.hs,1304
 module Util.Telephone Util.Telephone0,1
 data Telephone Telephone7,8
@@ -498,190 +657,83 @@ fixFilter,fixFilter79,80
 fixFilter fixFilter80,81
 mobileFilter mobileFilter81,82
 
-f:/Haskell/Util/Util/KanParse.hs,897
-module Util.KanParse Util.KanParse0,1
-data KP KP8,9
-data KP = Keta Keta8,9
-  | Num Num9,10
-  | BigKeta BigKeta10,11
-  | Ksum Ksum11,12
-instance instance14,15
-kanjiNumMap, kanjiKetaMap, kanjiBigKetaMap kanjiBigKetaMap24,25
-kanjiNumMap, kanjiKetaMap,kanjiKetaMap24,25
-kanjiNumMap,kanjiNumMap24,25
-kanjiNumMap kanjiNumMap25,26
-kanjiKetaMap kanjiKetaMap28,29
-kanjiBigKetaMap kanjiBigKetaMap37,38
-kanjiParseBuilder kanjiParseBuilder44,45
-kanjiParseBuilder kanjiParseBuilder45,46
-numParse, ketaParse, bigKetaParse bigKetaParse50,51
-numParse, ketaParse,ketaParse50,51
-numParse,numParse50,51
-numParse numParse51,52
-ketaParse ketaParse52,53
-bigKetaParse bigKetaParse53,54
-kParse kParse55,56
-kParse kParse56,57
-kpSum kpSum58,59
-kpSum kpSum59,60
-kanParse kanParse62,63
-kanParse kanParse63,64
-kanParseStr kanParseStr65,66
-kanParseStr kanParseStr66,67
-
-f:/Haskell/Util/Util/Strdt.hs,2231
-module Util.Strdt Util.Strdt1,2
-type Date Date18,19
-type NendoDate NendoDate19,20
-data DayWeek DayWeek20,21
-data DayWeek = MondayMonday20,21
-             | TuesdayTuesday21,22
-             | WednesdayWednesday22,23
-             | ThursdayThursday23,24
-             | FridayFriday24,25
-             | SaturdaySaturday25,26
-             | SundaySunday26,27
-dtmap dtmap29,30
-(Right x) `dtmap`dtmap30,31
-class StringDate StringDate33,34
-class StringDate StringDate33,34
-  strdt strdt34,35
-instance instance36,37
-separator separator62,63
-separator separator63,64
-readDate readDate65,66
-readDate readDate66,67
-date8 date869,70
-date8 date870,71
-date6 date674,75
-date6 date675,76
-sepYear4, sepYear, sepMonth sepMonth79,80
-sepYear4, sepYear,sepYear79,80
-sepYear4,sepYear479,80
-sepYear4 sepYear480,81
-sepYear sepYear81,82
-sepMonth sepMonth82,83
-dateNormal dateNormal84,85
-dateNormal dateNormal85,86
-gengouToYear gengouToYear89,90
-  | g `isInfixOf`isInfixOf91,92
-stringToGengouYear stringToGengouYear97,98
-stringToGengouYear stringToGengouYear98,99
-gengouParse gengouParse100,101
-gengouParse gengouParse101,102
-dateJapaneseShort dateJapaneseShort105,106
-dateJapaneseShort dateJapaneseShort106,107
-dateJapaneseLong dateJapaneseLong110,111
-dateJapaneseLong dateJapaneseLong111,112
-calc calc115,116
-calc calc116,117
-_strdt _strdt123,124
-_strdt _strdt124,125
-toYear toYear126,127
-toYear toYear127,128
-toYearInt toYearInt129,130
-toYearInt toYearInt130,131
-toMonth toMonth132,133
-toMonth toMonth133,134
-toDay toDay135,136
-toDay toDay136,137
-howOld howOld138,139
-howOld howOld139,140
-dayStr8 dayStr8145,146
-dayStr8 dayStr8146,147
-dayStrWithSep dayStrWithSep149,150
-dayStrWithSep dayStrWithSep150,151
-nendoEnd nendoEnd153,154
-nendoEnd nendoEnd154,155
-today today156,157
-today today157,158
-nendo nendo160,161
-nendo nendo161,162
-todayDay todayDay167,168
-todayDay todayDay168,169
-getWeekDate getWeekDate174,175
-getWeekDate getWeekDate175,176
-getWeekDateInt getWeekDateInt184,185
-getWeekDateInt getWeekDateInt185,186
-class DiffDate DiffDate187,188
-class DiffDate DiffDate187,188
-  differ differ188,189
-
-f:/Haskell/Util/Util.hs,1959
+f:/Haskell/Util/util.hs,2018
 module Util Util2,3
-class Splittable Splittable21,22
-class Splittable Splittable21,22
-  split split22,23
-instance instance24,25
-uniq uniq40,41
+class Splittable Splittable22,23
+class Splittable Splittable22,23
+  split split23,24
+instance instance25,26
 uniq uniq41,42
-class Like.StringLike a => Join Join49,50
-class Like.StringLike a => Join Join49,50
-  joiner joiner50,51
-data FileDirect FileDirect60,61
-  FD FD61,62
-  FD { dirP dirP61,62
-       fileP fileP62,63
-(<~>), (<^>), (<!~>), (<!^>)<!^>64,65
-(<~>), (<^>), (<!~>)<!~>64,65
-(<~>), (<^>)<^>64,65
-(<~>)<~>64,65
-(<(65,66
-allf allf70,71
+uniq uniq42,43
+class Like.StringLike a => Join Join50,51
+class Like.StringLike a => Join Join50,51
+  joiner joiner51,52
+data FileDirect FileDirect61,62
+  FD FD62,63
+  FD { dirP dirP62,63
+       fileP fileP63,64
+(<~>), (<^>), (<!~>), (<!^>)<!^>65,66
+(<~>), (<^>), (<!~>)<!~>65,66
+(<~>), (<^>)<^>65,66
+(<~>)<~>65,66
+(<(66,67
 allf allf71,72
-allfd allfd73,74
+allf allf72,73
 allfd allfd74,75
-_allfd _allfd76,77
+allfd allfd75,76
 _allfd _allfd77,78
-_all_base _all_base84,85
-_all_base _all_base88,89
-_alld _alld97,98
+_allfd _allfd78,79
+_all_base _all_base85,86
+_all_base _all_base89,90
 _alld _alld98,99
-alld alld105,106
+_alld _alld99,100
 alld alld106,107
-makeMap makeMap108,109
+alld alld107,108
 makeMap makeMap109,110
-makeCountMap makeCountMap113,114
+makeMap makeMap110,111
 makeCountMap makeCountMap114,115
-class ReadFile ReadFile118,119
-class ReadFile ReadFile118,119
-  readUTF8 readUTF8119,120
-  readUTF8line readUTF8line120,121
-  readSJIS readSJIS121,122
-  readSJISline readSJISline122,123
-baseReadFile baseReadFile124,125
+makeCountMap makeCountMap115,116
+class ReadFile ReadFile119,120
+class ReadFile ReadFile119,120
+  readUTF8 readUTF8120,121
+  readUTF8line readUTF8line121,122
+  readSJIS readSJIS122,123
+  readSJISline readSJISline123,124
 baseReadFile baseReadFile125,126
-baseReadUTF8 baseReadUTF8133,134
-baseReadUTF8 baseReadUTF8134,135
-baseReadSJIS baseReadSJIS136,137
-baseReadSJIS baseReadSJIS137,138
-readUTF8File readUTF8File157,158
-readUTF8File readUTF8File158,159
-readUTF8ByteFile readUTF8ByteFile164,165
-readUTF8ByteFile readUTF8ByteFile165,166
-withOutFile withOutFile171,172
-withOutFile withOutFile172,173
-withAppendFile withAppendFile179,180
-withAppendFile withAppendFile180,181
-writeUTF8File writeUTF8File187,188
-writeUTF8File writeUTF8File188,189
-appendUTF8File appendUTF8File195,196
-appendUTF8File appendUTF8File196,197
-(</>)</>203,204
-(&&&), (|||)|||209,210
-(&&&)&&&209,210
-_include _include213,214
-_include _include214,215
-include include218,219
-include include219,220
-(++++)++++222,223
-rotate rotate225,226
-rotate rotate226,227
+baseReadFile baseReadFile126,127
+baseReadUTF8 baseReadUTF8136,137
+baseReadUTF8 baseReadUTF8137,138
+baseReadSJIS baseReadSJIS139,140
+baseReadSJIS baseReadSJIS140,141
+readUTF8File readUTF8File160,161
+readUTF8File readUTF8File161,162
+readUTF8ByteFile readUTF8ByteFile167,168
+readUTF8ByteFile readUTF8ByteFile168,169
+sjisLines sjisLines174,175
+sjisLines sjisLines175,176
+withOutFile withOutFile182,183
+withOutFile withOutFile183,184
+withAppendFile withAppendFile190,191
+withAppendFile withAppendFile191,192
+writeUTF8File writeUTF8File198,199
+writeUTF8File writeUTF8File199,200
+appendUTF8File appendUTF8File206,207
+appendUTF8File appendUTF8File207,208
+(</>)</>214,215
+(&&&), (|||)|||220,221
+(&&&)&&&220,221
+_include _include224,225
+_include _include225,226
+include include229,230
+include include230,231
+(++++)++++233,234
+rotate rotate236,237
+rotate rotate237,238
 
 f:/Haskell/Snews/Setup.hs,15
 main main1,2
 
-f:/Haskell/Snews/snews.hs,1070
+f:/Haskell/Snews/snews.hs,1067
 orgdir orgdir20,21
 orgdir orgdir21,22
 orgName orgName23,24
@@ -700,30 +752,45 @@ dayMaker dayMaker59,60
 dayMaker dayMaker60,61
 main main80,81
 main main81,82
-data Options Options100,101
-data Options = Options Options100,101
-data Options = Options { today' today'100,101
-                         date' date'101,102
-                         sjis' sjis'102,103
-                         force force103,104
+data Options Options99,100
+data Options = Options Options99,100
+data Options = Options { today' today'99,100
+                         date' date'100,101
+                         sjis' sjis'101,102
+                         force force102,103
+todayP todayP105,106
 todayP todayP106,107
-todayP todayP107,108
+dateP dateP108,109
 dateP dateP109,110
-dateP dateP110,111
+forceP forceP116,117
 forceP forceP117,118
-forceP forceP118,119
+sjisP sjisP124,125
 sjisP sjisP125,126
-sjisP sjisP126,127
+optionsP optionsP127,128
 optionsP optionsP128,129
-optionsP optionsP129,130
+myParserInfo myParserInfo130,131
 myParserInfo myParserInfo131,132
-myParserInfo myParserInfo132,133
 testIO testIO140,141
 testIO testIO141,142
 
-f:/Haskell/Snews/test/Spec.hs,30
-main main0,1
-main main1,2
+f:/Haskell/Snews/Snews/NewsArticle/Akahata.hs,540
+module Snews.NewsArticle.Akahata Snews.NewsArticle.Akahata0,1
+makeListedPage makeListedPage14,15
+makeListedPage makeListedPage15,16
+newsList newsList19,20
+newsList newsList20,21
+fullURL fullURL25,26
+fullURL fullURL26,27
+makeTopPageURL makeTopPageURL31,32
+makeTopPageURL makeTopPageURL32,33
+makeURLFunction makeURLFunction34,35
+makeURLFunction makeURLFunction35,36
+takeTitle takeTitle41,42
+takeTitle takeTitle42,43
+takeText takeText47,48
+takeText takeText48,49
+makePage makePage59,60
+makePage makePage60,61
 
 f:/Haskell/Snews/Snews/NewsArticle/Base.hs,2691
 module Snews.NewsArticle.Base Snews.NewsArticle.Base0,1
@@ -827,25 +894,6 @@ takeTitle takeTitle24,25
 takeText takeText28,29
 takeText takeText29,30
 
-f:/Haskell/Snews/Snews/NewsArticle/Akahata.hs,540
-module Snews.NewsArticle.Akahata Snews.NewsArticle.Akahata0,1
-makeListedPage makeListedPage14,15
-makeListedPage makeListedPage15,16
-newsList newsList19,20
-newsList newsList20,21
-fullURL fullURL25,26
-fullURL fullURL26,27
-makeTopPageURL makeTopPageURL31,32
-makeTopPageURL makeTopPageURL32,33
-makeURLFunction makeURLFunction34,35
-makeURLFunction makeURLFunction35,36
-takeTitle takeTitle41,42
-takeTitle takeTitle42,43
-takeText takeText47,48
-takeText takeText48,49
-makePage makePage59,60
-makePage makePage60,61
-
 f:/Haskell/Snews/Snews/OrgParse.hs,1826
 module Snews.OrgParse Snews.OrgParse2,3
 orgDir orgDir16,17
@@ -889,26 +937,65 @@ papers papers95,96
 papers papers96,97
 takeHeader takeHeader99,100
 takeHeader takeHeader100,101
-takePaper takePaper103,104
 takePaper takePaper104,105
-takePaperParse takePaperParse108,109
+takePaper takePaper105,106
 takePaperParse takePaperParse109,110
-makePaperMap makePaperMap114,115
+takePaperParse takePaperParse110,111
 makePaperMap makePaperMap115,116
-paperElem paperElem119,120
+makePaperMap makePaperMap116,117
 paperElem paperElem120,121
-notElemDayPaper notElemDayPaper122,123
+paperElem paperElem121,122
 notElemDayPaper notElemDayPaper123,124
-dateFold dateFold132,133
+notElemDayPaper notElemDayPaper124,125
 dateFold dateFold133,134
-orgDateList orgDateList142,143
+dateFold dateFold134,135
 orgDateList orgDateList143,144
-notElemDay notElemDay145,146
+orgDateList orgDateList144,145
 notElemDay notElemDay146,147
-orgLineList orgLineList148,149
+notElemDay notElemDay147,148
 orgLineList orgLineList149,150
-parseToDayList parseToDayList151,152
+orgLineList orgLineList150,151
 parseToDayList parseToDayList152,153
+parseToDayList parseToDayList153,154
+
+f:/Haskell/Snews/test/Spec.hs,30
+main main0,1
+main main1,2
+
+f:/Haskell/Zipcode/src/ZipDist/ZipDist.hs,664
+module ZipDist ZipDist0,1
+data District District2,3
+data District = District District2,3
+fromDistrict fromDistrict4,5
+fromDistrict fromDistrict5,6
+kyotoDistrict, fushimiDistrict, shigaDistrict, ujiDistrict, yamashinaDistrict yamashinaDistrict7,8
+kyotoDistrict, fushimiDistrict, shigaDistrict, ujiDistrict,ujiDistrict7,8
+kyotoDistrict, fushimiDistrict, shigaDistrict,shigaDistrict7,8
+kyotoDistrict, fushimiDistrict,fushimiDistrict7,8
+kyotoDistrict,kyotoDistrict7,8
+kyotoDistrict kyotoDistrict8,9
+fushimiDistrict fushimiDistrict9,10
+shigaDistrict shigaDistrict11,12
+ujiDistrict ujiDistrict12,13
+yamashinaDistrict yamashinaDistrict13,14
+
+f:/Haskell/Zipcode/src/ZipFormatta/ZipFormatta.hs,536
+module ZipFormatta ZipFormatta0,1
+data Formatta Formatta6,7
+data Formatta = FAd FAd6,7
+data Formatta = FAd | FPt FPt6,7
+data Formatta = FAd | FPt | FS FS6,7
+data Formatta = FAd | FPt | FS String | Ferror Ferror6,7
+fmtAddress, fmtPostal, fmtOther fmtOther9,10
+fmtAddress, fmtPostal,fmtPostal9,10
+fmtAddress,fmtAddress9,10
+fmtAddress fmtAddress10,11
+fmtPostal fmtPostal11,12
+fmtOther fmtOther12,13
+strToFormatta strToFormatta14,15
+strToFormatta strToFormatta15,16
+fmtFold fmtFold17,18
+fmtFold fmtFold18,19
 
 f:/Haskell/Zipcode/Setup.hs,15
 main main1,2
@@ -994,41 +1081,6 @@ main main207,208
 main main208,209
 test1 test1232,233
 test2 test2236,237
-
-f:/Haskell/Zipcode/src/ZipDist/ZipDist.hs,664
-module ZipDist ZipDist0,1
-data District District2,3
-data District = District District2,3
-fromDistrict fromDistrict4,5
-fromDistrict fromDistrict5,6
-kyotoDistrict, fushimiDistrict, shigaDistrict, ujiDistrict, yamashinaDistrict yamashinaDistrict7,8
-kyotoDistrict, fushimiDistrict, shigaDistrict, ujiDistrict,ujiDistrict7,8
-kyotoDistrict, fushimiDistrict, shigaDistrict,shigaDistrict7,8
-kyotoDistrict, fushimiDistrict,fushimiDistrict7,8
-kyotoDistrict,kyotoDistrict7,8
-kyotoDistrict kyotoDistrict8,9
-fushimiDistrict fushimiDistrict9,10
-shigaDistrict shigaDistrict11,12
-ujiDistrict ujiDistrict12,13
-yamashinaDistrict yamashinaDistrict13,14
-
-f:/Haskell/Zipcode/src/ZipFormatta/ZipFormatta.hs,536
-module ZipFormatta ZipFormatta0,1
-data Formatta Formatta6,7
-data Formatta = FAd FAd6,7
-data Formatta = FAd | FPt FPt6,7
-data Formatta = FAd | FPt | FS FS6,7
-data Formatta = FAd | FPt | FS String | Ferror Ferror6,7
-fmtAddress, fmtPostal, fmtOther fmtOther9,10
-fmtAddress, fmtPostal,fmtPostal9,10
-fmtAddress,fmtAddress9,10
-fmtAddress fmtAddress10,11
-fmtPostal fmtPostal11,12
-fmtOther fmtOther12,13
-strToFormatta strToFormatta14,15
-strToFormatta strToFormatta15,16
-fmtFold fmtFold17,18
-fmtFold fmtFold18,19
 
 f:/Haskell/Zipcode/test/Spec.hs,30
 main main0,1

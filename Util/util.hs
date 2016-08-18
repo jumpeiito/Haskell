@@ -4,6 +4,7 @@ module Util where
 
 import Data.List
 import Control.Exception                hiding (try)
+import Control.Exception                (evaluate)
 import Control.Monad
 import Control.Monad.Trans              (liftIO)
 import Control.Monad.Writer
@@ -125,11 +126,13 @@ class ReadFile a where
 baseReadFile :: String -> (I.Handle -> IO a) -> FilePath -> IO a
 baseReadFile coding f fp =
   bracket (I.openFile fp I.ReadMode)
-          (I.hClose)
+          -- (I.hClose)
+          (const $ return ())
           (\h -> do
               encoding <- I.mkTextEncoding coding
               I.hSetEncoding h encoding
-              f h >>= evaluate)
+              f h >>= evaluate
+          )
 
 baseReadUTF8 :: (I.Handle -> IO a) -> FilePath -> IO a
 baseReadUTF8 = baseReadFile "cp65001"
@@ -168,6 +171,14 @@ readUTF8ByteFile fp = do
   encoding <- I.mkTextEncoding "cp65001"
   I.hSetEncoding h encoding
   B.hGetContents h
+
+sjisLines :: FilePath -> IO [String]
+sjisLines fp = do
+  -- encoding <- I.mkTextEncoding "cp932"
+  bracket (I.openFile fp I.ReadMode) (const $ return ()) $ \h -> do
+    I.hSetEncoding h I.utf8
+    lines <$> I.hGetContents h
+    -- return $! lines content
 
 withOutFile :: FilePath -> (I.Handle -> IO ()) -> IO ()
 withOutFile oFile func = do
