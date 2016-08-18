@@ -167,7 +167,7 @@ todayDay = do
   return $ fromJust (strdt dstr)
 
 getWeekDate :: Day -> DayWeek
-getWeekDate d = toEnum $ ((-)1) $ getWeekDateInt d
+getWeekDate d = toEnum $ abs $ ((-)1) $ getWeekDateInt d
 
 getWeekDateInt :: Day -> Int
 getWeekDateInt d = read [last $ showWeekDate d]

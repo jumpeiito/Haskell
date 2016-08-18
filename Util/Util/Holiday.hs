@@ -2,7 +2,7 @@ module Util.Holiday where
 
 import Data.Time
 import Util.Strdt
-import Control.Monad.State
+-- import Control.Monad.State
 
 type Year  = Integer
 type Month = Int
@@ -41,7 +41,7 @@ calcDate :: Year -> Month -> Int -> DayWeek -> Day
 calcDate y m nth dw = fromGregorian y m $ (nth - 1) * 7 + diff
   where monthTop   = fromGregorian y m 1
         monthTopDW = getWeekDate monthTop
-        diff       = fromEnum dw - fromEnum monthTopDW + 1
+        diff       = abs (fromEnum dw - fromEnum monthTopDW) + 1
 
 yearInspect :: Year -> Integer -> Year -> Year -> Bool
 yearInspect year modulo begin end =
