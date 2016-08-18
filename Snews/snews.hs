@@ -66,7 +66,7 @@ dayMaker td = do
   let akpage  = Ak.makePage ""
   --(make a promise)--------------------------------------
   cmPromise  <- async $ getPageContents $ topURL common
-  urlPromise <- async . return . urlF akahata =<< (getPageContents $ topURL akahata)
+  urlPromise <- async . return . urlF akahata =<< getPageContents (topURL akahata)
   --(common parts)----------------------------------------
   cmContents <- wait cmPromise
   forM_ (pageF common cmContents) $ printer getTitle getText
@@ -142,4 +142,4 @@ testIO :: IO [TagTree String]
 testIO = do
   contents <- readUTF8File "5.html"
   let page = translateTags contents
-  return $ page
+  return page

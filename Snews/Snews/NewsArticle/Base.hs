@@ -106,7 +106,7 @@ assocKey k ((x, y):rest)
   | otherwise = assocKey k rest
 ----------------------------------------------------------------------------------------------------
 stringFold :: Text -> Text
-stringFold s = (Tx.pack "   ") <> sfold s 0
+stringFold s = Tx.pack "   " <> sfold s 0
 
 sfold :: Text -> Int -> Text
 sfold tx c
