@@ -2,16 +2,16 @@ module Util.Holiday where
 
 import Data.Time
 import Util.Strdt
--- import Control.Monad.State
+import Data.Yaml.Parser
 
 type Year  = Integer
 type Month = Int
 type DDay  = Int
 
 data Holiday =
-  Fix        (Month, DDay) String
-  | Abstract (Month, Int, DayWeek) String
-  | Calc     (Year -> Day) String
+  Fix        (Month, DDay) String         -- 日付が固定している祝日
+  | Abstract (Month, Int, DayWeek) String -- 「8月の第3週目の火曜日」 -> Abstract (8, 3, Tuesday)
+  | Calc     (Year -> Day) String         -- 春分・秋分の日を年から計算する関数
 
 holidays :: [Holiday]
 holidays =
@@ -31,6 +31,12 @@ holidays =
    Fix      (11, 3)             "文化の日",
    Fix      (11, 23)            "勤労感謝の日",
    Fix      (12, 23)            "天皇誕生日"]
+
+makeHoliday :: Year -> [Day]
+makeHoliday y = foldr (coref y) [] holidays
+  where coref y' (Fix (m, d) _)          seed = fromGregorian y m d : seed
+        coref y' (Abstract (m, d, dw) _) seed = calcDate y m d dw : seed
+        coref y' (Calc f _)              seed = f y : seed
 
 succeed :: (Enum a, Bounded a, Eq a) => a -> a
 succeed a

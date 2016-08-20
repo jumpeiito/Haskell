@@ -29,4 +29,5 @@ library
                      , tagsoup
                      , parsec
                      , time
+                     , yaml
   default-language:    Haskell2010
