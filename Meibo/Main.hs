@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Main where
 
-import Util
+import Util                             hiding ((&&&))
 import Util.Strdt
 import Util.Telephone
 import Data.Time
@@ -9,6 +9,7 @@ import Data.List
 import Data.Maybe                       (isJust, fromJust, fromMaybe)
 import Text.Parsec                      hiding (Line)
 import Text.Parsec.String
+import Control.Arrow                    ((&&&))
 import Control.Monad.Writer
 import System.Process
 import System.Environment
@@ -54,8 +55,7 @@ data Key =
 
 test :: Day -> Parser Line
 test day = do
-  bnk   <- choice [string "石田", string "日野", string "小栗栖",
-                   string "一言寺", string "三宝院", string "点在"] <* sep'
+  bnk   <- choice (map string ["石田", "日野", "小栗栖", "一言寺", "三宝院", "点在"]) <* sep'
   hn    <- many1 digit <* sep'
   sym   <- cell <* sep'
   hcho  <- cell <* sep'
@@ -135,8 +135,8 @@ blankP s n = (s <@> n) == ""
 -- -> ["a","b","cf"]
 syncF :: [a] -> [a] -> [Int] -> (a -> a -> a) -> [a]
 syncF a b numList f = snd $ runWriter (syncFr a b 0)
-  where syncFr [] _ _ = return []
-        syncFr _ [] _ = return []
+  where syncFr [] _ _ = tell mempty
+        syncFr _ [] _ = tell mempty
         syncFr (x:xs) (y:ys) n = do
           if n `elem` numList
             then tell [f x y]
@@ -215,8 +215,7 @@ mainString =
 ----------------------------------------------------------------------------------------------------
 hanchoMap :: [Line] -> Map.Map Int [Line]
 hanchoMap = makeMap f id
-  where f line' = (100 * toInt (bknum line')) + toInt (han line')
-        toInt s = read s :: Int
+  where f line' = (100 * read (bknum line')) + read (han line')
         
 hanchoFilter :: [Line] -> [Line]
 hanchoFilter = filter (isJust . hancho)
@@ -228,34 +227,38 @@ safeHead (x:_) = Just x
 (-->) :: Maybe t -> (t -> String) -> String
 x --> f = fromMaybe "" (f <$> x)
 
-hanchoList :: (t, [Line]) -> [String]
-hanchoList (_, v) = [bkn, bnk, hn, name', fam', len]
-  where hncho = safeHead $ hanchoFilter v
-        name' = hncho --> name
-        bnk   = hncho --> bunkai
-        bkn   = hncho --> bknum
-        hn    = hncho --> han
-        fam'  = hncho --> (fst . nameP)
-        len   = show $ length v
+hanchoList :: (Int, [Line]) -> [String]
+hanchoList (bkHanCode, v) = [bkn, bnk, hn, name', fam', len]
+  where hncho          = safeHead $ hanchoFilter v
+        name'          = hncho --> name
+        bnk            = hncho --> bunkai
+        fam'           = hncho --> (fst . nameP)
+        len            = show $ length v
+        bkn            = show bcode
+        hn             = show hcode
+        (bcode, hcode) = ((`div` 100) &&& (`mod` 100)) bkHanCode
 
-hanInfo :: (t, [Line]) -> String
+hanInfo :: (Int, [Line]) -> String
 hanInfo = intercalate "," . hanchoList
 
-hanDay :: [String] -> String -> String
+hanDay :: [String] -> String -> Maybe String
 hanDay lis bk
-  | bk == ""   = ""
-  | bk == "50" = ""
-  | otherwise  = case dayGen of
-    "_" -> ""
-    _   -> dayGen
-  where bknumber = read bk :: Int
-        dayGen   = lis!!(bknumber - 1)
+  | bk == "" || bk == "50" = Nothing
+  | otherwise  = case lis!!(read bk - 1) of
+    "_" -> Nothing
+    x   -> Just x
 
-hanOutput :: (Int, [String]) -> (t, [Line]) -> String
-hanOutput (month, day) = opfunc . hanchoList
+hanOutput :: (Int, [String]) -> Int -> (Int, [Line]) -> String
+hanOutput (month, day) today' = opfunc . hanchoList
   where arguments (bn:_:h:_:n:l:_) =
-          intercalate "}{" [h,l,n,show month,hanDay day bn]
+          intercalate "}{" [h, l, n, m bn, d bn]
         arguments _ = ""
+        d bn = fromMaybe "0" $ hanDay day bn
+        m bn = case read (d bn) of
+          0 -> ""
+          x -> if today' > x
+               then show $ month + 1
+               else show month
         opfunc list = 
           "\\hancholine{" ++ arguments list ++ "}"
 ----------------------------------------------------------------------------------------------------
@@ -301,16 +304,14 @@ translateFuncTel func key n = key `isInfixOf` telpn n
   where telpn = intercalate "," . map telString . func
 
 translateFuncYear :: String -> Line -> Bool
-translateFuncYear y n = case year n of
-  Nothing -> False
-  Just x  -> (read y :: Integer) == x
+translateFuncYear y n = read y == fromMaybe 0 (year n)
 
 translateFuncOld :: (Maybe Day, Maybe Day) -> Line -> Bool
 translateFuncOld (start, end) n = fromJust $ (&&) <$> startBool n <*> endBool n
   where startBool n' = (>=) <$> birth n' <*> start
         endBool n'   = (<=) <$> birth n' <*> end
 
-translateFold :: (Bool -> Bool -> Bool) -> Bool -> [Key] -> Line -> Bool
+translateFold :: (Bool -> Bool -> Bool) -> Bool -> [Key] -> (Line -> Bool)
 translateFold func bool list line =
   foldl func bool $ map (`translate` line) list
 
@@ -337,7 +338,7 @@ keyParseLine :: Parser [Key]
 keyParseLine = sepBy keyParseTerm $ char ','
 
 keyParseBuilder :: (Char, Char) -> Parser a -> (a -> Key) -> Parser Key
-keyParseBuilder (s, e) f op = op <$> (char s *> f <* char e)
+keyParseBuilder (s, e) f op = op <$> between (char s) (char e) f
 
 aChar :: Parser Char
 aChar = noneOf "=,)]>"
@@ -420,10 +421,18 @@ main = do
     []            -> mainOut mainList
     ["check"]     -> let table = makeTable y' in (mainOut $ checkFilter table mainList)
     ["hch"]       -> printer hanInfo $ mapToList mainList
-    "hchp":l      -> printer (hanOutput (m' , l)) $ mapToList mainList
+    "hchp":l      -> printer (hanOutput (m' , l) d') $ mapToList mainList
     _             -> putStrLn ""
 ----------------------------------------------------------------------------------------------------
   where printer f = mapM_ (putStrLn . f)
         mainOut   = printer mainString
         mapToList = Map.assocs . hanchoMap
 
+
+testIO = do
+  I.hSetEncoding I.stdout I.utf8
+  (y', m', d')    <- today
+  (_, sout, _, _) <- runRuby
+  let currentDay = fromGregorian y' m' d'
+  trans currentDay . lines <$> I.hGetContents sout
+  
