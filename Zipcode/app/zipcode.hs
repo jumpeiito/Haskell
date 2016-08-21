@@ -1,8 +1,8 @@
 module Main where
 
 import           Util                   (readUTF8line, split, uniq, include)
-import           ZipDist
-import           ZipFormatta            (fmtFold)
+import           Zipcode.ZipDist
+import           Zipcode.ZipFormatta    (fmtFold)
 import           Data.List              (isInfixOf, sort, sortBy)
 import           Data.Ratio             (Ratio, (%))
 import           Data.Array             (Array, listArray, (!))

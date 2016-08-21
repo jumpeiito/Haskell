@@ -207,9 +207,19 @@ functionsToString fs l = intercalate "," $ map (\f -> f l) fs
 
 mainString :: Line -> String
 mainString =
-  functionsToString [bunkai, han, kind,  name, furi,
-                     blank, ad', lineMobile, lineFix, work, Main.exp,
-                     show . birth, show . year]
+  functionsToString [bunkai
+                    , han
+                    , kind
+                    , name
+                    , furi
+                    , blank
+                    , ad'
+                    , lineMobile
+                    , lineFix
+                    , work
+                    , Main.exp
+                    , show . fromMaybe (fromGregorian 1900 1 1)  . birth
+                    , show . fromMaybe 0 . year]
   where ad' line = deleteStrMap [".", "・", "･", " ", "　"] $ ad line
         blank _           = ""
 ----------------------------------------------------------------------------------------------------

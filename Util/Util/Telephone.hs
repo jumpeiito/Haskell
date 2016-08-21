@@ -80,4 +80,3 @@ telString (Fax s) = s
 fixFilter, mobileFilter :: [Telephone] -> [Telephone]
 fixFilter    = filter (\n -> case n of Fix _ -> True; _ -> False)
 mobileFilter = filter (\n -> case n of Mobile _ -> True; _ -> False)
-

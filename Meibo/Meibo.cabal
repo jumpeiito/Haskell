@@ -2,7 +2,7 @@ name:                Meibo
 version:             0.1.0.0
 synopsis:            Initial project template from stack
 description:         Please see README.md
-homepage:            https://github.com/githubuser/Haskell
+homepage:            https://github.com/jumpeiito/Haskell/
 license:             BSD3
 license-file:        LICENSE
 author:              Jumpei Ito
@@ -24,6 +24,10 @@ executable Meibo
                      , process
                      , containers
   default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/jumpeiito/Haskell/tree/develop/Meibo
 
 -- test-suite Meibo-test
 --   type:                exitcode-stdio-1.0

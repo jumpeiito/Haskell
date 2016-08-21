@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Snews.OrgParse (dateFold, parseToDayList) where 
+-- module Snews.OrgParse (dateFold, parseToDayList) where 
+module Snews.OrgParse  where 
 
 import Util.Strdt                       (strdt, toYear, toMonth, toDay, todayDay)
 import Data.Time                        (Day (..), fromGregorian)
@@ -50,8 +51,9 @@ makeOrgArticle = OrgArticle { time   = Nothing,
 leapYear :: Integer -> Bool
 leapYear y
   | y `mod` 100 == 0 && y `mod` 400 /= 0 = False
-  | y `mod` 4 == 0 = True
-  | otherwise = False
+  | y == 0                               = False
+  | y `mod` 4 == 0                       = True
+  | otherwise                            = False
 
 monthEnd :: Integer -> Int -> Int
 monthEnd year month

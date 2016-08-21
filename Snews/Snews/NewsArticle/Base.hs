@@ -23,12 +23,12 @@ import Data.List                        (foldl', isInfixOf)
 import Data.Text.Internal               (Text (..))
 import Data.Text.Encoding               (decodeUtf8)
 import Control.Monad.Writer
+import Text.StringLike                  (StringLike, castString)
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import Text.Parsec
 import Text.Parsec.String
 import qualified Data.Text              as Tx
-import qualified Text.StringLike        as Like
 
 type URL             = String
 type ArticleKey      = (AKey, AKey)
@@ -63,26 +63,26 @@ data WriterDirection = Skip | Pack String | Loop deriving (Show, Eq)
 instance Show (Page a) where
   show (Page u _ _ _) = "Page (url=" ++ u ++ ")"
 
-(==>), findTree :: Like.StringLike a => [ArticleKey] -> TagTree a -> [TagTree a]
+(==>), findTree :: StringLike a => [ArticleKey] -> TagTree a -> [TagTree a]
 findTree akeys tb@(TagBranch {}) = execWriter $ find' akeys tb
 findTree _ _ = []
 (==>) = findTree
 
-find' :: Like.StringLike a => [ArticleKey] -> TagTree a -> Writer [TagTree a] ()
+find' :: StringLike a => [ArticleKey] -> TagTree a -> Writer [TagTree a] ()
 find' _ (TagLeaf _) = tell mempty
 find' akeys tb@(TagBranch _ _ ys)
   | solver akeys tb = tell [tb]
   | otherwise = forM_ ys (tell . findTree akeys)
 
-solver :: Like.StringLike a => [ArticleKey] -> TagTree a -> Bool
+solver :: StringLike a => [ArticleKey] -> TagTree a -> Bool
 solver akeys = Data.List.foldl' (|||) (const False) $ map solveArticleKey akeys
 
-solveArticleKey :: Like.StringLike a => ArticleKey -> TagTree a -> Bool
+solveArticleKey :: StringLike a => ArticleKey -> TagTree a -> Bool
 solveArticleKey (l, r) = solveAKey l &&& solveAKey r
 
-solveAKey :: Like.StringLike a => AKey -> TagTree a -> Bool
-solveAKey (Name a) (TagBranch n _ _) = a == Like.castString n
-solveAKey (Attr a) (TagBranch _ l _) = [pairF Like.castString ("class", a)] `isInfixOf` l
+solveAKey :: StringLike a => AKey -> TagTree a -> Bool
+solveAKey (Name a) (TagBranch n _ _) = a == castString n
+solveAKey (Attr a) (TagBranch _ l _) = [pairF castString ("class", a)] `isInfixOf` l
 solveAKey Always _                   = True
 solveAKey _ _ = False
 
@@ -94,10 +94,9 @@ findAttribute key (TagBranch _ attr tbs) = execWriter fA
   where fA = do
           case assocKey key attr of
             Just y -> tell [y]
-            _ -> tell []
+            _      -> tell mempty
           forM_ tbs (tell . findAttribute key)
-          return ()
-findAttribute _ _ = []
+findAttribute _ _ = mempty
 
 assocKey :: Eq a => a -> [(a, b)] -> Maybe b
 assocKey _ [] = Nothing
@@ -117,8 +116,8 @@ sfold tx c
     then char' <> Tx.pack "\n   " <> sfold rest 0
     else char' <> sfold rest (c+1)
 ----------------------------------------------------------------------------------------------------
-treeText    :: (Like.StringLike a, Monoid a) => TagTree a -> a
-treeTextMap :: (Like.StringLike a, Monoid a) => [TagTree a] -> a
+treeText    :: (StringLike a, Monoid a) => TagTree a -> a
+treeTextMap :: (StringLike a, Monoid a) => [TagTree a] -> a
 treeText    = treeTextEx normalDirection
 treeTextMap = mconcat . map treeText
 ----------
@@ -131,45 +130,45 @@ normalDirection =
    (Name "br",     Always,          Pack "\n"),
    (Always,        Always,          Loop)]
 
-directionTranslate :: Like.StringLike a => DirectionList -> DirectionType a
+directionTranslate :: StringLike a => DirectionList -> DirectionType a
 directionTranslate = map translate'
   where translate' (n, a, d) = (solveArticleKey (n, a), d)
 
-directionList :: Like.StringLike a => DirectionType a
+directionList :: StringLike a => DirectionType a
 directionList = directionTranslate normalDirection
 
--- direction :: Like.StringLike a =>
+-- direction :: StringLike a =>
 --              DirectionType a -> [(DirectionType a -> Bool, WriterDirection)] -> WriterDirection
 direction _ [] = Skip
 direction tb ((f, direct):xs)
-  | f tb = direct
+  | f tb      = direct
   | otherwise = direction tb xs
 ----------------------------------------------------------------------------------------------------
-treeTextEx :: (Like.StringLike a, Monoid a) => DirectionList -> TagTree a -> a
+treeTextEx :: (StringLike a, Monoid a) => DirectionList -> TagTree a -> a
 treeTextEx dl = execWriter . ttxex dl
 
-ttxex :: (Like.StringLike a, Monoid a) => DirectionList -> TagTree a -> Writer a ()
+ttxex :: (StringLike a, Monoid a) => DirectionList -> TagTree a -> Writer a ()
 ttxex _ (TagLeaf (TagText s)) = tell s
 ttxex dl tb@(TagBranch _ _ descend) =
   case direction tb dx of
     Skip   -> tell mempty
-    Pack n -> tell $ Like.castString n
+    Pack n -> tell $ castString n
     Loop   -> forM_ descend (tell . treeTextEx dl)
   where dx = directionTranslate dl
 ttxex _ _ = tell mempty
 ----------------------------------------------------------------------------------------------------
-strip :: Like.StringLike a => a -> Text
+strip :: StringLike a => a -> Text
 strip = tailCut . skip . (<> Tx.pack "\n") . decode
-  where decode  = decodeUtf8 . Like.castString
+  where decode  = decodeUtf8 . castString
         skip    = Tx.dropWhile (`elem` [' ', '\t', '\12288', '\n'])
         tailCut = Tx.reverse . skip . Tx.reverse
 
-filterBlankLines :: (Like.StringLike a, Monoid a) => [a] -> [Text]
+filterBlankLines :: (StringLike a, Monoid a) => [a] -> [Text]
 filterBlankLines [] = []
 filterBlankLines (x:xl) = case parse fBLparse "" str of
   Right _ -> filterBlankLines xl
   Left _  -> strip x : filterBlankLines xl
-  where str    = Like.castString x :: String
+  where str    = castString x :: String
 
 fBLparse :: Parser String
 fBLparse = do
@@ -177,7 +176,7 @@ fBLparse = do
     <|> try (many1 $ oneOf " \r\n\t")
     <|> string "続きを読む"
 ----------------------------------------------------------------------------------------------------
-translateTags :: Like.StringLike a => a -> [TagTree a]
+translateTags :: StringLike a => a -> [TagTree a]
 translateTags str = tagTree $ parseTags str
 ----------------------------------------------------------------------------------------------------
 getF :: (Page a -> [TagTree a] -> r) -> Page a -> r
@@ -194,5 +193,5 @@ getText  :: Page r -> [Text]
 getTitle = getF titleFunc
 getText  = getF textFunc
 
-utf8Text :: Like.StringLike a => a -> Text
-utf8Text = decodeUtf8 . Like.castString
+utf8Text :: StringLike a => a -> Text
+utf8Text = decodeUtf8 . castString
