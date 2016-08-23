@@ -29,7 +29,7 @@ takeTitle = (utf8Text "** " <>) . treeTextMap . makeTree
 
 takeText :: (Monoid a, StringLike a) => [TagTree a] -> [Text]
 takeText = map (<> Tx.pack "\n")          .
-           map stringFold                 .
+           map stringFoldBase             .
            filterBlankLines               .
            concatMap (lines . castString) .
            map treeText                   .

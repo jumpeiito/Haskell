@@ -7,7 +7,7 @@ module Snews.NewsArticle.Base (ListedPage (..),
                          findTree,
                          (==>),
                          findAttribute,
-                         stringFold,
+                         stringFoldBase,
                          treeText,
                          treeTextEx,
                          normalDirection,
@@ -22,11 +22,12 @@ import Data.Time                        (Day (..))
 import Data.List                        (foldl', isInfixOf)
 import Data.Text.Internal               (Text (..))
 import Data.Text.Encoding               (decodeUtf8)
+import Control.Monad.State              (get, put, State, runState, execState)
 import Control.Monad.Writer
 import Text.StringLike                  (StringLike, castString)
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
-import Text.Parsec
+import Text.Parsec                      hiding (State)
 import Text.Parsec.String
 import qualified Data.Text              as Tx
 
@@ -104,17 +105,8 @@ assocKey k ((x, y):rest)
   | k == x = Just y
   | otherwise = assocKey k rest
 ----------------------------------------------------------------------------------------------------
-stringFold :: Text -> Text
-stringFold s = Tx.pack "   " <> sfold s 0
-
-sfold :: Text -> Int -> Text
-sfold tx c
-  | tx == mempty = mempty
-  | otherwise = let Just (ch, rest) = Tx.uncons tx in
-    let char' = Tx.pack [ch] in
-    if c == 33
-    then char' <> Tx.pack "\n   " <> sfold rest 0
-    else char' <> sfold rest (c+1)
+stringFoldBase :: Text -> Text
+stringFoldBase = stringFold 33 "\n   "
 ----------------------------------------------------------------------------------------------------
 treeText    :: (StringLike a, Monoid a) => TagTree a -> a
 treeTextMap :: (StringLike a, Monoid a) => [TagTree a] -> a

@@ -29,16 +29,13 @@ parenExp = ("(" ++) . (++ ")") <$> core
                        (char ')')
                        (many $ noneOf ")")
 
-faxExp :: Parser String
-faxExp = string "(F)"
-
 headStr :: [String] -> String
 headStr [] = ""
 headStr s  = head s
 
 tailStr, tailFaxStr :: Parser String
 tailStr    = headStr <$> (many parenExp <* manyNoNumPlus)
-tailFaxStr = faxExp <* manyNoNumPlus
+tailFaxStr = string "(F)" <* manyNoNumPlus
 
 mobileParse, fixParse, telFuncCore :: Parser Telephone
 mobileParse = 

@@ -4,17 +4,17 @@ module Util.Strdt (strdt, dtmap, Date, NendoDate,DayWeek (..),
                    howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep,
                    getWeekDate, getWeekDateInt ) where 
 
-import           Util           hiding ((&&&))
-import           Control.Arrow
-import           Data.List
-import           Data.Map
-import           Data.Maybe
-import           Data.Time
-import           Data.Time.Calendar.WeekDate
-import           Util.KanParse
-import           Text.ParserCombinators.Parsec
-import           Text.Printf
-import qualified Text.StringLike as Like
+import Util           hiding ((&&&))
+import Control.Arrow
+import Data.List
+import Data.Map
+import Data.Maybe
+import Data.Time
+import Data.Time.Calendar.WeekDate
+import Util.KanParse
+import Text.ParserCombinators.Parsec
+import Text.Printf
+import Text.StringLike                  (StringLike, castString)
 
 type Date      = (Int, Int, Int)
 type NendoDate = (Int, Int, Int, Int)
@@ -34,25 +34,25 @@ dtmap :: Either a b -> (b -> c) -> Maybe c
 class StringDate a b where
   strdt :: a -> b
 
-instance Like.StringLike a => StringDate a (Maybe Day) where
+instance StringLike a => StringDate a (Maybe Day) where
   strdt str = _strdt str `dtmap` id
 
-instance Like.StringLike a => StringDate a (Maybe String) where
+instance StringLike a => StringDate a (Maybe String) where
   strdt str = _strdt str `dtmap` show
 
-instance Like.StringLike a => StringDate a (Maybe Int) where
+instance StringLike a => StringDate a (Maybe Int) where
   strdt str =
     _strdt str `dtmap` (fromInteger . toYear)
 
-instance Like.StringLike a => StringDate a (Maybe (Int, Int)) where
+instance StringLike a => StringDate a (Maybe (Int, Int)) where
   strdt str =
     _strdt str `dtmap` (toMonth &&& toDay)
 
-instance Like.StringLike a => StringDate a (Maybe Date) where
+instance StringLike a => StringDate a (Maybe Date) where
   strdt str =
     _strdt str `dtmap` ((,,) <$> toYearInt <*> toMonth <*> toDay)
 
-instance Like.StringLike a => StringDate a (Maybe NendoDate) where
+instance StringLike a => StringDate a (Maybe NendoDate) where
   strdt str =
     _strdt str `dtmap` returner
     where returner  = (,,,) <$> nendoCalc <*> toYearInt <*> toMonth <*> toDay
@@ -66,26 +66,34 @@ separator = "./-"
 readDate :: String -> String -> String -> Day
 readDate y m d =
   fromGregorian (read y) (read m) (read d)
-
-date8 :: Parser Day
+----------------------------------------------------------------------------------------------------
+date8, date6, dateNormal, dateJapanese, calc :: Parser Day
 date8 = readDate <$> count 4 digit
                  <*> count 2 digit
                  <*> count 2 digit
   
-date6 :: Parser Day
 date6 = readDate <$> count 4 digit
                  <*> count 2 digit
                  <*> return "1"
 
+dateNormal = readDate <$> sepYear4
+                      <*> sepMonth
+                      <*> (try (count 2 digit) <|> count 1 digit)
+
+dateJapanese = readDate <$> (stringToGengouYear <$> gengouParse <*> sepYear)
+                        <*> sepMonth
+                        <*> (try (many1 digit) <|> kanParseStr)
+
+calc = 
+  try date8
+  <|> try dateNormal
+  <|> try dateJapanese
+  <|> date6 
+----------------------------------------------------------------------------------------------------
 sepYear4, sepYear, sepMonth :: Parser String
 sepYear4 = (count 4 digit <|> kanParseStr) <* oneOf (separator ++ "年")
 sepYear  = (many1 digit   <|> kanParseStr) <* oneOf (separator ++ "年")
 sepMonth = (many1 digit   <|> kanParseStr) <* oneOf (separator ++ "月")
-
-dateNormal :: Parser Day
-dateNormal = readDate <$> sepYear4
-                      <*> sepMonth
-                      <*> ((try $ count 2 digit) <|> (count 1 digit))
 
 gengouToYear :: (String, Integer) -> Integer
 gengouToYear (g, y)
@@ -103,20 +111,8 @@ gengouParse =
   try (choice [string "明治", string "大正", string "昭和", string "平成"])
   <|> (:[]) <$> oneOf "MTSHmtsh明大昭平"
 
-dateJapanese :: Parser Day
-dateJapanese = readDate <$> (stringToGengouYear <$> gengouParse <*> sepYear)
-                        <*> sepMonth
-                        <*> (try (many1 digit) <|> kanParseStr)
-
-calc :: Parser Day
-calc = 
-  try date8
-  <|> try dateNormal
-  <|> try dateJapanese
-  <|> date6 
-
-_strdt :: Like.StringLike a => a -> Either ParseError Day
-_strdt = parse calc "" . Like.castString
+_strdt :: StringLike a => a -> Either ParseError Day
+_strdt = parse calc "" . castString
 
 toYear :: Day -> Integer
 toYear day = let (d, _, _) = toGregorian day in d
@@ -167,7 +163,7 @@ todayDay = do
   return $ fromJust (strdt dstr)
 
 getWeekDate :: Day -> DayWeek
-getWeekDate d = toEnum $ abs $ ((-)1) $ getWeekDateInt d
+getWeekDate d = toEnum $ abs $ (1 -) $ getWeekDateInt d
 
 getWeekDateInt :: Day -> Int
 getWeekDateInt d = read [last $ showWeekDate d]
@@ -176,7 +172,7 @@ class DiffDate a b where
   differ :: a -> a -> b
 
 instance DiffDate Day Integer where
-  differ s1 s2 = 1 + (abs $ diffDays s1 s2)
+  differ s1 s2 = 1 + abs (diffDays s1 s2)
 
 instance DiffDate String Integer where
   differ s1 s2 = either (const 0) (+1)

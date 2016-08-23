@@ -46,9 +46,9 @@ takeTitle tr = orgStar <> treeTextMap tree'
         treeTextMap = utf8Text . mconcat . map treeText
 
 takeText :: (Monoid a, StringLike a) => [TagTree a] -> [Text]
-takeText = map ((<> Tx.pack "\n") . stringFold) .
-           filterBlankLines                     .
-           toString                             .
+takeText = map ((<> Tx.pack "\n") . stringFoldBase) .
+           filterBlankLines                         .
+           toString                                 .
            makeTree
   where makeTree = concatMap $ findTree [(Name "p",  Always),
                                           -- (Name "h1", Always),

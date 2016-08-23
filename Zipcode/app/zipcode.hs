@@ -1,6 +1,6 @@
 module Main where
 
-import           Util                   (readUTF8line, split, uniq, include)
+import           Util                   (readUTF8line, split, uniq, include, forChar_)
 import           Zipcode.ZipDist
 import           Zipcode.ZipFormatta    (fmtFold)
 import           Data.List              (isInfixOf, sort, sortBy)
@@ -126,14 +126,12 @@ innerlook ch line = ch <<?>> line ||
 
 searchST2 :: Text -> State Dictionary ()
 searchST2 t = do
-  let len = Tx.length t
-  forM_ [0..(len-1)] $ \n -> do
+  forChar_ t $ \ch -> do
     dic <- get
-    let ch = Tx.index t n
     case filter (innerlook ch) dic of
-      [x]  -> do { put [x]; return () }
+      [x]  -> put [x]
       []   -> put dic
-      filt -> put filt
+      filt -> put filt      
 
 overLengthAvoid :: Int -> [a] -> [a]
 overLengthAvoid over x = (length x > over) <==> ([], x)
@@ -227,18 +225,3 @@ main = do
     putStr   $ ad' ++ ", "
     putStrLn $ Main.toString $ guessHit (cast ad) <$> searchA ad dic
 
-----------------------------------------------------------------------------------------------------
----------- for debug -------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------------
-test1 key = do
-  dict <- makeDict
-  return $ searchCore (Tx.pack key) dict ++ searchCore (Tx.pack (reverse key)) dict
-
-test2 key = do
-  dict <- makeDict
-  return . runEval $ do
-    a <- rpar $ searchCore (Tx.pack key) dict
-    b <- rpar $ searchCore (Tx.pack (reverse key)) dict
-    rseq a
-    rseq b
-    return $ a ++ b
