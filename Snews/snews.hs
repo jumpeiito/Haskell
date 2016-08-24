@@ -18,24 +18,6 @@ import qualified Data.Text.IO                   as Txio
 import qualified Data.Text.ICU.Convert          as C
 import qualified Data.ByteString.Char8          as B
 ----------------------------------------------------------------------------------------------------
-orgdir :: FilePath
-orgdir = "f:/org/news/"
-----------------------------------------------------------------------------------------------------
-orgName :: Day -> String
-orgName d = orgdir <> printf "%d%02d.org" y m
-  where y = toYear d
-        m = toMonth d
-
-testIO2 :: [String] -> IO ()
-testIO2 s = 
-  withAppendFile "./test.org" $ \handle -> mapM_ (I.hPutStrLn handle) s
-----------------------------------------------------------------------------------------------------
-appendText :: [String] -> Day -> IO ()
-appendText txt day' =
-  withAppendFile orgfile $ \handle ->
-  mapM_ (I.hPutStrLn handle) txt
-  where orgfile = orgName day'
-----------------------------------------------------------------------------------------------------
 convertUTF8 :: String -> IO B.ByteString
 convertUTF8 s = do
   utf8 <- C.open "utf8" (Just False)
@@ -49,10 +31,6 @@ getPageContents url = do
   converted <- convertUTF8 body
   return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
-
-singleHTML tr = head tree'
-  where tree' = findTree [(Name "body", Always)] `concatMap` tr
-
 printer f1 f2 page = do
   Txio.putStrLn $ f1 page
   mapM_ Txio.putStrLn $ f2 page
@@ -76,7 +54,6 @@ dayMaker td = do
   forM_ conc $ \asy -> do
     promise <- wait asy
     printer (titleFunc akpage) (textFunc akpage) promise
-    
 
 main :: IO ()
 main = do
@@ -136,10 +113,3 @@ myParserInfo = O.info optionsP $ mconcat
     , O.footer ""
     , O.progDesc ""
     ]    
-
-----------------------------------------------------------------------------------------------------
-testIO :: IO [TagTree String]
-testIO = do
-  contents <- readUTF8File "5.html"
-  let page = translateTags contents
-  return page
