@@ -13,10 +13,12 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 executable Zipcode
-  hs-source-dirs:      app, F:/Haskell/Util/Util, .
+  hs-source-dirs:      app, F:/Haskell/Util/, .
   main-is:             zipcode.hs
   ghc-options:         -O3 -threaded
   build-depends:       base
+                     , directory
+                     , bytestring
                      , Util
                      , text
                      , parsec

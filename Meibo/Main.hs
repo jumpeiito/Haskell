@@ -4,6 +4,7 @@ module Main where
 import Util                             hiding ((&&&))
 import Util.Strdt
 import Util.Telephone
+import Util.StrEnum
 import Data.Time
 import Data.List
 import Data.Maybe                       (isJust, fromJust, fromMaybe)

@@ -18,6 +18,7 @@ module Snews.NewsArticle.Base (ListedPage (..),
                          utf8Text) where
 
 import Util
+import Util.StrEnum
 import Data.Time                        (Day (..))
 import Data.List                        (foldl', isInfixOf)
 import Data.Text.Internal               (Text (..))
@@ -65,7 +66,7 @@ instance Show (Page a) where
   show (Page u _ _ _) = "Page (url=" ++ u ++ ")"
 
 (==>), findTree :: StringLike a => [ArticleKey] -> TagTree a -> [TagTree a]
-findTree akeys tb@(TagBranch {}) = execWriter $ find' akeys tb
+findTree akeys tb@TagBranch{} = execWriter $ find' akeys tb
 findTree _ _ = []
 (==>) = findTree
 
@@ -106,7 +107,7 @@ assocKey k ((x, y):rest)
   | otherwise = assocKey k rest
 ----------------------------------------------------------------------------------------------------
 stringFoldBase :: Text -> Text
-stringFoldBase = stringFold 33 "\n   "
+stringFoldBase tx = Tx.pack "   " <> stringFold 33 "\n   " tx
 ----------------------------------------------------------------------------------------------------
 treeText    :: (StringLike a, Monoid a) => TagTree a -> a
 treeTextMap :: (StringLike a, Monoid a) => [TagTree a] -> a

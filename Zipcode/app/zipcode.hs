@@ -1,6 +1,7 @@
 module Main where
 
-import           Util                   (readUTF8line, split, uniq, include, forChar_)
+import           Util                   (readUTF8line, uniq, include)
+import           Util.StrEnum           (forChar_, split)
 import           Zipcode.ZipDist
 import           Zipcode.ZipFormatta    (fmtFold)
 import           Data.List              (isInfixOf, sort, sortBy)
