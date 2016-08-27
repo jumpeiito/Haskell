@@ -8,15 +8,15 @@ import Util.StrEnum
 import Data.Time
 import Data.List
 import Data.Maybe                       (isJust, fromJust, fromMaybe)
-import Text.Parsec                      hiding (Line)
+import Text.Parsec                      hiding (Line, State)
 import Text.Parsec.String
 import Control.Arrow                    ((&&&))
 import Control.Monad.Writer
+import Control.Monad.State
 import System.Process
 import System.Environment
 import qualified Data.Map               as Map
 import qualified System.IO              as I
-import qualified Control.Monad.State    as MS
 
 -- file = ".test"
 
@@ -155,16 +155,16 @@ lineMerge str (l:ls) =
         
 firstTrans :: [String] -> [String]
 firstTrans lyne = reverse answer
-  where (_, answer) = (`MS.execState` ("0", [])) $ fTrans2 lyne
+  where (_, answer) = (`execState` ("0", [])) $ fTrans2 lyne
 
-fTrans2 :: [String] -> MS.State (String, [String]) [()]
+fTrans2 :: [String] -> State (String, [String]) [()]
 fTrans2 ls = 
-  MS.forM ls $ \n -> do
-    (num, ret) <- MS.get
+  forM ls $ \n -> do
+    (num, ret) <- get
     case (n `blankP` 4, n `blankP` 1) of
-      (True, _) -> MS.put (num,   n `lineMerge` ret)
-      (_, True) -> MS.put (num,   inner num n : ret)
-      (_, _)    -> MS.put (n<@>1, n:ret)
+      (True, _) -> put (num,   n `lineMerge` ret)
+      (_, True) -> put (num,   inner num n : ret)
+      (_, _)    -> put (n<@>1, n:ret)
   where inner n l = case toL l of
           h:_:r -> intercalate "," $ h:n:r
           _ -> ""
@@ -446,4 +446,3 @@ testIO = do
   (_, sout, _, _) <- runRuby
   let currentDay = fromGregorian y' m' d'
   trans currentDay . lines <$> I.hGetContents sout
-  

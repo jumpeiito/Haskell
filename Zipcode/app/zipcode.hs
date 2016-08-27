@@ -132,7 +132,7 @@ searchST2 t = do
     case filter (innerlook ch) dic of
       [x]  -> put [x]
       []   -> put dic
-      filt -> put filt      
+      filt -> put filt
 
 overLengthAvoid :: Int -> [a] -> [a]
 overLengthAvoid over x = (length x > over) <==> ([], x)
