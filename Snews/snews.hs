@@ -1,9 +1,10 @@
 import           Util                           (withAppendFile, readUTF8File)
-import           Util.Strdt                     (strdt, toYear, toMonth, todayDay)
+import           Util.Strdt                     (strdt, toYear, toMonth, todayDay, dayStr6)
 import           Snews.OrgParse                 (parseToDayList)
 import           Snews.NewsArticle.Base
 import           Control.Monad                  (forM, forM_, when)
 import           Control.Concurrent.Async
+import           Network.HTTP                   (simpleHTTP, getRequest, getResponseBody)
 import           Data.Time                      (Day (..))
 import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid                    ((<>))
@@ -12,8 +13,8 @@ import           Text.HTML.TagSoup.Tree
 import qualified Options.Applicative            as O
 import qualified Snews.NewsArticle.Akahata      as Ak
 import qualified Snews.NewsArticle.Common       as Cm
-import qualified Network.HTTP                   as Net
 import qualified System.IO                      as I
+import qualified Data.Text                      as Tx
 import qualified Data.Text.IO                   as Txio
 import qualified Data.Text.ICU.Convert          as C
 import qualified Data.ByteString.Char8          as B
@@ -26,34 +27,49 @@ convertUTF8 s = do
 
 getPageContents :: String -> IO [TagTree B.ByteString]
 getPageContents url = do
-  http      <- Net.simpleHTTP $ Net.getRequest url
-  body      <- Net.getResponseBody http
+  http      <- simpleHTTP $ getRequest url
+  body      <- getResponseBody http
   converted <- convertUTF8 body
   return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
-printer f1 f2 page = do
-  Txio.putStrLn $ f1 page
-  mapM_ Txio.putStrLn $ f2 page
+filePrinter filename dt = do
+  withAppendFile filename $ \handle ->
+    Txio.hPutStrLn handle dt
 
-dayMaker :: Day -> IO ()
-dayMaker td = do
+printerCore outputF f1 f2 page = do
+  outputF $ f1 page
+  mapM_ outputF $ f2 page
+
+printer = printerCore Txio.putStrLn
+
+fPrinter filename = printerCore (filePrinter filename)
+
+dayMaker :: Bool -> Day -> IO ()
+dayMaker bp td = do
   --(definition)-----------------------------------------
-  I.putStrLn $ "* " <> show td
   let common  = Cm.makeListedPage td
   let akahata = Ak.makeListedPage td :: ListedPage B.ByteString
   let akpage  = Ak.makePage ""
+  --(deciding output destination)-------------------------
+  let orgFile = "f:/Org/news/" ++ dayStr6 td ++ ".org"
+  let (trueOutput, headOutput)
+        | bp        = (printer, Txio.putStrLn)
+        | otherwise = (fPrinter orgFile, filePrinter orgFile)
+  headOutput $ Tx.pack $ "* " <> show td
+  I.putStrLn $ "Output " ++ (show td) ++ " article --> " ++ orgFile
+  I.hFlush I.stdout
   --(make a promise)--------------------------------------
   cmPromise  <- async $ getPageContents $ topURL common
   urlPromise <- async . return . urlF akahata =<< getPageContents (topURL akahata)
   --(common parts)----------------------------------------
   cmContents <- wait cmPromise
-  forM_ (pageF common cmContents) $ printer getTitle getText
+  forM_ (pageF common cmContents) $ trueOutput getTitle getText
   --(akahata parts)---------------------------------------
   urls <- wait urlPromise
   conc <- forM urls (async . getPageContents)
   forM_ conc $ \asy -> do
     promise <- wait asy
-    printer (titleFunc akpage) (textFunc akpage) promise
+    trueOutput (titleFunc akpage) (textFunc akpage) promise
 
 main :: IO ()
 main = do
@@ -65,19 +81,23 @@ main = do
   sjis <- I.mkTextEncoding "CP932"
   when (sjis' opt)  $ I.hSetEncoding I.stdout sjis
   --------------------------------------------------
+  let destination = output opt
+  let makeF = dayMaker destination
+  --------------------------------------------------
   case (today' opt, force opt, date' opt) of
-    (True, _, _) -> dayMaker td
+    (True, _, _) -> makeF td
     (_, f, d)    -> case (strdt f, strdt d) of
-                      (Just f', _) -> dayMaker f'
+                      (Just f', _) -> makeF f'
                       (_, Just d') -> do
                         let (y, m) = (toYear d', toMonth d')
-                        dlist <- parseToDayList y m
-                        forM_ dlist dayMaker
+                        dlist      <- parseToDayList y m
+                        forM_ dlist makeF
 
 data Options = Options { today' :: Bool,
                          date'  :: String,
                          sjis'  :: Bool,
-                         force  :: String
+                         force  :: String,
+                         output :: Bool
                        } deriving (Show)
 
 todayP :: O.Parser Bool
@@ -91,6 +111,9 @@ dateP = O.strOption $ mconcat
         , O.value ""
         , O.showDefaultWith id]
 
+outputFileP :: O.Parser Bool
+outputFileP = O.switch $ O.short 'o' <> O.long "stdout" <> O.help "Output to stdout."
+
 forceP :: O.Parser String
 forceP = O.strOption $ mconcat
         [ O.short 'f', O.long "force"
@@ -103,7 +126,13 @@ sjisP :: O.Parser Bool
 sjisP = O.switch $ O.short 's' <> O.long "sjis" <> O.help "Output with char-set sjis"
 
 optionsP :: O.Parser Options
-optionsP = (<*>) O.helper $ Options <$> todayP <*> dateP <*> sjisP <*> forceP
+optionsP = (<*>) O.helper
+           $ Options
+           <$> todayP
+           <*> dateP
+           <*> sjisP
+           <*> forceP
+           <*> outputFileP
 
 myParserInfo :: O.ParserInfo Options
 myParserInfo = O.info optionsP $ mconcat 
