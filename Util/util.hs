@@ -167,11 +167,10 @@ withOutFile oFile func = do
 
 withAppendFile :: FilePath -> (I.Handle -> IO ()) -> IO ()
 withAppendFile oFile func = do
-  h <- I.openFile oFile I.WriteMode
-  encoding <- I.mkTextEncoding "cp65001"
-  I.hSetEncoding h encoding
-  func h
-  I.hClose h
+  bracket (I.openFile oFile I.AppendMode) (I.hClose) $ \h -> do
+    encoding <- I.mkTextEncoding "cp65001"
+    I.hSetEncoding h encoding
+    func h
 
 writeUTF8File :: FilePath -> String -> IO ()
 writeUTF8File fp contents = do

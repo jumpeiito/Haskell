@@ -1,8 +1,23 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
-module Util.Strdt (strdt, dtmap, Date, NendoDate,DayWeek (..),
-                   toYear, toYearInt, toMonth, toDay, nendo,
-                   howOld, nendoEnd, today, todayDay, dayStr8, dayStrWithSep,
-                   getWeekDate, getWeekDateInt ) where 
+module Util.Strdt (strdt
+                  , dtmap
+                  , Date
+                  , NendoDate
+                  , DayWeek (..)
+                  , toYear
+                  , toYearInt
+                  , toMonth
+                  , toDay
+                  , nendo
+                  , howOld
+                  , nendoEnd
+                  , today
+                  , todayDay
+                  , dayStr8
+                  , dayStr6
+                  , dayStrWithSep
+                  , getWeekDate
+                  , getWeekDateInt) where 
 
 import Util           hiding ((&&&))
 import Control.Arrow
@@ -136,6 +151,10 @@ howOld from to =
 dayStr8 :: Day -> String
 dayStr8 d = printf "%04d%02d%02d" y' m' d'
   where [y',m',d'] = [toYearInt, toMonth, toDay] <*> [d]
+
+dayStr6 :: Day -> String
+dayStr6 d = printf "%04d%02d" y' m'
+  where [y',m'] = [toYearInt, toMonth] <*> [d]
 
 dayStrWithSep :: Char -> Day -> String
 dayStrWithSep c d = printf "%04d%c%02d%c%02d" y' c m' c d'
