@@ -19,9 +19,9 @@ makeListedPage d = LP base' d url' (newsList base') (const [])
 
 newsList :: StringLike a => URL -> [TagTree a] -> [URL]
 newsList base = map (fullURL base) . extractHref . extractTree
-  where extractTree = (findTree [(Name "a", Attr "important"),
-                                 (Name "a", Attr "normal")] `concatMap`)
-        extractHref = (findAttribute (castString "href")      `concatMap`)
+  where extractTree = findTreeS [(Name "a", Attr "important")
+                                , (Name "a", Attr "normal")]
+        extractHref = findAttributeS (castString "href")
 
 fullURL :: StringLike a => URL -> a -> URL
 fullURL base url = makeURLFunction d base url'
@@ -41,7 +41,7 @@ makeURLFunction day base subpage =
 
 takeTitle :: (Monoid a, StringLike a) => [TagTree a] -> Text
 takeTitle tr = orgStar <> treeTextMap tree'
-  where tree'   = ([(Name "title", Always)] ==>) `concatMap` tr
+  where tree'   = findTreeS [(Name "title", Always)] tr
         orgStar = castString "** "
         treeTextMap = utf8Text . mconcat . map treeText
 
@@ -49,15 +49,10 @@ takeText :: (Monoid a, StringLike a) => [TagTree a] -> [Text]
 takeText = map ((<> Tx.pack "\n") . stringFoldBase) .
            filterBlankLines                         .
            toString                                 .
-           makeTree
-  where makeTree = concatMap $ findTree [(Name "p",  Always),
-                                          -- (Name "h1", Always),
-                                          -- (Name "h2", Always),
-                                          (Name "h3", Always)]
-        toString      = map (treeTextEx directionList)
+           findTreeS [(Name "p", Always), (Name "h3", Always)]
+  where toString      = map (treeTextEx directionList)
         directionList = (Name "a", Always, Skip) : normalDirection
 
 makePage :: (Monoid a, StringLike a) => URL -> Page a
 makePage url = Page url vacant takeTitle takeText
   where vacant = TagLeaf (TagText mempty)
-

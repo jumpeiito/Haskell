@@ -79,17 +79,24 @@ main = do
   opt <- O.customExecParser (O.prefs O.showHelpOnError) myParserInfo
   --------------------------------------------------
   sjis <- I.mkTextEncoding "CP932"
+  -- SJISで出力 (-s)
   when (sjis' opt)  $ I.hSetEncoding I.stdout sjis
   --------------------------------------------------
   let destination = output opt
+  -- 標準出力に出力するか,ファイルに書き出すか。(-o)
   let makeF = dayMaker destination
   --------------------------------------------------
   case (today' opt, force opt, date' opt) of
+    -- 当日分の記事のみを取得。(-t)
     (True, _, _) -> makeF td
     (_, f, d)    -> case (strdt f, strdt d) of
+                      -- 指定した日の記事を取得。(-f)
                       (Just f', _) -> makeF f'
+                      -- 指定した年月のOrgファイルをパーズし,取得して
+                      -- いない日付のものを取ってくる。(-d)
                       (_, Just d') -> do
                         let (y, m) = (toYear d', toMonth d')
+                        -- 指定した年月のOrgファイルをパーズ
                         dlist      <- parseToDayList y m
                         forM_ dlist makeF
 

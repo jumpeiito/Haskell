@@ -30,6 +30,7 @@ executable snews
                      , text
                      , text-icu
                      , bytestring
+                     , yaml
   other-modules:     Snews.NewsArticle.Akahata
                      Snews.NewsArticle.Base
                      Snews.NewsArticle.Common

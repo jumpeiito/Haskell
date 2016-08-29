@@ -20,12 +20,12 @@ extractPage :: (Monoid a, StringLike a) => [TagTree a] -> [Page a]
 extractPage tr = flip map (makeTree tr) $ \n ->
   Page mempty n takeTitle takeText
   where makeTree = reverse . 
-                   concatMap (findTree [(Name "div", Attr "blogbody")])
+                   findTreeS [(Name "div", Attr "blogbody")]
 
 takeTitle :: (Monoid a, StringLike a) => [TagTree a] -> Text
 takeTitle = (utf8Text "** " <>) . treeTextMap . makeTree
   where treeTextMap = utf8Text . mconcat . map treeText
-        makeTree    = concatMap $ findTree [(Name "h3", Attr "title")]
+        makeTree    = findTreeS [(Name "h3", Attr "title")]
 
 takeText :: (Monoid a, StringLike a) => [TagTree a] -> [Text]
 takeText = map (<> Tx.pack "\n")          .
@@ -33,6 +33,5 @@ takeText = map (<> Tx.pack "\n")          .
            filterBlankLines               .
            concatMap (lines . castString) .
            map treeText                   .
-           makeTree
-  where makeTree = concatMap $ findTree [(Name "div", Attr "text")]
+           findTreeS [(Name "div", Attr "text")]
 ----------------------------------------------------------------------------------------------------

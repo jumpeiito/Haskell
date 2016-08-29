@@ -1,21 +1,25 @@
-module Snews.NewsArticle.Base (ListedPage (..),
-                         URL, ArticleKey, DirectionType,
-                         Page (..),
-                         Article (..),
-                         AKey (..),
-                         WriterDirection (..),
-                         findTree,
-                         (==>),
-                         findAttribute,
-                         stringFoldBase,
-                         treeText,
-                         treeTextEx,
-                         normalDirection,
-                         filterBlankLines,
-                         translateTags,
-                         getTitle,
-                         getText,
-                         utf8Text) where
+module Snews.NewsArticle.Base (ListedPage (..)
+                              , URL
+                              , ArticleKey
+                              , DirectionType
+                              , Page (..)
+                              , Article (..)
+                              , AKey (..)
+                              , WriterDirection (..)
+                              , findTree
+                              , findTreeS
+                              , (==>)
+                              , findAttribute
+                              , findAttributeS
+                              , stringFoldBase
+                              , treeText
+                              , treeTextEx
+                              , normalDirection
+                              , filterBlankLines
+                              , translateTags
+                              , getTitle
+                              , getText
+                              , utf8Text) where
 
 import Util
 import Util.StrEnum
@@ -70,6 +74,9 @@ findTree akeys tb@TagBranch{} = execWriter $ find' akeys tb
 findTree _ _ = []
 (==>) = findTree
 
+findTreeS :: StringLike a => [ArticleKey] -> [TagTree a] -> [TagTree a]
+findTreeS ak = (findTree ak `concatMap`)
+
 find' :: StringLike a => [ArticleKey] -> TagTree a -> Writer [TagTree a] ()
 find' _ (TagLeaf _) = tell mempty
 find' akeys tb@(TagBranch _ _ ys)
@@ -99,6 +106,9 @@ findAttribute key (TagBranch _ attr tbs) = execWriter fA
             _      -> tell mempty
           forM_ tbs (tell . findAttribute key)
 findAttribute _ _ = mempty
+
+findAttributeS :: Eq s => s -> [TagTree s] -> [s]
+findAttributeS key = (findAttribute key `concatMap`)
 
 assocKey :: Eq a => a -> [(a, b)] -> Maybe b
 assocKey _ [] = Nothing
