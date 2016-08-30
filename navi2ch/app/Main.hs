@@ -3,30 +3,51 @@
 module Main where
 
 import Util
-import Control.Monad            (forM_)
-import qualified Control.Exception as Ex
+import Control.Monad                    (forM_, when)
+import Control.Monad.Reader
+import Control.Exception                
+import Data.Monoid
 import Text.Parsec
 import Text.Parsec.String
-import qualified System.IO          as I
-
-import qualified Data.Enumerator as E
-import qualified Data.Enumerator.Binary as EB
-import qualified Data.Enumerator.List as EL
+import System.Directory
+import qualified System.IO              as I
 
 type SimplePath = (String, String)
 
+data NaviFile   =
+  N FilePath SimplePath
+  | NError FilePath
+  deriving (Show)
+
+data Config = Config { searchPaths :: [FilePath]
+                     , topPath     :: FilePath }
+
+config = Config ["C:/Users/Jumpei/.navi2ch/", "C:/users/sibuc526.newnet/home/.navi2ch/", "f:/home/.navi2ch/"] "f:/.navi2ch"
+----obsolete----------------------------------------------------------------------------------------
 getTitleParse :: Parser String
 getTitleParse = head <$> sepBy (many $ noneOf "<>") (string "<>")
 
--- tags :: Parser String
--- tags = do
---   elm <- between (char '<') (char '>') (many1 $ noneOf ">")
---   return $ "" ++ elm ++ ""
--- except :: Parser String
--- except = do
---   exc <- choice [try tags, many1 $ noneOf "<>"]
---   aft <- except
---   return $ exc ++ aft
+getTitle :: String -> Either ParseError String
+getTitle s = reverse <$> parse getTitleParse "" (reverse s)
+----------------------------------------------------------------------------------------------------
+mkdirIfNotExists :: FilePath -> IO ()
+mkdirIfNotExists fp = do
+  p <- doesDirectoryExist fp
+  unless p $ createDirectory fp
+
+navi :: FilePath -> NaviFile
+navi fp = case getFileSimplePath fp of
+  Right sp -> N fp sp
+  Left _   -> NError fp
+
+newDir, newFile :: NaviFile -> Reader Config FilePath
+newDir (N _ (d, base)) = do
+  top <- topPath <$> ask
+  return $ top <> "/" <> d <> "/"
+newDir (NError _) = return ""
+
+newFile nv@(N _ (d, base)) = (++ base) <$> newDir nv
+newFile (NError _) = return ""
 
 getFileSimplePathParser :: Parser SimplePath
 getFileSimplePathParser = do
@@ -34,24 +55,42 @@ getFileSimplePathParser = do
   [dir, file] <- tailTake <$> sepBy (many (noneOf "/")) (string "/")
   return (dir, file)
 
-getTitle :: String -> Either ParseError String
-getTitle s = reverse <$> parse getTitleParse "" (reverse s)
-
 getFileSimplePath :: FilePath -> Either ParseError SimplePath
 getFileSimplePath = parse getFileSimplePathParser ""
 
 getFiles :: FilePath -> IO [FilePath]
-getFiles fp = allfd fp (FD ("info" <!~>) (".dat" <^>))
+getFiles fp = do
+  exist <- doesDirectoryExist fp
+  if exist
+    then allfd fp (FD ("info" <!~>) (".dat" <^>))
+    else return []
+
+getFile2 :: ReaderT Config IO [FilePath]
+getFile2 = do
+  dirs  <- searchPaths <$> ask
+  liftIO $ concat <$> mapM getFiles dirs
+
+fileSize :: FilePath -> IO Integer
+fileSize fp = I.withFile fp I.ReadMode I.hFileSize
+              
+existsOrNewer :: FilePath -> FilePath -> IO Bool
+existsOrNewer fp newfp = do
+  exists  <- doesFileExist newfp
+  if exists
+    then do { size    <- fileSize fp;
+              newsize <- fileSize newfp;
+              return $ size < newsize }
+    else return True
 
 main :: IO ()
 main = do
-  files <- getFiles "f:/haskell/dat"
+  files <- getFile2 `runReaderT` config
   forM_ files $ \file -> do
-    contents <- head <$> sjisLines file
-    let title = either (const file) id (getTitle contents)
-    -- sjis <- I.mkTextEncoding "CP932"
-    I.hSetEncoding I.stdout I.utf8
-    -- putStrLn title
-    -- putStrLn title `Ex.catch` (\(Ex.SomeException e) -> putStrLn (Ex.displayException e))
-    putStrLn title `Ex.catch` (\(Ex.SomeException e) -> putStrLn $ file ++ (Ex.displayException e))
-
+    let nv = navi file
+    let newd = newDir nv  `runReader` config
+    let newf = newFile nv `runReader` config
+    copiable <- existsOrNewer file newf
+    when copiable $ do
+      mkdirIfNotExists newd
+      print file
+      copyFile file newf
