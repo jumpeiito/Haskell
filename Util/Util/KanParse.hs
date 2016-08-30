@@ -17,7 +17,9 @@ instance Monoid KP where
   Ksum (x, y, z) `mappend` Num i
     | x == 0    = Ksum (i, y, z)
     | otherwise = Ksum (10 * x + i, y, z)
-  Ksum (x, y, z) `mappend` Keta i         = Ksum (0, (if x == 0 then i else i * x) + y, z)
+  Ksum (x, y, z) `mappend` Keta i
+    | x == 0    = Ksum (0, i + y, z)
+    | otherwise = Ksum (0, i * x + y, z)
   Ksum (x, y, z) `mappend` BigKeta b      = Ksum (0, 0, (x + y) * b + z)
   Ksum (a, b, c) `mappend` Ksum (x, y, z) = Ksum (a+x, b+y, c+z)
   _              `mappend` _              = mempty
@@ -42,7 +44,7 @@ kanjiBigKetaMap = M.fromList [('万', 10000),
                               ('京', 10000000000000000),
                               ('垓', 100000000000000000000)]
 
-kanjiParseBuilder :: (M.Map Char Integer) -> (Integer -> KP) -> Parser KP
+kanjiParseBuilder :: M.Map Char Integer -> (Integer -> KP) -> Parser KP
 kanjiParseBuilder mp f = do
   c <- oneOf $ M.keys mp
   let n = fromJust $ M.lookup c mp

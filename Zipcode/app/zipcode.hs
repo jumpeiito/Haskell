@@ -50,7 +50,7 @@ instance Functor Answer where
   f `fmap` Probably (a, b) = Probably (f a, b)
 
 instance Ord Hitting where
-  compare h1@(Hitting {}) h2@(Hitting {})
+  compare h1@Hitting {} h2@Hitting {}
     | point h1 < point h2  = LT
     | point h1 == point h2 = EQ
     | otherwise            = GT
@@ -67,7 +67,7 @@ cast = castString
 
 toString :: StringLike a => Answer (a, a) -> String
 toString (Absolute (a, b)) =      fmtFold a b "{ad} --> {pt}"
-toString (Probably ((a, b), i)) = (fmtFold a b "[{ad} --> {pt}], Probably ") ++ show i
+toString (Probably ((a, b), i)) = fmtFold a b "[{ad} --> {pt}], Probably " ++ show i
 ----------------------------------------------------------------------------------------------------
 makeDict :: IO Dictionary
 makeDict = map (listArray (0,1) . split ',')
@@ -94,7 +94,7 @@ searchA key dict = searchClassify o v
           verse <- rpar $ searchCore rev' dict
           rseq ord
           rseq verse
-          return $ (ord, verse)
+          return (ord, verse)
 
 (<==>) :: Bool -> (a, a) -> a
 (<==>) f (a, b) = if f then a else b
@@ -126,7 +126,7 @@ innerlook ch line = ch <<?>> line ||
   where (<<?>>) c l = c `telem` (l!0)
 
 searchST2 :: Text -> State Dictionary ()
-searchST2 t = do
+searchST2 t = 
   forChar_ t $ \ch -> do
     dic <- get
     case filter (innerlook ch) dic of

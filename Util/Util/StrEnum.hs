@@ -29,14 +29,15 @@ instance StrEnum String where
   forChar_ = forM_
   forCharI_ str f = do
     let l = [(str!!i, i) | i <- [0..(length str - 1)]]
-    forM_ l $ \(ch, num) -> f ch num
+    -- forM_ l $ \(ch, num) -> f ch num
+    forM_ l $ uncurry f
 --------------------
   split sep str = reverse . fst . (`execState` (mempty, mempty)) $ do
     forM_ str $ \ch -> do
       (big, small) <- get
-      if ch == sep
-        then put (reverse small:big, [])
-        else put (big, ch : small)
+      let (big', small') | ch == sep = (reverse small:big, [])
+                         | otherwise = (big, ch:small)
+      put (big', small')
     (big, small) <- get
     put (reverse small:big, [])
 --------------------------------------------------
@@ -55,7 +56,7 @@ instance StrEnum Txi.Text where
 _stringFold ::
   (StrEnum a, Monoid a, StringLike a) =>
   Int -> String -> a -> State (a, Int) ()
-_stringFold column adder t = do
+_stringFold column adder t = 
   forChar_ t $ \ch -> do
     (text, count) <- get
     let (plus, c) | count == column = (adder,  0)
@@ -63,8 +64,9 @@ _stringFold column adder t = do
     put (text <> castString (ch : plus), c)
 
 forCharCombinator_ indexf lengthf str f =
-  mapM_ f [ indexf str n | n <- [0..(lengthf str)-1]]
+  mapM_ f [ indexf str n | n <- [0..lengthf str-1]]
 forCharICombinator_ indexf lengthf str f = do
-  let l = [ (indexf str n, n) | n <- [0..(lengthf str)-1]]
-  forM_ l $ \(ch, num) -> f ch num
+  let l = [ (indexf str n, n) | n <- [0..lengthf str-1]]
+  -- forM_ l $ \(ch, num) -> f ch num
+  forM_ l $ uncurry f
 

@@ -54,27 +54,29 @@ yearInspect year modulo begin end =
   (year `mod` 4 == modulo) && (begin <= year) && (year <= end)
 
 vernalEquinox :: Year -> Day
-vernalEquinox y
-  | yearInspect y 0 1900 1956 = fromGregorian y 3 21
-  | yearInspect y 0 1960 2088 = fromGregorian y 3 20
-  | yearInspect y 0 2092 2096 = fromGregorian y 3 19
-  | yearInspect y 1 1901 1989 = fromGregorian y 3 21
-  | yearInspect y 1 1993 2097 = fromGregorian y 3 20
-  | yearInspect y 2 1902 2022 = fromGregorian y 3 21
-  | yearInspect y 2 2026 2098 = fromGregorian y 3 20
-  | yearInspect y 3 1903 1923 = fromGregorian y 3 22
-  | yearInspect y 3 1927 2055 = fromGregorian y 3 21
-  | yearInspect y 3 2059 2099 = fromGregorian y 3 20
+vernalEquinox y = fromGregorian y 3 day
+  where day | yearInspect y 0 1900 1956 = 21
+            | yearInspect y 0 1960 2088 = 20
+            | yearInspect y 0 2092 2096 = 19
+            | yearInspect y 1 1901 1989 = 21
+            | yearInspect y 1 1993 2097 = 20
+            | yearInspect y 2 1902 2022 = 21
+            | yearInspect y 2 2026 2098 = 20
+            | yearInspect y 3 1903 1923 = 22
+            | yearInspect y 3 1927 2055 = 21
+            | yearInspect y 3 2059 2099 = 20
+            | otherwise                 = 100
 
 autumnalEquinox :: Year -> Day
-autumnalEquinox y
-  | yearInspect y 0 1900 2008 = fromGregorian y 9 23
-  | yearInspect y 0 2012 2096 = fromGregorian y 9 22
-  | yearInspect y 1 1901 1917 = fromGregorian y 9 24 
-  | yearInspect y 1 1921 2041 = fromGregorian y 9 23
-  | yearInspect y 1 2045 2097 = fromGregorian y 9 22
-  | yearInspect y 2 1902 1946 = fromGregorian y 9 24
-  | yearInspect y 2 1950 2074 = fromGregorian y 9 23 
-  | yearInspect y 2 2078 2098 = fromGregorian y 9 22
-  | yearInspect y 3 1903 1979 = fromGregorian y 9 24
-  | yearInspect y 3 1983 2099 = fromGregorian y 9 23
+autumnalEquinox y = fromGregorian y 9 day
+  where day | yearInspect y 0 1900 2008 = 23
+            | yearInspect y 0 2012 2096 = 22
+            | yearInspect y 1 1901 1917 = 24 
+            | yearInspect y 1 1921 2041 = 23
+            | yearInspect y 1 2045 2097 = 22
+            | yearInspect y 2 1902 1946 = 24
+            | yearInspect y 2 1950 2074 = 23 
+            | yearInspect y 2 2078 2098 = 22
+            | yearInspect y 3 1903 1979 = 24
+            | yearInspect y 3 1983 2099 = 23
+            | otherwise                 = 100
