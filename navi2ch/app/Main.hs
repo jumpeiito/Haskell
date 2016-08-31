@@ -22,13 +22,10 @@ data NaviFile   =
 data Config = Config { searchPaths :: [FilePath]
                      , topPath     :: FilePath }
 
-config = Config ["C:/Users/Jumpei/.navi2ch/", "C:/users/sibuc526.newnet/home/.navi2ch/", "f:/home/.navi2ch/"] "f:/.navi2ch"
-----obsolete----------------------------------------------------------------------------------------
-getTitleParse :: Parser String
-getTitleParse = head <$> sepBy (many $ noneOf "<>") (string "<>")
-
-getTitle :: String -> Either ParseError String
-getTitle s = reverse <$> parse getTitleParse "" (reverse s)
+config = Config { searchPaths = ["C:/Users/Jumpei/.navi2ch/"
+                                , "C:/users/sibuc526.newnet/home/.navi2ch/"
+                                , "f:/home/.navi2ch/"]
+                , topPath     = "f:/.navi2ch" }
 ----------------------------------------------------------------------------------------------------
 mkdirIfNotExists :: FilePath -> IO ()
 mkdirIfNotExists fp = do
@@ -46,7 +43,7 @@ newDir (N _ (d, base)) = do
   return $ top <> "/" <> d <> "/"
 newDir (NError _) = return ""
 
-newFile nv@(N _ (d, base)) = (++ base) <$> newDir nv
+newFile nv@(N _ (_, base)) = (++ base) <$> newDir nv
 newFile (NError _) = return ""
 
 getFileSimplePathParser :: Parser SimplePath
@@ -81,7 +78,7 @@ existsOrNewer fp newfp = do
               newsize <- fileSize newfp;
               return $ size < newsize }
     else return True
-
+----------------------------------------------------------------------------------------------------
 main :: IO ()
 main = do
   files <- getFile2 `runReaderT` config
