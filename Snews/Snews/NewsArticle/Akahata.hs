@@ -1,58 +1,54 @@
-module Snews.NewsArticle.Akahata (makePage, makeListedPage,
-                           takeTitle, takeText) where
+module Snews.NewsArticle.Akahata ( config
+                                 , dailyURL
+                                 , makeNewsList
+                                 ) where
 
 import Util.Strdt                       (strdt, nendo, dayStrWithSep)
 import Data.Time                        (Day (..))
-import Data.Monoid                      ((<>))
 import Data.Maybe                       (fromJust)
 import Data.Text.Internal               (Text (..))
+import Control.Monad.Reader
 import Snews.NewsArticle.Base
 import Text.StringLike                  (StringLike, castString)
 import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import qualified Data.Text              as Tx
 
-makeListedPage :: StringLike a => Day -> ListedPage a
-makeListedPage d = LP base' d url' (newsList base') (const [])
-  where base' = "http://www.jcp.or.jp/akahata/"
-        url'  = makeTopPageURL d base'
+config = Con { hostName = "http://www.jcp.or.jp/akahata/"
+             , baseName = "index.html"
+             , rootAK   = [(Name "a", Attr "important") , (Name "a", Attr "normal")]
+             , titleAK  = [(Name "title", Always)]
+             , textAK   = [(Name "p", Always), (Name "h3", Always)]
+             , findFunc = findTreeS
+             , direct   = (Name "a", Always, Skip) : normalDirection }
 
-newsList :: StringLike a => URL -> [TagTree a] -> [URL]
-newsList base = map (fullURL base) . extractHref . extractTree
-  where extractTree = findTreeS [(Name "a", Attr "important")
-                                , (Name "a", Attr "normal")]
-        extractHref = findAttributeS (castString "href")
+type ConfigReader a = Reader (Config [TagTree Text]) a
 
-fullURL :: StringLike a => URL -> a -> URL
-fullURL base url = makeURLFunction d base url'
-  where url' = castString url
-        dstr = take 8 url'
-        d    = fromJust $ strdt dstr
+generateURL :: Day -> String -> ConfigReader String
+generateURL d url = do
+  host <- hostName <$> ask
+  return $ mconcat [ host
+                   , "aik"
+                   , (show . (`mod` 1000) . nendo) d , "/"
+                   , dayStrWithSep '-' d, "/"
+                   , url ]
 
-makeTopPageURL :: Day -> URL -> URL
-makeTopPageURL day base = makeURLFunction day base "index.html"
+dailyURL :: Day -> ConfigReader String
+dailyURL d = do
+  base <- baseName <$> ask
+  generateURL d base
 
-makeURLFunction :: Day -> URL -> URL -> URL
-makeURLFunction day base subpage =
-  base <> "aik" <> nendo' </> day' </> subpage
-  where (</>) a = (a <>) . ("/" <>)
-        nendo'  = show $ (`mod` 1000) $ nendo day
-        day'    = dayStrWithSep '-' day
-
-takeTitle :: (Monoid a, StringLike a) => [TagTree a] -> Text
-takeTitle tr = orgStar <> treeTextMap tree'
-  where tree'   = findTreeS [(Name "title", Always)] tr
-        orgStar = castString "** "
-        treeTextMap = utf8Text . mconcat . map treeText
-
-takeText :: (Monoid a, StringLike a) => [TagTree a] -> [Text]
-takeText = map ((<> Tx.pack "\n") . stringFoldBase) .
-           filterBlankLines                         .
-           toString                                 .
-           findTreeS [(Name "p", Always), (Name "h3", Always)]
-  where toString      = map (treeTextEx directionList)
-        directionList = (Name "a", Always, Skip) : normalDirection
-
-makePage :: (Monoid a, StringLike a) => URL -> Page a
-makePage url = Page url vacant takeTitle takeText
-  where vacant = TagLeaf (TagText mempty)
+makeNewsList :: StringLike a => [TagTree a] -> [String]
+makeNewsList tree = (`runReader` config) $ do
+  ak   <- rootAK <$> ask
+  host <- hostName <$> ask
+  let extract = findAttributeS (castString "href") $ findTreeS ak tree
+  mapM fullURL extract
+    
+fullURL :: StringLike a => a -> ConfigReader String
+fullURL url = do
+  host <- hostName <$> ask
+  base <- baseName <$> ask
+  let dstr = castString url :: String
+  let d    = fromJust $ strdt (take 8 dstr)
+  generateURL d dstr

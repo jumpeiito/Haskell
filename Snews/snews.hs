@@ -3,12 +3,14 @@ import           Util.Strdt                     (strdt, toYear, toMonth, todayDa
 import           Snews.OrgParse                 (parseToDayList)
 import           Snews.NewsArticle.Base
 import           Control.Monad                  (forM, forM_, when)
+import           Control.Monad.Reader
 import           Control.Concurrent.Async
 import           Network.HTTP                   (simpleHTTP, getRequest, getResponseBody)
 import           Data.Time                      (Day (..))
 import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid                    ((<>))
 import           Text.Printf                    (printf)
+import           Text.StringLike                (StringLike, castString)
 import           Text.HTML.TagSoup.Tree
 import qualified Options.Applicative            as O
 import qualified Snews.NewsArticle.Akahata      as Ak
@@ -25,31 +27,27 @@ convertUTF8 s = do
   sjis <- C.open "cp932" (Just False)
   return $ C.fromUnicode utf8 $ C.toUnicode sjis $ B.pack s
 
-getPageContents :: String -> IO [TagTree B.ByteString]
+getPageContents :: String -> IO [TagTree Tx.Text]
 getPageContents url = do
   http      <- simpleHTTP $ getRequest url
   body      <- getResponseBody http
-  converted <- convertUTF8 body
+  converted <- castString <$> convertUTF8 body
   return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
 filePrinter filename dt = do
   withAppendFile filename $ \handle ->
     Txio.hPutStrLn handle dt
 
-printerCore outputF f1 f2 page = do
-  outputF $ f1 page
-  mapM_ outputF $ f2 page
+printerCore outputF config page = do
+  outputF $ takeTitle page `runReader` config
+  mapM_ outputF $ takeText page `runReader` config
 
-printer = printerCore Txio.putStrLn
+printer config = printerCore Txio.putStrLn config
 
-fPrinter filename = printerCore (filePrinter filename)
+fPrinter filename config = printerCore (filePrinter filename) config
 
 dayMaker :: Bool -> Day -> IO ()
 dayMaker bp td = do
-  --(definition)-----------------------------------------
-  let common  = Cm.makeListedPage td
-  let akahata = Ak.makeListedPage td :: ListedPage B.ByteString
-  let akpage  = Ak.makePage ""
   --(deciding output destination)-------------------------
   let orgFile = "f:/Org/news/" ++ dayStr6 td ++ ".org"
   let (trueOutput, headOutput)
@@ -59,17 +57,20 @@ dayMaker bp td = do
   I.putStrLn $ "Output " ++ (show td) ++ " article --> " ++ orgFile
   I.hFlush I.stdout
   --(make a promise)--------------------------------------
-  cmPromise  <- async $ getPageContents $ topURL common
-  urlPromise <- async . return . urlF akahata =<< getPageContents (topURL akahata)
+  let cmTop = Cm.dailyURL td `runReader` Cm.config
+  let akTop = Ak.dailyURL td `runReader` Ak.config
+  cmPromise  <- async $ getPageContents cmTop
+  urlPromise <- async . return . Ak.makeNewsList =<< getPageContents akTop
   --(common parts)----------------------------------------
   cmContents <- wait cmPromise
-  forM_ (pageF common cmContents) $ trueOutput getTitle getText
+  forM_ (Cm.makeTree cmContents `runReader` Cm.config) $
+    trueOutput Cm.config 
   --(akahata parts)---------------------------------------
   urls <- wait urlPromise
   conc <- forM urls (async . getPageContents)
   forM_ conc $ \asy -> do
     promise <- wait asy
-    trueOutput (titleFunc akpage) (textFunc akpage) promise
+    trueOutput Ak.config promise
 
 main :: IO ()
 main = do
@@ -149,3 +150,7 @@ myParserInfo = O.info optionsP $ mconcat
     , O.footer ""
     , O.progDesc ""
     ]    
+
+----------------------------------------------------------------------------------------------------
+-- testIO = do
+  

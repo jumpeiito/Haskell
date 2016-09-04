@@ -1,11 +1,12 @@
-module Snews.NewsArticle.Base (ListedPage (..)
-                              , URL
+{-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
+
+module Snews.NewsArticle.Base ( URL
                               , ArticleKey
                               , DirectionType
-                              , Page (..)
                               , Article (..)
                               , AKey (..)
                               , WriterDirection (..)
+                              , Config (..)
                               , findTree
                               , findTreeS
                               , (==>)
@@ -17,9 +18,9 @@ module Snews.NewsArticle.Base (ListedPage (..)
                               , normalDirection
                               , filterBlankLines
                               , translateTags
-                              , getTitle
-                              , getText
-                              , utf8Text) where
+                              , utf8Text
+                              , takeTitle
+                              , takeText) where
 
 import Util
 import Util.StrEnum
@@ -28,6 +29,7 @@ import Data.List                        (foldl', isInfixOf)
 import Data.Text.Internal               (Text (..))
 import Data.Text.Encoding               (decodeUtf8)
 import Control.Monad.State              (get, put, State, runState, execState)
+import Control.Monad.Reader
 import Control.Monad.Writer
 import Text.StringLike                  (StringLike, castString)
 import Text.HTML.TagSoup
@@ -41,33 +43,24 @@ type ArticleKey      = (AKey, AKey)
 type DirectionList   = [(AKey, AKey, WriterDirection)]
 type DirectionType a = [(TagTree a -> Bool, WriterDirection)]
 
-data ListedPage a =
-  LP { baseURL  :: URL,
-       topDate  :: Day,
-       topURL   :: URL,
-       urlF     :: [TagTree a] -> [URL],
-       pageF    :: [TagTree a] -> [Page a]
-     }
-
-data Page a =
-  Page { pageUrl   :: URL,
-         tagtree   :: TagTree a,
-         titleFunc :: [TagTree a] -> Text,
-         textFunc  :: [TagTree a] -> [Text] }
-
 data Article a =
-  Article { tree  :: TagTree a,
-            title :: a,
-            text  :: [a],
-            date  :: Maybe Day,
-            paper :: a } deriving (Show, Eq)
+  Article { tree  :: TagTree a
+          , title :: a
+          , text  :: [a]
+          , date  :: Maybe Day
+          , paper :: a } deriving (Show, Eq)
 
 data AKey = Name String | Attr String | Always deriving (Show, Eq)
 
 data WriterDirection = Skip | Pack String | Loop deriving (Show, Eq)
 
-instance Show (Page a) where
-  show (Page u _ _ _) = "Page (url=" ++ u ++ ")"
+data Config a = Con { hostName  :: String
+                    , baseName  :: String
+                    , rootAK    :: [ArticleKey]
+                    , titleAK   :: [ArticleKey]
+                    , textAK    :: [ArticleKey]
+                    , findFunc  :: [ArticleKey] -> a -> [TagTree Text]
+                    , direct    :: DirectionList }
 
 (==>), findTree :: StringLike a => [ArticleKey] -> TagTree a -> [TagTree a]
 findTree akeys tb@TagBranch{} = execWriter $ find' akeys tb
@@ -182,19 +175,35 @@ fBLparse = do
 translateTags :: StringLike a => a -> [TagTree a]
 translateTags str = tagTree $ parseTags str
 ----------------------------------------------------------------------------------------------------
-getF :: (Page a -> [TagTree a] -> r) -> Page a -> r
-getF f = f <@> (return . tagtree)
-
 (<@>) :: Monad m => m (t -> r) -> m t -> m r
 (<@>) f tr = do
   f'  <- f
   tr' <- tr
   return $ f' tr'
 
-getTitle :: Page r -> Text
-getText  :: Page r -> [Text]
-getTitle = getF titleFunc
-getText  = getF textFunc
-
 utf8Text :: StringLike a => a -> Text
 utf8Text = decodeUtf8 . castString
+
+-- takeTitle :: (Monoid a, StringLike a) => [TagTree a] -> Reader (Config b) Text
+takeTitle :: MonadReader (Config a) m => a -> m Text
+takeTitle tree = do
+  ak <- titleAK <$> ask
+  f  <- findFunc <$> ask
+  return $
+    (utf8Text "** " <>) .
+    (utf8Text . mconcat . map treeText) $
+    f ak tree
+
+-- takeText :: (Monoid a, StringLike a) => [TagTree a] -> Reader (Config b) [Text]
+takeText :: MonadReader (Config a) m => a -> m [Text]
+takeText tree = do
+  ak     <- textAK   <$> ask
+  f      <- findFunc <$> ask
+  direct <- direct   <$> ask
+  return $
+    map (<> Tx.pack "\n")          .
+    map stringFoldBase             .
+    filterBlankLines               .
+    concatMap (lines . castString) .
+    map (treeTextEx direct)        $
+    f ak tree

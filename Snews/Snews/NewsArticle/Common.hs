@@ -1,37 +1,35 @@
-module Snews.NewsArticle.Common (makeListedPage) where
+module Snews.NewsArticle.Common ( dailyURL
+                                , config
+                                , makeTree
+                                ) where
 
 import Util.Strdt                       (dayStr8)
 import Data.Time                        (Day (..))
 import Data.Monoid                      ((<>))
 import Data.Text.Internal               (Text (..))
+import Control.Monad.Reader
 import Snews.NewsArticle.Base
 import Text.StringLike                  (StringLike, castString)
 import Text.HTML.TagSoup.Tree
 import qualified Data.Text              as Tx
 ----------------------------------------------------------------------------------------------------
+config :: Config (TagTree Text)
+config = Con { hostName = "http://shasetsu.seesaa.net/archives/"
+             , baseName = "-1.html"
+             , rootAK   = [(Name "div", Attr "blogbody")]
+             , titleAK  = [(Name "h3", Attr "title")]
+             , textAK   = [(Name "div", Attr "text")]
+             , findFunc = findTree
+             , direct   = normalDirection }
 
+type ConfigReader a = Reader (Config (TagTree Text)) a
 
-makeListedPage :: (Monoid a, StringLike a) => Day -> ListedPage a
-makeListedPage d = LP base' d url' (const []) extractPage
-  where base' = "http://shasetsu.seesaa.net/archives/"
-        url'  = base' <> dayStr8 d <> "-1.html"
+dailyURL :: Day -> ConfigReader String
+dailyURL d = do
+  host <- hostName <$> ask
+  base <- baseName <$> ask
+  return $ host <> dayStr8 d <> base
 
-extractPage :: (Monoid a, StringLike a) => [TagTree a] -> [Page a]
-extractPage tr = flip map (makeTree tr) $ \n ->
-  Page mempty n takeTitle takeText
-  where makeTree = reverse . 
-                   findTreeS [(Name "div", Attr "blogbody")]
+makeTree :: [TagTree Text] -> ConfigReader [TagTree Text]
+makeTree b = flip findTreeS b <$> rootAK <$> ask
 
-takeTitle :: (Monoid a, StringLike a) => [TagTree a] -> Text
-takeTitle = (utf8Text "** " <>) . treeTextMap . makeTree
-  where treeTextMap = utf8Text . mconcat . map treeText
-        makeTree    = findTreeS [(Name "h3", Attr "title")]
-
-takeText :: (Monoid a, StringLike a) => [TagTree a] -> [Text]
-takeText = map (<> Tx.pack "\n")          .
-           map stringFoldBase             .
-           filterBlankLines               .
-           concatMap (lines . castString) .
-           map treeText                   .
-           findTreeS [(Name "div", Attr "text")]
-----------------------------------------------------------------------------------------------------
