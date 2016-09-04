@@ -19,13 +19,19 @@ data NaviFile   =
   | NError FilePath
   deriving (Show)
 
-data Config = Config { searchPaths :: [FilePath]
-                     , topPath     :: FilePath }
+data Config = Config { searchPaths     :: [FilePath]
+                     , searchDirection :: FileDirect
+                     , topPath         :: FilePath }
 
-config = Config { searchPaths = ["C:/Users/Jumpei/.navi2ch/"
-                                , "C:/users/sibuc526.newnet/home/.navi2ch/"
-                                , "f:/home/.navi2ch/"]
-                , topPath     = "f:/.navi2ch" }
+type ConfigReader a = Reader Config a
+type ConfigReaderT a = ReaderT Config IO a
+
+config :: Config
+config = Config { searchPaths     = [ "C:/Users/Jumpei/.navi2ch/"
+                                    , "C:/users/sibuc526.newnet/home/.navi2ch/"
+                                    , "f:/home/.navi2ch/"]
+                , searchDirection = FD ("info" <!~>) (".dat" <^>)
+                , topPath         = "f:/.navi2ch" }
 ----------------------------------------------------------------------------------------------------
 mkdirIfNotExists :: FilePath -> IO ()
 mkdirIfNotExists fp = do
@@ -37,11 +43,9 @@ navi fp = case getFileSimplePath fp of
   Right sp -> N fp sp
   Left _   -> NError fp
 
-newDir, newFile :: NaviFile -> Reader Config FilePath
-newDir (N _ (d, base)) = do
-  top <- topPath <$> ask
-  return $ top <> "/" <> d <> "/"
-newDir (NError _) = return ""
+newDir, newFile :: NaviFile -> ConfigReader FilePath
+newDir (N _ (d, base)) = (<> "/" <> d <> "/") <$> topPath <$> ask
+newDir (NError _)      = return ""
 
 newFile nv@(N _ (_, base)) = (++ base) <$> newDir nv
 newFile (NError _) = return ""
@@ -55,17 +59,19 @@ getFileSimplePathParser = do
 getFileSimplePath :: FilePath -> Either ParseError SimplePath
 getFileSimplePath = parse getFileSimplePathParser ""
 
-getFiles :: FilePath -> IO [FilePath]
-getFiles fp = do
+getFiles :: FileDirect -> FilePath -> IO [FilePath]
+getFiles direction fp = do
+  putStrLn $ fp ++ " Entering."
   exist <- doesDirectoryExist fp
   if exist
-    then allfd fp (FD ("info" <!~>) (".dat" <^>))
+    then allfd fp direction
     else return []
 
-getFile2 :: ReaderT Config IO [FilePath]
+getFile2 :: ConfigReaderT [FilePath]
 getFile2 = do
-  dirs  <- searchPaths <$> ask
-  liftIO $ concat <$> mapM getFiles dirs
+  dirs   <- searchPaths <$> ask
+  direct <- searchDirection <$> ask
+  liftIO $ concat <$> mapM (getFiles direct) dirs
 
 fileSize :: FilePath -> IO Integer
 fileSize fp = I.withFile fp I.ReadMode I.hFileSize
@@ -87,7 +93,8 @@ main = do
     let newd = newDir nv  `runReader` config
     let newf = newFile nv `runReader` config
     copiable <- existsOrNewer file newf
-    when copiable $ do
-      mkdirIfNotExists newd
-      print file
-      copyFile file newf
+    if copiable
+      then do { mkdirIfNotExists newd;
+                print file;
+                copyFile file newf }
+      else putStr "."
