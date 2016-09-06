@@ -57,14 +57,13 @@ dayMaker bp td = do
   I.putStrLn $ "Output " ++ (show td) ++ " article --> " ++ orgFile
   I.hFlush I.stdout
   --(make a promise)--------------------------------------
-  let cmTop = Cm.dailyURL td `runReader` Cm.config
-  let akTop = Ak.dailyURL td `runReader` Ak.config
+  let cmTop = makeURL td `runReader` Cm.config
+  let akTop = makeURL td `runReader` Ak.config
   cmPromise  <- async $ getPageContents cmTop
   urlPromise <- async . return . Ak.makeNewsList =<< getPageContents akTop
   --(common parts)----------------------------------------
   cmContents <- wait cmPromise
-  forM_ (Cm.makeTree cmContents `runReader` Cm.config) $
-    trueOutput Cm.config 
+  forM_ (Cm.makeTree cmContents) $ trueOutput Cm.config
   --(akahata parts)---------------------------------------
   urls <- wait urlPromise
   conc <- forM urls (async . getPageContents)

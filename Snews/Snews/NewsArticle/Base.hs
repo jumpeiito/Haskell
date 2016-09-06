@@ -3,13 +3,13 @@
 module Snews.NewsArticle.Base ( URL
                               , ArticleKey
                               , DirectionType
-                              , Article (..)
                               , AKey (..)
                               , WriterDirection (..)
                               , Config (..)
+                              , URLParts (..)
+                              , makeURL
                               , findTree
                               , findTreeS
-                              , (==>)
                               , findAttribute
                               , findAttributeS
                               , stringFoldBase
@@ -43,13 +43,6 @@ type ArticleKey      = (AKey, AKey)
 type DirectionList   = [(AKey, AKey, WriterDirection)]
 type DirectionType a = [(TagTree a -> Bool, WriterDirection)]
 
-data Article a =
-  Article { tree  :: TagTree a
-          , title :: a
-          , text  :: [a]
-          , date  :: Maybe Day
-          , paper :: a } deriving (Show, Eq)
-
 data AKey = Name String | Attr String | Always deriving (Show, Eq)
 
 data WriterDirection = Skip | Pack String | Loop deriving (Show, Eq)
@@ -60,12 +53,31 @@ data Config a = Con { hostName  :: String
                     , titleAK   :: [ArticleKey]
                     , textAK    :: [ArticleKey]
                     , findFunc  :: [ArticleKey] -> a -> [TagTree Text]
-                    , direct    :: DirectionList }
+                    , direct    :: DirectionList
+                    , urlRecipe :: [URLParts] }
+----------------------------------------------------------------------------------------------------
+data URLParts =
+  Host
+  | Base
+  | MDay (Day -> String)
+  | Str String
+  | Slash URLParts
 
-(==>), findTree :: StringLike a => [ArticleKey] -> TagTree a -> [TagTree a]
+makeURL :: Day -> Reader (Config a) String
+makeURL d = do
+  recipe <- urlRecipe <$> ask
+  host   <- hostName <$> ask
+  base   <- baseName <$> ask
+  let murl gen (Slash x) = gen ++ (murl "" x) ++ "/"
+      murl gen Host      = gen ++ host
+      murl gen Base      = gen ++ base
+      murl gen (MDay f)  = gen ++ f d
+      murl gen (Str s)   = gen ++ s
+  return $ foldl murl "" recipe
+----------------------------------------------------------------------------------------------------
+findTree :: StringLike a => [ArticleKey] -> TagTree a -> [TagTree a]
 findTree akeys tb@TagBranch{} = execWriter $ find' akeys tb
 findTree _ _ = []
-(==>) = findTree
 
 findTreeS :: StringLike a => [ArticleKey] -> [TagTree a] -> [TagTree a]
 findTreeS ak = (findTree ak `concatMap`)
@@ -174,12 +186,6 @@ fBLparse = do
 ----------------------------------------------------------------------------------------------------
 translateTags :: StringLike a => a -> [TagTree a]
 translateTags str = tagTree $ parseTags str
-----------------------------------------------------------------------------------------------------
-(<@>) :: Monad m => m (t -> r) -> m t -> m r
-(<@>) f tr = do
-  f'  <- f
-  tr' <- tr
-  return $ f' tr'
 
 utf8Text :: StringLike a => a -> Text
 utf8Text = decodeUtf8 . castString

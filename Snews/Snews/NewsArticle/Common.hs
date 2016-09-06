@@ -1,15 +1,11 @@
-module Snews.NewsArticle.Common ( dailyURL
-                                , config
+module Snews.NewsArticle.Common ( config
                                 , makeTree
                                 ) where
 
 import Util.Strdt                       (dayStr8)
-import Data.Time                        (Day (..))
-import Data.Monoid                      ((<>))
 import Data.Text.Internal               (Text (..))
 import Control.Monad.Reader
 import Snews.NewsArticle.Base
-import Text.StringLike                  (StringLike, castString)
 import Text.HTML.TagSoup.Tree
 import qualified Data.Text              as Tx
 ----------------------------------------------------------------------------------------------------
@@ -20,16 +16,10 @@ config = Con { hostName = "http://shasetsu.seesaa.net/archives/"
              , titleAK  = [(Name "h3", Attr "title")]
              , textAK   = [(Name "div", Attr "text")]
              , findFunc = findTree
-             , direct   = normalDirection }
+             , direct   = normalDirection
+             , urlRecipe = [Host, MDay dayStr8, Base]}
 
-type ConfigReader a = Reader (Config (TagTree Text)) a
-
-dailyURL :: Day -> ConfigReader String
-dailyURL d = do
-  host <- hostName <$> ask
-  base <- baseName <$> ask
-  return $ host <> dayStr8 d <> base
-
-makeTree :: [TagTree Text] -> ConfigReader [TagTree Text]
-makeTree b = flip findTreeS b <$> rootAK <$> ask
+makeTree :: [TagTree Text] -> [TagTree Text]
+makeTree b = (`runReader` config) $ 
+  flip findTreeS b <$> rootAK <$> ask
 

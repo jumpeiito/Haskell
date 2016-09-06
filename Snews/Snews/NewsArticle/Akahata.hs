@@ -1,5 +1,4 @@
 module Snews.NewsArticle.Akahata ( config
-                                 , dailyURL
                                  , makeNewsList
                                  ) where
 
@@ -20,7 +19,12 @@ config = Con { hostName = "http://www.jcp.or.jp/akahata/"
              , titleAK  = [(Name "title", Always)]
              , textAK   = [(Name "p", Always), (Name "h3", Always)]
              , findFunc = findTreeS
-             , direct   = (Name "a", Always, Skip) : normalDirection }
+             , direct   = (Name "a", Always, Skip) : normalDirection
+             , urlRecipe = [ Host
+                           , Str "aik"
+                           , Slash (MDay (show . (`mod` 1000) . nendo))
+                           , Slash (MDay (dayStrWithSep '-'))
+                           , Base]}
 
 type ConfigReader a = Reader (Config [TagTree Text]) a
 
@@ -32,11 +36,6 @@ generateURL d url = do
                    , (show . (`mod` 1000) . nendo) d , "/"
                    , dayStrWithSep '-' d, "/"
                    , url ]
-
-dailyURL :: Day -> ConfigReader String
-dailyURL d = do
-  base <- baseName <$> ask
-  generateURL d base
 
 makeNewsList :: StringLike a => [TagTree a] -> [String]
 makeNewsList tree = (`runReader` config) $ do
