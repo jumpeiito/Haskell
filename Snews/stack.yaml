@@ -1,4 +1,4 @@
-resolver: lts-6.10
+resolver: lts-6.16
 
 packages:
 - "../Util/"
@@ -11,5 +11,5 @@ flags: {}
 
 # Extra package databases containing global packages
 
-extra-include-dirs: ["f:\\Haskell", "f:\\Haskell\\icu\\include\\unicode", "f:\\Haskell\\icu\\include\\layout"]
+extra-include-dirs: ["f:\\Haskell", "f:\\Haskell\\icu\\include"]
 extra-lib-dirs: ["f:\\Haskell", "f:\\Haskell\\icu\\lib"]

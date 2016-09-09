@@ -13,13 +13,13 @@ import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import qualified Data.Text              as Tx
 
-config = Con { hostName = "http://www.jcp.or.jp/akahata/"
-             , baseName = "index.html"
-             , rootAK   = [(Name "a", Attr "important") , (Name "a", Attr "normal")]
-             , titleAK  = [(Name "title", Always)]
-             , textAK   = [(Name "p", Always), (Name "h3", Always)]
-             , findFunc = findTreeS
-             , direct   = (Name "a", Always, Skip) : normalDirection
+config = Con { hostName  = "http://www.jcp.or.jp/akahata/"
+             , baseName  = "index.html"
+             , rootAK    = [(Name "a", Attr "important") , (Name "a", Attr "normal")]
+             , titleAK   = [(Name "title", Always)]
+             , textAK    = [(Name "p", Always), (Name "h3", Always)]
+             , findFunc  = findTreeS
+             , direct    = (Name "a", Always, Skip) : normalDirection
              , urlRecipe = [ Host
                            , Str "aik"
                            , Slash (MDay (show . (`mod` 1000) . nendo))
@@ -39,7 +39,7 @@ generateURL d url = do
 
 makeNewsList :: StringLike a => [TagTree a] -> [String]
 makeNewsList tree = (`runReader` config) $ do
-  ak   <- rootAK <$> ask
+  ak   <- rootAK   <$> ask
   host <- hostName <$> ask
   let extract = findAttributeS (castString "href") $ findTreeS ak tree
   mapM fullURL extract

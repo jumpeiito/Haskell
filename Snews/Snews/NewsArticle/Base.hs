@@ -69,36 +69,34 @@ makeURL d = do
   host   <- hostName <$> ask
   base   <- baseName <$> ask
   let murl gen (Slash x) = gen ++ (murl "" x) ++ "/"
-      murl gen Host      = gen ++ host
-      murl gen Base      = gen ++ base
+      murl gen  Host     = gen ++ host
+      murl gen  Base     = gen ++ base
       murl gen (MDay f)  = gen ++ f d
       murl gen (Str s)   = gen ++ s
   return $ foldl murl "" recipe
 ----------------------------------------------------------------------------------------------------
 findTree :: StringLike a => [ArticleKey] -> TagTree a -> [TagTree a]
 findTree akeys tb@TagBranch{} = execWriter $ find' akeys tb
+  where find' _ (TagLeaf _)   = tell mempty
+        find' akeys tb@(TagBranch _ _ ys)
+          | matchTree akeys tb = tell [tb]
+          | otherwise       = forM_ ys (tell . findTree akeys)
 findTree _ _ = []
 
 findTreeS :: StringLike a => [ArticleKey] -> [TagTree a] -> [TagTree a]
 findTreeS ak = (findTree ak `concatMap`)
 
-find' :: StringLike a => [ArticleKey] -> TagTree a -> Writer [TagTree a] ()
-find' _ (TagLeaf _) = tell mempty
-find' akeys tb@(TagBranch _ _ ys)
-  | solver akeys tb = tell [tb]
-  | otherwise = forM_ ys (tell . findTree akeys)
+matchTree :: StringLike a => [ArticleKey] -> TagTree a -> Bool
+matchTree akeys = foldl' (|||) (const False) $ map logicProduct akeys
 
-solver :: StringLike a => [ArticleKey] -> TagTree a -> Bool
-solver akeys = Data.List.foldl' (|||) (const False) $ map solveArticleKey akeys
+logicProduct :: StringLike a => ArticleKey -> TagTree a -> Bool
+logicProduct (l, r) = matchAKey l &&& matchAKey r
 
-solveArticleKey :: StringLike a => ArticleKey -> TagTree a -> Bool
-solveArticleKey (l, r) = solveAKey l &&& solveAKey r
-
-solveAKey :: StringLike a => AKey -> TagTree a -> Bool
-solveAKey (Name a) (TagBranch n _ _) = a == castString n
-solveAKey (Attr a) (TagBranch _ l _) = [pairF castString ("class", a)] `isInfixOf` l
-solveAKey Always _                   = True
-solveAKey _ _ = False
+matchAKey :: StringLike a => AKey -> TagTree a -> Bool
+matchAKey (Name a) (TagBranch n _ _) = a == castString n
+matchAKey (Attr a) (TagBranch _ l _) = [pairF castString ("class", a)] `isInfixOf` l
+matchAKey Always _                   = True
+matchAKey _ _                        = False
 
 pairF :: (t -> t1) -> (t, t) -> (t1, t1)
 pairF f (a, b) = (f a, f b)
@@ -140,7 +138,7 @@ normalDirection =
 
 directionTranslate :: StringLike a => DirectionList -> DirectionType a
 directionTranslate = map translate'
-  where translate' (n, a, d) = (solveArticleKey (n, a), d)
+  where translate' (n, a, d) = (logicProduct (n, a), d)
 
 directionList :: StringLike a => DirectionType a
 directionList = directionTranslate normalDirection
@@ -197,7 +195,7 @@ takeTitle tree = do
   f  <- findFunc <$> ask
   return $
     (utf8Text "** " <>) .
-    (utf8Text . mconcat . map treeText) $
+    utf8Text . mconcat . map treeText $
     f ak tree
 
 -- takeText :: (Monoid a, StringLike a) => [TagTree a] -> Reader (Config b) [Text]

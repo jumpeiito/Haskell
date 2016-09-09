@@ -1,4 +1,4 @@
-import           Util                           (withAppendFile, readUTF8File)
+import           Util                           (withAppendFile)
 import           Util.Strdt                     (strdt, toYear, toMonth, todayDay, dayStr6)
 import           Snews.OrgParse                 (parseToDayList)
 import           Snews.NewsArticle.Base
@@ -7,10 +7,8 @@ import           Control.Monad.Reader
 import           Control.Concurrent.Async
 import           Network.HTTP                   (simpleHTTP, getRequest, getResponseBody)
 import           Data.Time                      (Day (..))
-import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid                    ((<>))
-import           Text.Printf                    (printf)
-import           Text.StringLike                (StringLike, castString)
+import           Text.StringLike                (castString)
 import           Text.HTML.TagSoup.Tree
 import qualified Options.Applicative            as O
 import qualified Snews.NewsArticle.Akahata      as Ak
@@ -34,7 +32,7 @@ getPageContents url = do
   converted <- castString <$> convertUTF8 body
   return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
-filePrinter filename dt = do
+filePrinter filename dt = 
   withAppendFile filename $ \handle ->
     Txio.hPutStrLn handle dt
 
@@ -42,9 +40,9 @@ printerCore outputF config page = do
   outputF $ takeTitle page `runReader` config
   mapM_ outputF $ takeText page `runReader` config
 
-printer config = printerCore Txio.putStrLn config
+printer = printerCore Txio.putStrLn
 
-fPrinter filename config = printerCore (filePrinter filename) config
+fPrinter filename = printerCore (filePrinter filename)
 
 dayMaker :: Bool -> Day -> IO ()
 dayMaker bp td = do
@@ -54,7 +52,7 @@ dayMaker bp td = do
         | bp        = (printer, Txio.putStrLn)
         | otherwise = (fPrinter orgFile, filePrinter orgFile)
   headOutput $ Tx.pack $ "* " <> show td
-  I.putStrLn $ "Output " ++ (show td) ++ " article --> " ++ orgFile
+  I.putStrLn $ "Output " ++ show td ++ " article --> " ++ orgFile
   I.hFlush I.stdout
   --(make a promise)--------------------------------------
   let cmTop = makeURL td `runReader` Cm.config
