@@ -1,75 +1,4 @@
 
-f:/Haskell/util.hs,1971
-module Util Util2,3
-class Splittable Splittable21,22
-class Splittable Splittable21,22
-  split split22,23
-instance instance24,25
-uniq uniq40,41
-uniq uniq41,42
-class Like.StringLike a => Join Join49,50
-class Like.StringLike a => Join Join49,50
-  joiner joiner50,51
-data FileDirect FileDirect60,61
-  FD FD61,62
-  FD { dirP dirP61,62
-       fileP fileP62,63
-(<~>), (<^>), (<!~>), (<!^>)<!^>64,65
-(<~>), (<^>), (<!~>)<!~>64,65
-(<~>), (<^>)<^>64,65
-(<~>)<~>64,65
-(<(65,66
-allf allf70,71
-allf allf71,72
-allfd allfd73,74
-allfd allfd74,75
-_allfd _allfd76,77
-_allfd _allfd77,78
-_all_base _all_base84,85
-_all_base _all_base88,89
-_alld _alld97,98
-_alld _alld98,99
-alld alld105,106
-alld alld106,107
-makeMap makeMap108,109
-makeMap makeMap109,110
-makeCountMap makeCountMap113,114
-makeCountMap makeCountMap114,115
-class ReadFile ReadFile118,119
-class ReadFile ReadFile118,119
-  readUTF8 readUTF8119,120
-  readUTF8line readUTF8line120,121
-  readSJIS readSJIS121,122
-  readSJISline readSJISline122,123
-baseReadFile baseReadFile124,125
-baseReadFile baseReadFile125,126
-baseReadUTF8 baseReadUTF8133,134
-baseReadUTF8 baseReadUTF8134,135
-baseReadSJIS baseReadSJIS136,137
-baseReadSJIS baseReadSJIS137,138
-readUTF8File readUTF8File157,158
-readUTF8File readUTF8File158,159
-sjisLines sjisLines166,167
-sjisLines sjisLines167,168
-readUTF8ByteFile readUTF8ByteFile175,176
-readUTF8ByteFile readUTF8ByteFile176,177
-withOutFile withOutFile182,183
-withOutFile withOutFile183,184
-withAppendFile withAppendFile190,191
-withAppendFile withAppendFile191,192
-writeUTF8File writeUTF8File198,199
-writeUTF8File writeUTF8File199,200
-appendUTF8File appendUTF8File206,207
-appendUTF8File appendUTF8File207,208
-(</>)</>214,215
-(&&&), (|||)|||220,221
-(&&&)&&&220,221
-_include _include224,225
-_include _include225,226
-include include229,230
-include include230,231
-(++++)++++233,234
-
 f:/Haskell/navi2ch.hs,429
 type SimplePath SimplePath6,7
 getTitleParse getTitleParse8,9
@@ -88,21 +17,44 @@ main main27,28
 f:/Haskell/navi2ch/Setup.hs,15
 main main1,2
 
-f:/Haskell/navi2ch/app/Main.hs,456
+f:/Haskell/navi2ch/app/Main.hs,1158
 module Main Main2,3
-type SimplePath SimplePath15,16
-getTitleParse getTitleParse17,18
-getTitleParse getTitleParse18,19
-getFileSimplePathParser getFileSimplePathParser20,21
-getFileSimplePathParser getFileSimplePathParser21,22
-getTitle getTitle26,27
-getTitle getTitle27,28
-getFileSimplePath getFileSimplePath29,30
-getFileSimplePath getFileSimplePath30,31
-getFiles getFiles32,33
-getFiles getFiles33,34
-main main35,36
-main main36,37
+type SimplePath SimplePath14,15
+data NaviFile NaviFile16,17
+  N N17,18
+  | NError NError18,19
+data Config Config21,22
+data Config = Config Config21,22
+data Config = Config { searchPaths searchPaths21,22
+                     , searchDirection searchDirection22,23
+                     , topPath topPath23,24
+type ConfigReader ConfigReader25,26
+type ConfigReader a a25,26
+type ConfigReaderT ConfigReaderT26,27
+config config28,29
+config config29,30
+mkdirIfNotExists mkdirIfNotExists35,36
+mkdirIfNotExists mkdirIfNotExists36,37
+navi navi40,41
+navi navi41,42
+newDir, newFile newFile45,46
+newDir,newDir45,46
+newDir newDir46,47
+newFile newFile49,50
+getFileSimplePathParser getFileSimplePathParser52,53
+getFileSimplePathParser getFileSimplePathParser53,54
+getFileSimplePath getFileSimplePath58,59
+getFileSimplePath getFileSimplePath59,60
+getFiles getFiles61,62
+getFiles getFiles62,63
+getFile2 getFile269,70
+getFile2 getFile270,71
+fileSize fileSize75,76
+fileSize fileSize76,77
+existsOrNewer existsOrNewer78,79
+existsOrNewer existsOrNewer79,80
+main main87,88
+main main88,89
 
 f:/Haskell/navi2ch/src/Lib.hs,65
 module LibLib0,1
@@ -314,174 +266,175 @@ translateQuery translateQuery95,96
 askQuery askQuery108,109
 askQuery askQuery109,110
 
-f:/Haskell/Meibo/Main.hs,5231
+f:/Haskell/Meibo/Main.hs,5254
 module Main Main1,2
-data Line Line20,21
-data Line = Line Line20,21
-data Line = Line { bunkai bunkai20,21
-                   bknum bknum21,22
-                   han han22,23
-                   kind kind23,24
-                   hancho hancho24,25
-                   gen gen25,26
-                   name name26,27
-                   nameP nameP27,28
-                   ad ad28,29
-                   tel tel29,30
-                   work work30,31
-                   exp exp31,32
-                   furi furi32,33
-                   birthS birthS33,34
-                   birth birth34,35
-                   year year35,36
-data Key Key38,39
-  Bunkai Bunkai39,40
-  | Bk Bk40,41
-  | Han Han41,42
-  | K K42,43
-  | Name Name43,44
-  | Address Address44,45
-  | Ftel Ftel45,46
-  | Mtel Mtel46,47
-  | Work Work47,48
-  | Year Year48,49
-  | Old Old49,50
-  | Or Or50,51
-  | And And51,52
-  | Not Not52,53
-test test54,55
-test test55,56
-removeSymbol removeSymbol91,92
+data Line Line22,23
+data Line = Line Line22,23
+data Line = Line { bunkai bunkai22,23
+                   bknum bknum23,24
+                   han han24,25
+                   kind kind25,26
+                   hancho hancho26,27
+                   gen gen27,28
+                   name name28,29
+                   nameP nameP29,30
+                   ad ad30,31
+                   tel tel31,32
+                   work work32,33
+                   exp exp33,34
+                   furi furi34,35
+                   birthS birthS35,36
+                   birth birth36,37
+                   year year37,38
+data Key Key40,41
+  Bunkai Bunkai41,42
+  | Bk Bk42,43
+  | Han Han43,44
+  | K K44,45
+  | Name Name45,46
+  | Address Address46,47
+  | Ftel Ftel47,48
+  | Mtel Mtel48,49
+  | Work Work49,50
+  | Year Year50,51
+  | Old Old51,52
+  | Or Or52,53
+  | And And53,54
+  | Not Not54,55
+test test56,57
+test test57,58
 removeSymbol removeSymbol92,93
-bunkaiNumber bunkaiNumber94,95
+removeSymbol removeSymbol93,94
 bunkaiNumber bunkaiNumber95,96
-_nameParse _nameParse104,105
+bunkaiNumber bunkaiNumber96,97
 _nameParse _nameParse105,106
-nameParse nameParse108,109
+_nameParse _nameParse106,107
 nameParse nameParse109,110
-deleteStr deleteStr112,113
+nameParse nameParse110,111
 deleteStr deleteStr113,114
-deleteStrMap deleteStrMap121,122
+deleteStr deleteStr114,115
 deleteStrMap deleteStrMap122,123
-toL toL124,125
+deleteStrMap deleteStrMap123,124
 toL toL125,126
-(<@>)<@>127,128
-(<(128,129
-blankP blankP130,131
+toL toL126,127
+(<@>)<@>128,129
+(<(129,130
 blankP blankP131,132
-syncF syncF135,136
+blankP blankP132,133
 syncF syncF136,137
-lineMerge lineMerge145,146
+syncF syncF137,138
 lineMerge lineMerge146,147
-firstTrans firstTrans154,155
+lineMerge lineMerge147,148
 firstTrans firstTrans155,156
-fTrans2 fTrans2158,159
+firstTrans firstTrans156,157
 fTrans2 fTrans2159,160
-secondTrans secondTrans170,171
+fTrans2 fTrans2160,161
 secondTrans secondTrans171,172
-trans trans176,177
+secondTrans secondTrans172,173
 trans trans177,178
-fixTel, mobileTel mobileTel179,180
-fixTel,fixTel179,180
-fixTel fixTel180,181
-mobileTel mobileTel181,182
-mobileBlankP mobileBlankP183,184
+trans trans178,179
+fixTel, mobileTel mobileTel180,181
+fixTel,fixTel180,181
+fixTel fixTel181,182
+mobileTel mobileTel182,183
 mobileBlankP mobileBlankP184,185
-addressMap addressMap186,187
+mobileBlankP mobileBlankP185,186
 addressMap addressMap187,188
-testFilter testFilter189,190
+addressMap addressMap188,189
 testFilter testFilter190,191
-lineToTel lineToTel197,198
+testFilter testFilter191,192
 lineToTel lineToTel198,199
-lineMobile, lineFix lineFix200,201
-lineMobile,lineMobile200,201
-lineMobile lineMobile201,202
-lineFix lineFix202,203
-functionsToString functionsToString204,205
+lineToTel lineToTel199,200
+lineMobile, lineFix lineFix201,202
+lineMobile,lineMobile201,202
+lineMobile lineMobile202,203
+lineFix lineFix203,204
 functionsToString functionsToString205,206
-mainString mainString207,208
+functionsToString functionsToString206,207
 mainString mainString208,209
-hanchoMap hanchoMap215,216
-hanchoMap hanchoMap216,217
-hanchoFilter hanchoFilter220,221
-hanchoFilter hanchoFilter221,222
-safeHead safeHead223,224
-safeHead safeHead224,225
-(-->)-->227,228
-x x228,229
-hanchoList hanchoList230,231
-hanchoList hanchoList231,232
-hanInfo hanInfo240,241
-hanInfo hanInfo241,242
-hanDay hanDay243,244
-hanDay hanDay244,245
-hanOutput hanOutput253,254
-hanOutput hanOutput254,255
-makeTable makeTable261,262
-makeTable makeTable262,263
-betweenP betweenP269,270
-betweenP betweenP270,271
-betweenP2 betweenP2274,275
-betweenP2 betweenP2275,276
-fromBirthday fromBirthday279,280
-fromBirthday fromBirthday280,281
-checK checK286,287
-checK checK287,288
-checkFilter checkFilter290,291
-checkFilter checkFilter291,292
-translateFunc, translateFuncPartial translateFuncPartial293,294
-translateFunc,translateFunc293,294
-translateFunc translateFunc294,295
-translateFuncPartial translateFuncPartial296,297
-translateFuncTel translateFuncTel298,299
-translateFuncTel translateFuncTel299,300
-translateFuncYear translateFuncYear302,303
-translateFuncYear translateFuncYear303,304
-translateFuncOld translateFuncOld307,308
-translateFuncOld translateFuncOld308,309
-translateFold translateFold312,313
-translateFold translateFold313,314
-translate translate316,317
-translate translate317,318
-seek seek332,333
-seek seek333,334
-keyParseLine keyParseLine335,336
-keyParseLine keyParseLine336,337
-keyParseBuilder keyParseBuilder338,339
-keyParseBuilder keyParseBuilder339,340
-aChar aChar341,342
-aChar aChar342,343
-keyParseOr, keyParseAnd, keyParseNot, keyParseTermWord, keyParseTerm keyParseTerm344,345
-keyParseOr, keyParseAnd, keyParseNot, keyParseTermWord,keyParseTermWord344,345
-keyParseOr, keyParseAnd, keyParseNot,keyParseNot344,345
-keyParseOr, keyParseAnd,keyParseAnd344,345
-keyParseOr,keyParseOr344,345
-keyParseOr keyParseOr346,347
-keyParseAnd keyParseAnd347,348
-keyParseNot keyParseNot348,349
-bkhanCodeParse bkhanCodeParse350,351
-bkhanCodeParse bkhanCodeParse351,352
-yearoldParse yearoldParse356,357
-yearoldParse yearoldParse357,358
-returnParse returnParse365,366
-returnParse returnParse366,367
-bkhanCode bkhanCode368,369
-bkhanCode bkhanCode369,370
-yearOld yearOld371,372
-yearOld yearOld372,373
-keyParseTermWord keyParseTermWord374,375
-keyParseTerm keyParseTerm392,393
-keyParse keyParse398,399
-keyParse keyParse399,400
-seekS seekS402,403
-seekS seekS403,404
-runRuby runRuby405,406
-runRuby runRuby406,407
-main main408,409
-main main409,410
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------416,417
+mainString mainString209,210
+hanchoMap hanchoMap226,227
+hanchoMap hanchoMap227,228
+hanchoFilter hanchoFilter230,231
+hanchoFilter hanchoFilter231,232
+safeHead safeHead233,234
+safeHead safeHead234,235
+(-->)-->237,238
+x x238,239
+hanchoList hanchoList240,241
+hanchoList hanchoList241,242
+hanInfo hanInfo251,252
+hanInfo hanInfo252,253
+hanDay hanDay254,255
+hanDay hanDay255,256
+hanOutput hanOutput261,262
+hanOutput hanOutput262,263
+makeTable makeTable275,276
+makeTable makeTable276,277
+betweenP betweenP283,284
+betweenP betweenP284,285
+betweenP2 betweenP2288,289
+betweenP2 betweenP2289,290
+fromBirthday fromBirthday293,294
+fromBirthday fromBirthday294,295
+checK checK300,301
+checK checK301,302
+checkFilter checkFilter304,305
+checkFilter checkFilter305,306
+translateFunc, translateFuncPartial translateFuncPartial307,308
+translateFunc,translateFunc307,308
+translateFunc translateFunc308,309
+translateFuncPartial translateFuncPartial310,311
+translateFuncTel translateFuncTel312,313
+translateFuncTel translateFuncTel313,314
+translateFuncYear translateFuncYear316,317
+translateFuncYear translateFuncYear317,318
+translateFuncOld translateFuncOld319,320
+translateFuncOld translateFuncOld320,321
+translateFold translateFold324,325
+translateFold translateFold325,326
+translate translate328,329
+translate translate329,330
+seek seek344,345
+seek seek345,346
+keyParseLine keyParseLine347,348
+keyParseLine keyParseLine348,349
+keyParseBuilder keyParseBuilder350,351
+keyParseBuilder keyParseBuilder351,352
+aChar aChar353,354
+aChar aChar354,355
+keyParseOr, keyParseAnd, keyParseNot, keyParseTermWord, keyParseTerm keyParseTerm356,357
+keyParseOr, keyParseAnd, keyParseNot, keyParseTermWord,keyParseTermWord356,357
+keyParseOr, keyParseAnd, keyParseNot,keyParseNot356,357
+keyParseOr, keyParseAnd,keyParseAnd356,357
+keyParseOr,keyParseOr356,357
+keyParseOr keyParseOr358,359
+keyParseAnd keyParseAnd359,360
+keyParseNot keyParseNot360,361
+bkhanCodeParse bkhanCodeParse362,363
+bkhanCodeParse bkhanCodeParse363,364
+yearoldParse yearoldParse368,369
+yearoldParse yearoldParse369,370
+returnParse returnParse377,378
+returnParse returnParse378,379
+bkhanCode bkhanCode380,381
+bkhanCode bkhanCode381,382
+yearOld yearOld383,384
+yearOld yearOld384,385
+keyParseTermWord keyParseTermWord386,387
+keyParseTerm keyParseTerm404,405
+keyParse keyParse410,411
+keyParse keyParse411,412
+seekS seekS414,415
+seekS seekS415,416
+runRuby runRuby417,418
+runRuby runRuby418,419
+main main420,421
+main main421,422
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------428,429
+testIO testIO442,443
 
-f:/Haskell/Util/Util/Holiday.hs,551
+f:/Haskell/Util/Util/Holiday.hs,613
 module Util.Holiday Util.Holiday0,1
 type Year Year6,7
 type Month Month7,8
@@ -492,16 +445,18 @@ data Holiday Holiday10,11
   | Calc Calc13,14
 holidays holidays15,16
 holidays holidays16,17
-succeed succeed34,35
-succeed succeed35,36
-calcDate calcDate39,40
-calcDate calcDate40,41
-yearInspect yearInspect45,46
-yearInspect yearInspect46,47
-vernalEquinox vernalEquinox49,50
-vernalEquinox vernalEquinox50,51
-autumnalEquinox autumnalEquinox62,63
-autumnalEquinox autumnalEquinox63,64
+makeHoliday makeHoliday34,35
+makeHoliday makeHoliday35,36
+succeed succeed40,41
+succeed succeed41,42
+calcDate calcDate45,46
+calcDate calcDate46,47
+yearInspect yearInspect51,52
+yearInspect yearInspect52,53
+vernalEquinox vernalEquinox55,56
+vernalEquinox vernalEquinox56,57
+autumnalEquinox autumnalEquinox69,70
+autumnalEquinox autumnalEquinox70,71
 
 f:/Haskell/Util/Util/KanParse.hs,897
 module Util.KanParse Util.KanParse0,1
@@ -511,106 +466,153 @@ data KP = Keta Keta8,9
   | BigKeta BigKeta10,11
   | Ksum Ksum11,12
 instance instance14,15
-kanjiNumMap, kanjiKetaMap, kanjiBigKetaMap kanjiBigKetaMap24,25
-kanjiNumMap, kanjiKetaMap,kanjiKetaMap24,25
-kanjiNumMap,kanjiNumMap24,25
-kanjiNumMap kanjiNumMap25,26
-kanjiKetaMap kanjiKetaMap28,29
-kanjiBigKetaMap kanjiBigKetaMap37,38
-kanjiParseBuilder kanjiParseBuilder44,45
-kanjiParseBuilder kanjiParseBuilder45,46
-numParse, ketaParse, bigKetaParse bigKetaParse50,51
-numParse, ketaParse,ketaParse50,51
-numParse,numParse50,51
-numParse numParse51,52
-ketaParse ketaParse52,53
-bigKetaParse bigKetaParse53,54
-kParse kParse55,56
-kParse kParse56,57
-kpSum kpSum58,59
-kpSum kpSum59,60
-kanParse kanParse62,63
-kanParse kanParse63,64
-kanParseStr kanParseStr65,66
-kanParseStr kanParseStr66,67
+kanjiNumMap, kanjiKetaMap, kanjiBigKetaMap kanjiBigKetaMap26,27
+kanjiNumMap, kanjiKetaMap,kanjiKetaMap26,27
+kanjiNumMap,kanjiNumMap26,27
+kanjiNumMap kanjiNumMap27,28
+kanjiKetaMap kanjiKetaMap30,31
+kanjiBigKetaMap kanjiBigKetaMap39,40
+kanjiParseBuilder kanjiParseBuilder46,47
+kanjiParseBuilder kanjiParseBuilder47,48
+numParse, ketaParse, bigKetaParse bigKetaParse52,53
+numParse, ketaParse,ketaParse52,53
+numParse,numParse52,53
+numParse numParse53,54
+ketaParse ketaParse54,55
+bigKetaParse bigKetaParse55,56
+kParse kParse57,58
+kParse kParse58,59
+kpSum kpSum60,61
+kpSum kpSum61,62
+kanParse kanParse64,65
+kanParse kanParse65,66
+kanParseStr kanParseStr67,68
+kanParseStr kanParseStr68,69
 
-f:/Haskell/Util/Util/Strdt.hs,2125
+f:/Haskell/Util/Util/Strdt.hs,2276
 module Util.Strdt Util.Strdt1,2
-type Date Date18,19
-type NendoDate NendoDate19,20
-data DayWeek DayWeek20,21
-data DayWeek = MondayMonday20,21
-             | TuesdayTuesday21,22
-             | WednesdayWednesday22,23
-             | ThursdayThursday23,24
-             | FridayFriday24,25
-             | SaturdaySaturday25,26
-             | SundaySunday26,27
-dtmap dtmap29,30
-(Right x) `dtmap`dtmap30,31
-class StringDate StringDate33,34
-class StringDate StringDate33,34
-  strdt strdt34,35
-instance instance36,37
-separator separator62,63
-separator separator63,64
-readDate readDate65,66
-readDate readDate66,67
-date8 date869,70
-date8 date870,71
-date6 date674,75
-date6 date675,76
-sepYear4, sepYear, sepMonth sepMonth79,80
-sepYear4, sepYear,sepYear79,80
-sepYear4,sepYear479,80
-sepYear4 sepYear480,81
-sepYear sepYear81,82
-sepMonth sepMonth82,83
-dateNormal dateNormal84,85
-dateNormal dateNormal85,86
-gengouToYear gengouToYear89,90
-  | g `isInfixOf`isInfixOf91,92
-stringToGengouYear stringToGengouYear97,98
-stringToGengouYear stringToGengouYear98,99
-gengouParse gengouParse100,101
-gengouParse gengouParse101,102
-dateJapanese dateJapanese105,106
-dateJapanese dateJapanese106,107
-calc calc110,111
-calc calc111,112
-_strdt _strdt117,118
-_strdt _strdt118,119
-toYear toYear120,121
-toYear toYear121,122
-toYearInt toYearInt123,124
-toYearInt toYearInt124,125
-toMonth toMonth126,127
-toMonth toMonth127,128
-toDay toDay129,130
-toDay toDay130,131
-howOld howOld132,133
-howOld howOld133,134
-dayStr8 dayStr8139,140
-dayStr8 dayStr8140,141
-dayStrWithSep dayStrWithSep143,144
-dayStrWithSep dayStrWithSep144,145
-nendoEnd nendoEnd147,148
-nendoEnd nendoEnd148,149
-today today150,151
-today today151,152
-nendo nendo154,155
-nendo nendo155,156
-todayDay todayDay161,162
-todayDay todayDay162,163
-getWeekDate getWeekDate168,169
-getWeekDate getWeekDate169,170
-getWeekDateInt getWeekDateInt171,172
-getWeekDateInt getWeekDateInt172,173
-class DiffDate DiffDate174,175
-class DiffDate DiffDate174,175
-  differ differ175,176
+type Date Date33,34
+type NendoDate NendoDate34,35
+data DayWeek DayWeek35,36
+data DayWeek = MondayMonday35,36
+             | TuesdayTuesday36,37
+             | WednesdayWednesday37,38
+             | ThursdayThursday38,39
+             | FridayFriday39,40
+             | SaturdaySaturday40,41
+             | SundaySunday41,42
+dtmap dtmap44,45
+(Right x) `dtmap`dtmap45,46
+class StringDate StringDate48,49
+class StringDate StringDate48,49
+  strdt strdt49,50
+instance instance51,52
+separator separator77,78
+separator separator78,79
+readDate readDate80,81
+readDate readDate81,82
+date8, date6, dateNormal, dateJapanese, calc calc84,85
+date8, date6, dateNormal, dateJapanese,dateJapanese84,85
+date8, date6, dateNormal,dateNormal84,85
+date8, date6,date684,85
+date8,date884,85
+date8 date885,86
+date6 date689,90
+dateNormal dateNormal93,94
+dateJapanese dateJapanese97,98
+calc calc101,102
+sepYear4, sepYear, sepMonth sepMonth107,108
+sepYear4, sepYear,sepYear107,108
+sepYear4,sepYear4107,108
+sepYear4 sepYear4108,109
+sepYear sepYear109,110
+sepMonth sepMonth110,111
+gengouToYear gengouToYear112,113
+  | g `isInfixOf`isInfixOf114,115
+stringToGengouYear stringToGengouYear120,121
+stringToGengouYear stringToGengouYear121,122
+gengouParse gengouParse123,124
+gengouParse gengouParse124,125
+_strdt _strdt128,129
+_strdt _strdt129,130
+toYear toYear131,132
+toYear toYear132,133
+toYearInt toYearInt134,135
+toYearInt toYearInt135,136
+toMonth toMonth137,138
+toMonth toMonth138,139
+toDay toDay140,141
+toDay toDay141,142
+howOld howOld143,144
+howOld howOld144,145
+dayStr8 dayStr8150,151
+dayStr8 dayStr8151,152
+dayStr6 dayStr6154,155
+dayStr6 dayStr6155,156
+dayStrWithSep dayStrWithSep158,159
+dayStrWithSep dayStrWithSep159,160
+nendoEnd nendoEnd162,163
+nendoEnd nendoEnd163,164
+today today165,166
+today today166,167
+nendo nendo169,170
+nendo nendo170,171
+todayDay todayDay176,177
+todayDay todayDay177,178
+getWeekDate getWeekDate183,184
+getWeekDate getWeekDate184,185
+getWeekDateInt getWeekDateInt186,187
+getWeekDateInt getWeekDateInt187,188
+class DiffDate DiffDate189,190
+class DiffDate DiffDate189,190
+  differ differ190,191
 
-f:/Haskell/Util/Util/Telephone.hs,1304
+f:/Haskell/Util/Util/ZenkakuHankaku.hs,687
+module Util.ZenkakuHankaku Util.ZenkakuHankaku0,1
+withReverse withReverse8,9
+withReverse withReverse9,10
+preAlnum preAlnum14,15
+postAlnum postAlnum15,16
+preKigou preKigou16,17
+postKigou postKigou17,18
+preKana preKana18,19
+postKana postKana19,20
+preStr preStr23,24
+postStr postStr24,25
+charMap, charVerseMap charVerseMap26,27
+charMap,charMap26,27
+charMap charMap27,28
+charVerseMap charVerseMap28,29
+toZenkaku, toHankaku toHankaku30,31
+toZenkaku,toZenkaku30,31
+toZenkaku toZenkaku31,32
+toHankaku toHankaku34,35
+toZenkakuSpec toZenkakuSpec37,38
+toZenkakuSpec toZenkakuSpec38,39
+toHankakuSpec toHankakuSpec56,57
+toHankakuSpec toHankakuSpec57,58
+
+f:/Haskell/Util/Util/StrEnum.hs,620
+module Util.StrEnum Util.StrEnum1,2
+class (Monoid a, StringLike a) => StrEnum StrEnum15,16
+  mapCharI_  :: (Monad m) => (Char Char19,20
+  forChar_ forChar_16,17
+  forCharI_ forCharI_17,18
+  mapChar_ mapChar_18,19
+  mapCharI_ mapCharI_19,20
+  mapChar_ mapChar_20,21
+  mapCharI_ mapCharI_21,22
+  split split22,23
+  stringFold stringFold23,24
+  stringFold stringFold24,25
+instance instance27,28
+----------------------------------------33,34
+_stringFold _stringFold55,56
+_stringFold _stringFold58,59
+forCharCombinator_ forCharCombinator_65,66
+forCharICombinator_ forCharICombinator_67,68
+
+f:/Haskell/Util/Util/Telephone.hs,1262
 module Util.Telephone Util.Telephone0,1
 data Telephone Telephone7,8
   Fix Fix8,9
@@ -626,344 +628,349 @@ fixParseHeader fixParseHeader20,21
 fixParseHeader fixParseHeader21,22
 parenExp parenExp25,26
 parenExp parenExp26,27
-faxExp faxExp31,32
-faxExp faxExp32,33
-headStr headStr34,35
-headStr headStr35,36
-tailStr, tailFaxStr tailFaxStr38,39
-tailStr,tailStr38,39
-tailStr tailStr39,40
-tailFaxStr tailFaxStr40,41
-mobileParse, fixParse, telFuncCore telFuncCore42,43
-mobileParse, fixParse,fixParse42,43
-mobileParse,mobileParse42,43
-mobileParse mobileParse43,44
-fixParse fixParse51,52
-telFuncCore telFuncCore53,54
-fixNumberParse fixNumberParse57,58
-fixNumberParse fixNumberParse58,59
-fixParse2, fixParse3 fixParse364,65
-fixParse2,fixParse264,65
-fixParse2 fixParse265,66
-fixParse3 fixParse366,67
-telFunc telFunc68,69
-telFunc telFunc69,70
-telParse telParse71,72
-telParse telParse72,73
-telString telString74,75
-telString telString75,76
-fixFilter, mobileFilter mobileFilter79,80
-fixFilter,fixFilter79,80
-fixFilter fixFilter80,81
-mobileFilter mobileFilter81,82
+headStr headStr31,32
+headStr headStr32,33
+tailStr, tailFaxStr tailFaxStr35,36
+tailStr,tailStr35,36
+tailStr tailStr36,37
+tailFaxStr tailFaxStr37,38
+mobileParse, fixParse, telFuncCore telFuncCore39,40
+mobileParse, fixParse,fixParse39,40
+mobileParse,mobileParse39,40
+mobileParse mobileParse40,41
+fixParse fixParse48,49
+telFuncCore telFuncCore50,51
+fixNumberParse fixNumberParse54,55
+fixNumberParse fixNumberParse55,56
+fixParse2, fixParse3 fixParse361,62
+fixParse2,fixParse261,62
+fixParse2 fixParse262,63
+fixParse3 fixParse363,64
+telFunc telFunc65,66
+telFunc telFunc66,67
+telParse telParse68,69
+telParse telParse69,70
+telString telString71,72
+telString telString72,73
+fixFilter, mobileFilter mobileFilter76,77
+fixFilter,fixFilter76,77
+fixFilter fixFilter77,78
+mobileFilter mobileFilter78,79
 
-f:/Haskell/Util/util.hs,2018
+f:/Haskell/Util/util.hs,1895
 module Util Util2,3
-class Splittable Splittable22,23
-class Splittable Splittable22,23
-  split split23,24
-instance instance25,26
-uniq uniq41,42
-uniq uniq42,43
-class Like.StringLike a => Join Join50,51
-class Like.StringLike a => Join Join50,51
-  joiner joiner51,52
-data FileDirect FileDirect61,62
-  FD FD62,63
-  FD { dirP dirP62,63
-       fileP fileP63,64
-(<~>), (<^>), (<!~>), (<!^>)<!^>65,66
-(<~>), (<^>), (<!~>)<!~>65,66
-(<~>), (<^>)<^>65,66
-(<~>)<~>65,66
-(<(66,67
-allf allf71,72
-allf allf72,73
-allfd allfd74,75
-allfd allfd75,76
-_allfd _allfd77,78
-_allfd _allfd78,79
-_all_base _all_base85,86
-_all_base _all_base89,90
-_alld _alld98,99
-_alld _alld99,100
-alld alld106,107
-alld alld107,108
-makeMap makeMap109,110
-makeMap makeMap110,111
-makeCountMap makeCountMap114,115
-makeCountMap makeCountMap115,116
-class ReadFile ReadFile119,120
-class ReadFile ReadFile119,120
-  readUTF8 readUTF8120,121
-  readUTF8line readUTF8line121,122
-  readSJIS readSJIS122,123
-  readSJISline readSJISline123,124
-baseReadFile baseReadFile125,126
-baseReadFile baseReadFile126,127
-baseReadUTF8 baseReadUTF8136,137
-baseReadUTF8 baseReadUTF8137,138
-baseReadSJIS baseReadSJIS139,140
-baseReadSJIS baseReadSJIS140,141
-readUTF8File readUTF8File160,161
-readUTF8File readUTF8File161,162
-readUTF8ByteFile readUTF8ByteFile167,168
-readUTF8ByteFile readUTF8ByteFile168,169
-sjisLines sjisLines174,175
-sjisLines sjisLines175,176
-withOutFile withOutFile182,183
-withOutFile withOutFile183,184
-withAppendFile withAppendFile190,191
-withAppendFile withAppendFile191,192
-writeUTF8File writeUTF8File198,199
-writeUTF8File writeUTF8File199,200
-appendUTF8File appendUTF8File206,207
-appendUTF8File appendUTF8File207,208
-(</>)</>214,215
-(&&&), (|||)|||220,221
-(&&&)&&&220,221
-_include _include224,225
-_include _include225,226
-include include229,230
-include include230,231
-(++++)++++233,234
-rotate rotate236,237
-rotate rotate237,238
+uniq uniq22,23
+uniq uniq23,24
+class StringLike a => Join Join28,29
+class StringLike a => Join Join28,29
+  joiner joiner29,30
+instance instance31,32
+data FileDirect FileDirect38,39
+  FD FD39,40
+  FD { dirP dirP39,40
+       fileP fileP40,41
+(<~>), (<^>), (<!~>), (<!^>)<!^>42,43
+(<~>), (<^>), (<!~>)<!~>42,43
+(<~>), (<^>)<^>42,43
+(<~>)<~>42,43
+(<(43,44
+allf allf48,49
+allf allf49,50
+allfd allfd51,52
+allfd allfd52,53
+_allfd _allfd54,55
+_allfd _allfd55,56
+_all_base _all_base62,63
+_all_base _all_base66,67
+_alld _alld75,76
+_alld _alld76,77
+alld alld83,84
+alld alld84,85
+makeMap makeMap86,87
+makeMap makeMap87,88
+makeCountMap makeCountMap91,92
+makeCountMap makeCountMap92,93
+class ReadFile ReadFile96,97
+class ReadFile ReadFile96,97
+  readUTF8 readUTF897,98
+  readUTF8line readUTF8line98,99
+  readSJIS readSJIS99,100
+  readSJISline readSJISline100,101
+baseReadFile baseReadFile102,103
+baseReadFile baseReadFile103,104
+baseReadUTF8 baseReadUTF8113,114
+baseReadUTF8 baseReadUTF8114,115
+baseReadSJIS baseReadSJIS116,117
+baseReadSJIS baseReadSJIS117,118
+readUTF8File readUTF8File137,138
+readUTF8File readUTF8File138,139
+readUTF8ByteFile readUTF8ByteFile144,145
+readUTF8ByteFile readUTF8ByteFile145,146
+sjisLines sjisLines151,152
+sjisLines sjisLines152,153
+withOutFile withOutFile159,160
+withOutFile withOutFile160,161
+withAppendFile withAppendFile167,168
+withAppendFile withAppendFile168,169
+writeUTF8File writeUTF8File174,175
+writeUTF8File writeUTF8File175,176
+appendUTF8File appendUTF8File182,183
+appendUTF8File appendUTF8File183,184
+(</>)</>190,191
+(&&&), (|||)|||196,197
+(&&&)&&&196,197
+_include _include200,201
+_include _include201,202
+include include205,206
+include include206,207
+(++++)++++209,210
+rotate rotate212,213
+rotate rotate213,214
 
 f:/Haskell/Snews/Setup.hs,15
 main main1,2
 
-f:/Haskell/Snews/snews.hs,1067
-orgdir orgdir20,21
-orgdir orgdir21,22
-orgName orgName23,24
-orgName orgName24,25
-testIO2 testIO228,29
-testIO2 testIO229,30
-appendText appendText32,33
-appendText appendText33,34
-convertUTF8 convertUTF838,39
-convertUTF8 convertUTF839,40
-getPageContents getPageContents44,45
-getPageContents getPageContents45,46
-singleHTML singleHTML52,53
-printer printer55,56
-dayMaker dayMaker59,60
-dayMaker dayMaker60,61
-main main80,81
-main main81,82
-data Options Options99,100
-data Options = Options Options99,100
-data Options = Options { today' today'99,100
-                         date' date'100,101
-                         sjis' sjis'101,102
-                         force force102,103
-todayP todayP105,106
-todayP todayP106,107
-dateP dateP108,109
-dateP dateP109,110
-forceP forceP116,117
-forceP forceP117,118
-sjisP sjisP124,125
-sjisP sjisP125,126
-optionsP optionsP127,128
-optionsP optionsP128,129
-myParserInfo myParserInfo130,131
-myParserInfo myParserInfo131,132
-testIO testIO140,141
-testIO testIO141,142
+f:/Haskell/Snews/snews.hs,1004
+convertUTF8 convertUTF822,23
+convertUTF8 convertUTF823,24
+getPageContents getPageContents28,29
+getPageContents getPageContents29,30
+filePrinter filePrinter35,36
+printerCore printerCore39,40
+printer printer43,44
+fPrinter fPrinter45,46
+dayMaker dayMaker47,48
+dayMaker dayMaker48,49
+main main76,77
+main main77,78
+data Options Options105,106
+data Options = Options Options105,106
+data Options = Options { today' today'105,106
+                         date' date'106,107
+                         sjis' sjis'107,108
+                         force force108,109
+                         output output109,110
+todayP todayP112,113
+todayP todayP113,114
+dateP dateP115,116
+dateP dateP116,117
+outputFileP outputFileP123,124
+outputFileP outputFileP124,125
+forceP forceP126,127
+forceP forceP127,128
+sjisP sjisP134,135
+sjisP sjisP135,136
+optionsP optionsP137,138
+optionsP optionsP138,139
+myParserInfo myParserInfo146,147
+myParserInfo myParserInfo147,148
 
-f:/Haskell/Snews/Snews/NewsArticle/Akahata.hs,540
-module Snews.NewsArticle.Akahata Snews.NewsArticle.Akahata0,1
-makeListedPage makeListedPage14,15
-makeListedPage makeListedPage15,16
-newsList newsList19,20
-newsList newsList20,21
-fullURL fullURL25,26
-fullURL fullURL26,27
-makeTopPageURL makeTopPageURL31,32
-makeTopPageURL makeTopPageURL32,33
-makeURLFunction makeURLFunction34,35
-makeURLFunction makeURLFunction35,36
-takeTitle takeTitle41,42
-takeTitle takeTitle42,43
-takeText takeText47,48
-takeText takeText48,49
-makePage makePage59,60
-makePage makePage60,61
-
-f:/Haskell/Snews/Snews/NewsArticle/Base.hs,2691
+f:/Haskell/Snews/Snews/NewsArticle/Base.hs,3191
 module Snews.NewsArticle.Base Snews.NewsArticle.Base0,1
-type URL URL32,33
-type ArticleKey ArticleKey33,34
-type DirectionList DirectionList34,35
-type DirectionType DirectionType35,36
-type DirectionType a a35,36
-data ListedPage ListedPage37,38
-  LP LP38,39
-  LP { baseURL baseURL38,39
-       topDate topDate39,40
-       topURL topURL40,41
-       urlF urlF41,42
-       pageF pageF42,43
-data Page Page45,46
-  Page Page46,47
-  Page { pageUrl pageUrl46,47
-         tagtree tagtree47,48
-         titleFunc titleFunc48,49
-         textFunc textFunc49,50
-data Article Article51,52
-  Article Article52,53
-  Article { tree tree52,53
-            title title53,54
-            text text54,55
-            date date55,56
-            paper paper56,57
-data AKey AKey58,59
-data AKey = Name Name58,59
-data AKey = Name String | Attr Attr58,59
-data AKey = Name String | Attr String | Always Always58,59
-data WriterDirection WriterDirection60,61
-data WriterDirection = Skip Skip60,61
-data WriterDirection = Skip | Pack Pack60,61
-data WriterDirection = Skip | Pack String | Loop Loop60,61
-instance instance62,63
-(=(65,66
-(==>), findTree findTree65,66
-(====>65,66
-findTree findTree66,67
-find' find'70,71
-find' find'71,72
-solver solver76,77
-solver solver77,78
-solveArticleKey solveArticleKey79,80
-solveArticleKey solveArticleKey80,81
-solveAKey solveAKey82,83
-solveAKey solveAKey83,84
-pairF pairF88,89
-pairF pairF89,90
-findAttribute findAttribute91,92
-findAttribute findAttribute92,93
-assocKey assocKey101,102
-assocKey assocKey102,103
-stringFold stringFold107,108
-stringFold stringFold108,109
-sfold sfold110,111
-sfold sfold111,112
-treeText treeText119,120
-treeTextMap treeTextMap120,121
-treeText treeText121,122
-treeTextMap treeTextMap122,123
-normalDirection normalDirection124,125
-normalDirection normalDirection125,126
-directionTranslate directionTranslate133,134
-directionTranslate directionTranslate134,135
-directionList directionList137,138
-directionList directionList138,139
-direction direction142,143
-treeTextEx treeTextEx147,148
-treeTextEx treeTextEx148,149
-ttxex ttxex150,151
-ttxex ttxex151,152
-strip strip160,161
-strip strip161,162
-filterBlankLines filterBlankLines166,167
-filterBlankLines filterBlankLines167,168
-fBLparse fBLparse173,174
-fBLparse fBLparse174,175
-translateTags translateTags179,180
-translateTags translateTags180,181
-getF getF182,183
-getF getF183,184
-(<@>)<@>185,186
-getTitle getTitle191,192
-getText getText192,193
-getTitle getTitle193,194
-getText getText194,195
-utf8Text utf8Text196,197
-utf8Text utf8Text197,198
+type URL URL42,43
+type ArticleKey ArticleKey43,44
+type DirectionList DirectionList44,45
+type DirectionType DirectionType45,46
+type DirectionType a a45,46
+data ListedPage ListedPage47,48
+  LP LP48,49
+  LP { baseURL baseURL48,49
+     , topDate topDate49,50
+     , topURL topURL50,51
+     , urlF urlF51,52
+     , pageF pageF52,53
+data Page Page54,55
+  Page Page55,56
+  Page { pageUrl pageUrl55,56
+       , tagtree tagtree56,57
+       , titleFunc titleFunc57,58
+       , textFunc textFunc58,59
+data Article Article60,61
+  Article Article61,62
+  Article { tree tree61,62
+          , title title62,63
+          , text text63,64
+          , date date64,65
+          , paper paper65,66
+data AKey AKey67,68
+data AKey = Name Name67,68
+data AKey = Name String | Attr Attr67,68
+data AKey = Name String | Attr String | Always Always67,68
+data WriterDirection WriterDirection69,70
+data WriterDirection = Skip Skip69,70
+data WriterDirection = Skip | Pack Pack69,70
+data WriterDirection = Skip | Pack String | Loop Loop69,70
+data Config Config71,72
+data Config = Con Con71,72
+data Config = Con { hostName hostName71,72
+                  , baseName baseName72,73
+                  , rootAK rootAK73,74
+                  , titleAK titleAK74,75
+                  , textAK textAK75,76
+instance instance77,78
+(=(80,81
+(==>), findTree findTree80,81
+(====>80,81
+findTree findTree81,82
+findTreeS findTreeS85,86
+findTreeS findTreeS86,87
+find' find'88,89
+find' find'89,90
+solver solver94,95
+solver solver95,96
+solveArticleKey solveArticleKey97,98
+solveArticleKey solveArticleKey98,99
+solveAKey solveAKey100,101
+solveAKey solveAKey101,102
+pairF pairF106,107
+pairF pairF107,108
+findAttribute findAttribute109,110
+findAttribute findAttribute110,111
+findAttributeS findAttributeS118,119
+findAttributeS findAttributeS119,120
+assocKey assocKey121,122
+assocKey assocKey122,123
+stringFoldBase stringFoldBase127,128
+stringFoldBase stringFoldBase128,129
+treeText treeText130,131
+treeTextMap treeTextMap131,132
+treeText treeText132,133
+treeTextMap treeTextMap133,134
+normalDirection normalDirection135,136
+normalDirection normalDirection136,137
+directionTranslate directionTranslate144,145
+directionTranslate directionTranslate145,146
+directionList directionList148,149
+directionList directionList149,150
+direction direction153,154
+treeTextEx treeTextEx158,159
+treeTextEx treeTextEx159,160
+ttxex ttxex161,162
+ttxex ttxex162,163
+strip strip171,172
+strip strip172,173
+filterBlankLines filterBlankLines177,178
+filterBlankLines filterBlankLines178,179
+fBLparse fBLparse184,185
+fBLparse fBLparse185,186
+translateTags translateTags190,191
+translateTags translateTags191,192
+getF getF193,194
+getF getF194,195
+(<@>)<@>196,197
+getTitle getTitle202,203
+getText getText203,204
+getTitle getTitle204,205
+getText getText205,206
+utf8Text utf8Text207,208
+utf8Text utf8Text208,209
+takeTitle takeTitle210,211
+takeTitle takeTitle211,212
+takeText takeText218,219
+takeText takeText219,220
 
-f:/Haskell/Snews/Snews/NewsArticle/Common.hs,302
+f:/Haskell/Snews/Snews/NewsArticle/Akahata.hs,457
+module Snews.NewsArticle.Akahata Snews.NewsArticle.Akahata0,1
+config config16,17
+makeListedPage makeListedPage23,24
+makeListedPage makeListedPage24,25
+newsList newsList28,29
+newsList newsList29,30
+fullURL fullURL34,35
+fullURL fullURL35,36
+makeTopPageURL makeTopPageURL40,41
+makeTopPageURL makeTopPageURL41,42
+makeURLFunction makeURLFunction43,44
+makeURLFunction makeURLFunction44,45
+makePage makePage64,65
+makePage makePage65,66
+
+f:/Haskell/Snews/Snews/NewsArticle/Common.hs,319
 module Snews.NewsArticle.Common Snews.NewsArticle.Common0,1
-makeListedPage makeListedPage12,13
-makeListedPage makeListedPage13,14
-extractPage extractPage17,18
-extractPage extractPage18,19
-takeTitle takeTitle23,24
-takeTitle takeTitle24,25
-takeText takeText28,29
-takeText takeText29,30
+config config17,18
+dailyURL dailyURL24,25
+dailyURL dailyURL25,26
+makeTree makeTree30,31
+makeTree makeTree31,32
+makeListedPage makeListedPage35,36
+makeListedPage makeListedPage36,37
+extractPage extractPage40,41
+extractPage extractPage41,42
 
-f:/Haskell/Snews/Snews/OrgParse.hs,1826
-module Snews.OrgParse Snews.OrgParse2,3
-orgDir orgDir16,17
+f:/Haskell/Snews/Snews/OrgParse.hs,1827
+module Snews.OrgParse Snews.OrgParse3,4
 orgDir orgDir17,18
-orgFileName orgFileName19,20
+orgDir orgDir18,19
 orgFileName orgFileName20,21
-data Lines Lines22,23
-  OrgDate OrgDate23,24
-  | OrgTitle OrgTitle24,25
-  | OrgLine OrgLine25,26
-  | OrgArticle OrgArticle26,27
-  | OrgArticle { time time26,27
-                 header header27,28
-                 body body28,29
-                 paper' paper'29,30
-  | OrgError OrgError30,31
-type Days Days32,33
-type Contents Contents33,34
-type Contents a a33,34
-instance instance35,36
-makeOrgArticle makeOrgArticle43,44
+orgFileName orgFileName21,22
+data Lines Lines23,24
+  OrgDate OrgDate24,25
+  | OrgTitle OrgTitle25,26
+  | OrgLine OrgLine26,27
+  | OrgArticle OrgArticle27,28
+  | OrgArticle { time time27,28
+                 header header28,29
+                 body body29,30
+                 paper' paper'30,31
+  | OrgError OrgError31,32
+type Days Days33,34
+type Contents Contents34,35
+type Contents a a34,35
+instance instance36,37
 makeOrgArticle makeOrgArticle44,45
-leapYear leapYear49,50
-  | y `mod`mod51,52
-monthEnd monthEnd55,56
-monthEnd monthEnd56,57
-makeMonthList makeMonthList71,72
-makeMonthList makeMonthList72,73
-aChar aChar79,80
-aChar aChar80,81
-titleP, dateP, lineP lineP82,83
-titleP, dateP,dateP82,83
-titleP,titleP82,83
-titleP titleP83,84
-dateP dateP84,85
-lineP lineP85,86
-toLine toLine87,88
-toLine toLine88,89
-type PaperMap PaperMap93,94
-papers papers95,96
-papers papers96,97
-takeHeader takeHeader99,100
-takeHeader takeHeader100,101
-takePaper takePaper104,105
-takePaper takePaper105,106
-takePaperParse takePaperParse109,110
-takePaperParse takePaperParse110,111
-makePaperMap makePaperMap115,116
-makePaperMap makePaperMap116,117
-paperElem paperElem120,121
-paperElem paperElem121,122
-notElemDayPaper notElemDayPaper123,124
-notElemDayPaper notElemDayPaper124,125
-dateFold dateFold133,134
-dateFold dateFold134,135
-orgDateList orgDateList143,144
-orgDateList orgDateList144,145
-notElemDay notElemDay146,147
-notElemDay notElemDay147,148
-orgLineList orgLineList149,150
-orgLineList orgLineList150,151
-parseToDayList parseToDayList152,153
-parseToDayList parseToDayList153,154
+makeOrgArticle makeOrgArticle45,46
+leapYear leapYear50,51
+  | y `mod`mod52,53
+monthEnd monthEnd57,58
+monthEnd monthEnd58,59
+makeMonthList makeMonthList73,74
+makeMonthList makeMonthList74,75
+aChar aChar81,82
+aChar aChar82,83
+titleP, dateP, lineP lineP84,85
+titleP, dateP,dateP84,85
+titleP,titleP84,85
+titleP titleP85,86
+dateP dateP86,87
+lineP lineP87,88
+toLine toLine89,90
+toLine toLine90,91
+type PaperMap PaperMap95,96
+papers papers97,98
+papers papers98,99
+takeHeader takeHeader101,102
+takeHeader takeHeader102,103
+takePaper takePaper106,107
+takePaper takePaper107,108
+takePaperParse takePaperParse111,112
+takePaperParse takePaperParse112,113
+makePaperMap makePaperMap117,118
+makePaperMap makePaperMap118,119
+paperElem paperElem122,123
+paperElem paperElem123,124
+notElemDayPaper notElemDayPaper125,126
+notElemDayPaper notElemDayPaper126,127
+dateFold dateFold135,136
+dateFold dateFold136,137
+orgDateList orgDateList145,146
+orgDateList orgDateList146,147
+notElemDay notElemDay148,149
+notElemDay notElemDay149,150
+orgLineList orgLineList151,152
+orgLineList orgLineList152,153
+parseToDayList parseToDayList154,155
+parseToDayList parseToDayList155,156
 
-f:/Haskell/Snews/test/Spec.hs,30
-main main0,1
-main main1,2
+f:/Haskell/Snews/test/Spec.hs,183
+leapYearSpec leapYearSpec8,9
+leapYearSpec leapYearSpec9,10
+makeMonthListSpec makeMonthListSpec22,23
+makeMonthListSpec makeMonthListSpec23,24
+main main34,35
+main main35,36
 
-f:/Haskell/Zipcode/src/ZipDist/ZipDist.hs,664
-module ZipDist ZipDist0,1
+f:/Haskell/Zipcode/Zipcode/ZipDist.hs,680
+module Zipcode.ZipDist Zipcode.ZipDist0,1
 data District District2,3
 data District = District District2,3
 fromDistrict fromDistrict4,5
@@ -979,8 +986,8 @@ shigaDistrict shigaDistrict11,12
 ujiDistrict ujiDistrict12,13
 yamashinaDistrict yamashinaDistrict13,14
 
-f:/Haskell/Zipcode/src/ZipFormatta/ZipFormatta.hs,536
-module ZipFormatta ZipFormatta0,1
+f:/Haskell/Zipcode/Zipcode/ZipFormatta.hs,552
+module Zipcode.ZipFormatta Zipcode.ZipFormatta0,1
 data Formatta Formatta6,7
 data Formatta = FAd FAd6,7
 data Formatta = FAd | FPt FPt6,7
@@ -1000,87 +1007,85 @@ fmtFold fmtFold18,19
 f:/Haskell/Zipcode/Setup.hs,15
 main main1,2
 
-f:/Haskell/Zipcode/app/zipcode.hs,2419
+f:/Haskell/Zipcode/app/zipcode.hs,2377
 module Main Main0,1
-type DictLine DictLine25,26
-type DictLine a a25,26
-type Dictionary Dictionary26,27
-otherChar otherChar28,29
+type DictLine DictLine26,27
+type DictLine a a26,27
+type Dictionary Dictionary27,28
 otherChar otherChar29,30
-data Answer Answer34,35
-data Answer a = Absolute Absolute34,35
-data Answer a = Absolute a | Probably Probably34,35
-data Hitting Hitting37,38
-data Hitting = Hitting Hitting37,38
-data Hitting = Hitting { initial initial37,38
-                         pcode pcode38,39
-                         target target39,40
-                         hit hit40,41
-                         hitratio hitratio41,42
-                         nohit nohit42,43
-                         continual continual43,44
-  f `fmap`fmap47,48
-instance instance50,51
-point point56,57
+otherChar otherChar30,31
+data Answer Answer35,36
+data Answer a = Absolute Absolute35,36
+data Answer a = Absolute a | Probably Probably35,36
+data Hitting Hitting38,39
+data Hitting = Hitting Hitting38,39
+data Hitting = Hitting { initial initial38,39
+                         pcode pcode39,40
+                         target target40,41
+                         hit hit41,42
+                         hitratio hitratio42,43
+                         nohit nohit43,44
+                         continual continual44,45
+  f `fmap`fmap48,49
+instance instance51,52
 point point57,58
-cast cast63,64
+point point58,59
 cast cast64,65
-toString toString66,67
+cast cast65,66
 toString toString67,68
-makeDict makeDict70,71
+toString toString68,69
 makeDict makeDict71,72
-makeDistrictDict makeDistrictDict74,75
+makeDict makeDict72,73
 makeDistrictDict makeDistrictDict75,76
-makeKey makeKey81,82
+makeDistrictDict makeDistrictDict76,77
 makeKey makeKey82,83
-searchA searchA86,87
+makeKey makeKey83,84
 searchA searchA87,88
-(<(97,98
-(<=<==>97,98
-searchClassify searchClassify100,101
+searchA searchA88,89
+(<(98,99
+(<=<==>98,99
 searchClassify searchClassify101,102
-cutNumber cutNumber108,109
+searchClassify searchClassify102,103
 cutNumber cutNumber109,110
-searchCore searchCore114,115
+cutNumber cutNumber110,111
 searchCore searchCore115,116
-charLookup charLookup118,119
+searchCore searchCore116,117
 charLookup charLookup119,120
-innerlook innerlook121,122
+charLookup charLookup120,121
 innerlook innerlook122,123
-searchST2 searchST2126,127
+innerlook innerlook123,124
 searchST2 searchST2127,128
+searchST2 searchST2128,129
+overLengthAvoid overLengthAvoid136,137
 overLengthAvoid overLengthAvoid137,138
-overLengthAvoid overLengthAvoid138,139
+telem telem139,140
 telem telem140,141
-telem telem141,142
+kyotoCityP kyotoCityP142,143
 kyotoCityP kyotoCityP143,144
-kyotoCityP kyotoCityP144,145
+streetP streetP147,148
 streetP streetP148,149
-streetP streetP149,150
+addHit addHit152,153
 addHit addHit153,154
-addHit addHit154,155
+guessHit guessHit160,161
 guessHit guessHit161,162
-guessHit guessHit162,163
+guessHitList guessHitList165,166
 guessHitList guessHitList166,167
-guessHitList guessHitList167,168
+givePoint givePoint168,169
 givePoint givePoint169,170
-givePoint givePoint170,171
+giveContinualPoint giveContinualPoint180,181
 giveContinualPoint giveContinualPoint181,182
-giveContinualPoint giveContinualPoint182,183
+_partialList _partialList185,186
 _partialList _partialList186,187
-_partialList _partialList187,188
+partialList partialList188,189
 partialList partialList189,190
-partialList partialList190,191
+verseList verseList191,192
 verseList verseList192,193
-verseList verseList193,194
+removeChar removeChar194,195
 removeChar removeChar195,196
-removeChar removeChar196,197
+casePair casePair201,202
 casePair casePair202,203
-casePair casePair203,204
+main main206,207
 main main207,208
-main main208,209
-test1 test1232,233
-test2 test2236,237
 
 f:/Haskell/Zipcode/test/Spec.hs,30
 main main0,1
