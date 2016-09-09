@@ -188,7 +188,6 @@ translateTags str = tagTree $ parseTags str
 utf8Text :: StringLike a => a -> Text
 utf8Text = decodeUtf8 . castString
 
--- takeTitle :: (Monoid a, StringLike a) => [TagTree a] -> Reader (Config b) Text
 takeTitle :: MonadReader (Config a) m => a -> m Text
 takeTitle tree = do
   ak <- titleAK <$> ask
@@ -198,7 +197,6 @@ takeTitle tree = do
     utf8Text . mconcat . map treeText $
     f ak tree
 
--- takeText :: (Monoid a, StringLike a) => [TagTree a] -> Reader (Config b) [Text]
 takeText :: MonadReader (Config a) m => a -> m [Text]
 takeText tree = do
   ak     <- textAK   <$> ask

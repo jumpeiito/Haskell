@@ -25,10 +25,10 @@ data Lines s =
   OrgDate s
   | OrgTitle s
   | OrgLine s
-  | OrgArticle { time   :: Maybe Day,
-                 header :: s,
-                 body   :: [s],
-                 paper' :: s }
+  | OrgArticle { time   :: Maybe Day
+               , header :: s
+               , body   :: [s]
+               , paper' :: s }
   | OrgError deriving (Show, Eq)
 
 type Days = [Int]
@@ -43,10 +43,10 @@ instance (StringLike s, Monoid s) => Monoid (Lines s) where
   _ `mappend` _ = mempty
 
 makeOrgArticle :: (StringLike a, Monoid a) => Lines a
-makeOrgArticle = OrgArticle { time   = Nothing,
-                              header = mempty,
-                              body   = mempty,
-                              paper' = mempty }
+makeOrgArticle = OrgArticle { time   = Nothing
+                            , header = mempty
+                            , body   = mempty
+                            , paper' = mempty }
 ----------------------------------------------------------------------------------------------------
 leapYear :: Integer -> Bool
 leapYear y
