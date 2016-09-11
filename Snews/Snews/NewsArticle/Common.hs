@@ -21,4 +21,4 @@ config = Con { hostName  = "http://shasetsu.seesaa.net/archives/"
 
 makeTree :: [TagTree Text] -> [TagTree Text]
 makeTree b = (`runReader` config) $
-  flip findTreeS b <$> rootAK <$> ask
+  flip findTreeS b . rootAK <$> ask

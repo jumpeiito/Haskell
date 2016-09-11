@@ -30,24 +30,18 @@ type ConfigReader a = Reader (Config [TagTree Text]) a
 
 generateURL :: Day -> String -> ConfigReader String
 generateURL d url = do
-  host <- hostName <$> ask
-  return $ mconcat [ host
-                   , "aik"
-                   , (show . (`mod` 1000) . nendo) d , "/"
-                   , dayStrWithSep '-' d, "/"
-                   , url ]
+  let change conf = conf { urlRecipe = init (urlRecipe conf) ++ [Str url] }
+  change `local` makeURL d
 
 makeNewsList :: StringLike a => [TagTree a] -> [String]
 makeNewsList tree = (`runReader` config) $ do
   ak   <- rootAK   <$> ask
   host <- hostName <$> ask
-  let extract = findAttributeS (castString "href") $ findTreeS ak tree
+  let extract = castString "href" `findAttributeS` (ak `findTreeS` tree)
   mapM fullURL extract
     
 fullURL :: StringLike a => a -> ConfigReader String
 fullURL url = do
-  host <- hostName <$> ask
-  base <- baseName <$> ask
-  let dstr = castString url :: String
+  let dstr = castString url
   let d    = fromJust $ strdt (take 8 dstr)
   generateURL d dstr

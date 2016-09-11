@@ -42,7 +42,7 @@ printerCore outputF config page = do
 
 printer = printerCore Txio.putStrLn
 
-fPrinter filename = printerCore (filePrinter filename)
+fPrinter filename = printerCore $ filePrinter filename
 
 dayMaker :: Bool -> Day -> IO ()
 dayMaker bp td = do

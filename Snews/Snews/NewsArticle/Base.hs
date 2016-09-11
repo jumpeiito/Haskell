@@ -68,7 +68,7 @@ makeURL d = do
   recipe <- urlRecipe <$> ask
   host   <- hostName <$> ask
   base   <- baseName <$> ask
-  let murl gen (Slash x) = gen ++ (murl "" x) ++ "/"
+  let murl gen (Slash x) = gen ++ murl "" x ++ "/"
       murl gen  Host     = gen ++ host
       murl gen  Base     = gen ++ base
       murl gen (MDay f)  = gen ++ f d
