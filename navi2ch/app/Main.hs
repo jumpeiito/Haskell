@@ -28,7 +28,7 @@ type ConfigReaderT a = ReaderT Config IO a
 
 config :: Config
 config = Config { searchPaths     = [ "C:/Users/Jumpei/.navi2ch/"
-                                    , "C:/users/sibuc526.newnet/home/.navi2ch/"
+                                    , "d:/home/.navi2ch/"
                                     , "f:/home/.navi2ch/"]
                 , searchDirection = FD ("info" <!~>) (".dat" <^>)
                 , topPath         = "f:/.navi2ch" }
