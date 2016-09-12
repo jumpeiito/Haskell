@@ -37,7 +37,7 @@ makeNewsList :: StringLike a => [TagTree a] -> [String]
 makeNewsList tree = (`runReader` config) $ do
   ak   <- rootAK   <$> ask
   host <- hostName <$> ask
-  let extract = castString "href" `findAttributeS` (ak `findTreeS` tree)
+  let extract = castString "href" <~~ ak <~ tree
   mapM fullURL extract
     
 fullURL :: StringLike a => a -> ConfigReader String

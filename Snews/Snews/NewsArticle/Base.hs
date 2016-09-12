@@ -12,6 +12,8 @@ module Snews.NewsArticle.Base ( URL
                               , findTreeS
                               , findAttribute
                               , findAttributeS
+                              , (<~)
+                              , (<~~)
                               , stringFoldBase
                               , treeText
                               , treeTextEx
@@ -83,8 +85,12 @@ findTree akeys tb@TagBranch{} = execWriter $ find' akeys tb
           | otherwise       = forM_ ys (tell . findTree akeys)
 findTree _ _ = []
 
-findTreeS :: StringLike a => [ArticleKey] -> [TagTree a] -> [TagTree a]
+findTreeS, (<~) :: StringLike a => [ArticleKey] -> [TagTree a] -> [TagTree a]
 findTreeS ak = (findTree ak `concatMap`)
+(<~) = findTreeS
+
+infixr 9 <~
+infixr 9 <~~
 
 matchTree :: StringLike a => [ArticleKey] -> TagTree a -> Bool
 matchTree akeys = foldl' (|||) (const False) $ map logicProduct akeys
@@ -101,7 +107,7 @@ matchAKey _ _                        = False
 pairF :: (t -> t1) -> (t, t) -> (t1, t1)
 pairF f (a, b) = (f a, f b)
 ----------------------------------------------------------------------------------------------------
-findAttribute   :: Eq s => s -> TagTree s -> [s]
+findAttribute :: Eq s => s -> TagTree s -> [s]
 findAttribute key (TagBranch _ attr tbs) = execWriter fA
   where fA = do
           case assocKey key attr of
@@ -110,8 +116,9 @@ findAttribute key (TagBranch _ attr tbs) = execWriter fA
           forM_ tbs (tell . findAttribute key)
 findAttribute _ _ = mempty
 
-findAttributeS :: Eq s => s -> [TagTree s] -> [s]
+findAttributeS, (<~~) :: Eq s => s -> [TagTree s] -> [s]
 findAttributeS key = (findAttribute key `concatMap`)
+(<~~) = findAttributeS
 
 assocKey :: Eq a => a -> [(a, b)] -> Maybe b
 assocKey _ [] = Nothing
