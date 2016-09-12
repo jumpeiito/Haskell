@@ -107,16 +107,16 @@ matchAKey _ _                        = False
 pairF :: (t -> t1) -> (t, t) -> (t1, t1)
 pairF f (a, b) = (f a, f b)
 ----------------------------------------------------------------------------------------------------
-findAttribute :: Eq s => s -> TagTree s -> [s]
+findAttribute :: (Eq s, StringLike s) => s -> TagTree s -> [s]
 findAttribute key (TagBranch _ attr tbs) = execWriter fA
   where fA = do
-          case assocKey key attr of
+          case assocKey (castString key) attr of
             Just y -> tell [y]
             _      -> tell mempty
           forM_ tbs (tell . findAttribute key)
 findAttribute _ _ = mempty
 
-findAttributeS, (<~~) :: Eq s => s -> [TagTree s] -> [s]
+findAttributeS, (<~~) :: (Eq s, StringLike s) => s -> [TagTree s] -> [s]
 findAttributeS key = (findAttribute key `concatMap`)
 (<~~) = findAttributeS
 
