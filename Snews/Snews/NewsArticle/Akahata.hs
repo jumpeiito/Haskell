@@ -33,11 +33,11 @@ generateURL d url = do
   let change conf = conf { urlRecipe = init (urlRecipe conf) ++ [Str url] }
   change `local` makeURL d
 
-makeNewsList :: [TagTree String] -> [String]
+makeNewsList :: StringLike a => [TagTree a] -> [String]
 makeNewsList tree = (`runReader` config) $ do
   ak   <- rootAK   <$> ask
   host <- hostName <$> ask
-  let extract = "href" <~~ ak <~ tree
+  let extract = castString "href" <~~ ak <~ tree
   mapM fullURL extract
     
 fullURL :: StringLike a => a -> ConfigReader String
