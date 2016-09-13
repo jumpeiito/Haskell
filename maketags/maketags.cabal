@@ -1,0 +1,23 @@
+name:                maketags
+version:             0.1.0.0
+synopsis:            Initial project template from stack
+description:         Please see README.md
+homepage:            https://github.com/jumpeiito/makeTags#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Jumpei Ito
+maintainer:          junnpit@gmail.com
+copyright:           2016 Jumpei Ito
+category:            Development
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable makeTags
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -O3
+  build-depends:       base
+                     , Util
+                     , process
+                     , mtl
+  default-language:    Haskell2010

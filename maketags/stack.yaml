@@ -1,0 +1,12 @@
+resolver: lts-6.17
+
+packages:
+- "../Util"
+- '.'
+
+extra-deps: []
+
+flags: {}
+
+extra-package-dbs: []
+
