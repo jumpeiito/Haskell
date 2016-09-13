@@ -16,6 +16,7 @@ hancho.pdf:hancho.tex hancho.insert.tex
 	f:/tex/bin/dvipdfmx.exe -p "24cm,37cm" hancho.dvi
 
 tags: Makefile *.hs */*.hs
-	cd f:/Haskell/
-	${FIND} f:/Haskell -name '*.hs' ! -name '*Paths*' | xargs hasktags.exe -e
+	cd f:/Haskell/maketags
+	stack exec -- maketags.exe
+	cd -
 
