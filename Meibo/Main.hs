@@ -219,8 +219,10 @@ mainString =
                     , lineFix
                     , work
                     , Main.exp
-                    , show . fromMaybe (fromGregorian 1900 1 1)  . birth
-                    , show . fromMaybe 0 . year]
+                    -- , show . fromMaybe (fromGregorian 1900 1 1)  . birth
+                    , show . fromMaybe 0 . year
+                    , name
+                    ]
   where ad' line = deleteStrMap [".", "・", "･", " ", "　"] $ ad line
         blank _           = ""
 ----------------------------------------------------------------------------------------------------
