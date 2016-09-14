@@ -29,10 +29,8 @@ makeTags files = do
   liftIO $ runInteractiveProcess command (option ++ files) Nothing Nothing
   return ()
 
-
 main :: IO ()
 main = do
   files <- collectFiles `runReaderT` config
   forM_ files putStrLn
   makeTags files `runReaderT` config
-  return ()
