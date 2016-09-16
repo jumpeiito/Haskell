@@ -6,10 +6,7 @@ packages:
 
 extra-deps: []
 
-# Override default flag values for local packages and extra-deps
 flags: {}
 
-# Extra package databases containing global packages
-
-extra-include-dirs: ["f:\\Haskell", "f:\\Haskell\\icu\\include"]
-extra-lib-dirs: ["f:\\Haskell", "f:\\Haskell\\icu\\lib"]
+extra-include-dirs: ["f:\\Haskell\\Snews", "f:\\Haskell\\icu\\include"]
+extra-lib-dirs: ["f:\\Haskell\\Snews", "f:\\Haskell\\icu\\lib"]

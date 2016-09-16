@@ -1,6 +1,6 @@
-import           Util                           (withAppendFile)
+import           Util                           (withAppendFile, withOutFile)
 import           Util.Strdt                     (strdt, toYear, toMonth, todayDay, dayStr6)
-import           Snews.OrgParse                 (parseToDayList)
+import           Snews.OrgParse                 (parseToDayList, tagsOutput1)
 import           Snews.NewsArticle.Base
 import           Control.Monad                  (forM, forM_, when)
 import           Control.Monad.Reader
@@ -68,6 +68,12 @@ dayMaker bp td = do
     promise <- wait asy
     trueOutput Ak.config promise
 
+orgfileTagsOut :: IO ()
+orgfileTagsOut = do
+  str <- tagsOutput1
+  withOutFile "f:/.tags" $ \handle ->
+    I.hPutStrLn handle str
+
 main :: IO ()
 main = do
   I.hSetEncoding I.stdout I.utf8
@@ -83,23 +89,25 @@ main = do
   -- 標準出力に出力するか,ファイルに書き出すか。(-o)
   let makeF = dayMaker destination
   --------------------------------------------------
-  case (today' opt, force opt, date' opt) of
+  case (tags opt, today' opt, force opt, date' opt) of
     -- 当日分の記事のみを取得。(-t)
-    (True, _, _) -> makeF td
-    (_, f, d)    -> case (strdt f, strdt d) of
-                      -- 指定した日の記事を取得。(-f)
-                      (Just f', _) -> makeF f'
-                      -- 指定した年月のOrgファイルをパーズし,取得して
-                      -- いない日付のものを取ってくる。(-d)
-                      (_, Just d') -> do
-                        let (y, m) = (toYear d', toMonth d')
-                        -- 指定した年月のOrgファイルをパーズ
-                        dlist      <- parseToDayList y m
-                        forM_ dlist makeF
+    (True, _, _, _) -> orgfileTagsOut
+    (_, True, _, _) -> makeF td
+    (_, _, f, d)    -> case (strdt f, strdt d) of
+                         -- 指定した日の記事を取得。(-f)
+                         (Just f', _) -> makeF f'
+                         -- 指定した年月のOrgファイルをパーズし,取得して
+                         -- いない日付のものを取ってくる。(-d)
+                         (_, Just d') -> do
+                           let (y, m) = (toYear d', toMonth d')
+                           -- 指定した年月のOrgファイルをパーズ
+                           dlist      <- parseToDayList y m
+                           forM_ dlist makeF
 
 data Options = Options { today' :: Bool,
                          date'  :: String,
                          sjis'  :: Bool,
+                         tags   :: Bool,
                          force  :: String,
                          output :: Bool
                        } deriving (Show)
@@ -129,12 +137,16 @@ forceP = O.strOption $ mconcat
 sjisP :: O.Parser Bool
 sjisP = O.switch $ O.short 's' <> O.long "sjis" <> O.help "Output with char-set sjis"
 
+tagsP :: O.Parser Bool
+tagsP = O.switch $ O.short 'g' <> O.long "tags" <> O.help "Output tags file"
+
 optionsP :: O.Parser Options
 optionsP = (<*>) O.helper
            $ Options
            <$> todayP
            <*> dateP
            <*> sjisP
+           <*> tagsP
            <*> forceP
            <*> outputFileP
 

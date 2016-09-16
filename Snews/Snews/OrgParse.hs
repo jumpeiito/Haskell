@@ -3,23 +3,36 @@
 -- module Snews.OrgParse (dateFold, parseToDayList) where 
 module Snews.OrgParse  where 
 
+import Util                             (makeMap, uniq, readUTF8File, FileDirect (..), (<^>), allfd)
 import Util.Strdt                       (strdt, toYear, toMonth, toDay, todayDay)
+import Util.StrEnum                     (split)
 import Data.Time                        (Day (..), fromGregorian)
 import Data.Maybe                       (isJust, mapMaybe)
 import Text.Printf                      (printf)
 import Control.Monad.Writer
+import Control.Concurrent.Async
 import Text.StringLike                  (castString, StringLike (..))
 import Text.Parsec
 import Text.Parsec.String
+import Control.Monad.Reader
 import qualified Data.Map               as Map
 import qualified Util                   as U
 import qualified Control.Monad.State    as St
+import qualified System.IO              as I
 
-orgDir :: FilePath
-orgDir = "f:/Org/news/"
+data OrgConfig = OC { topdir    :: FilePath
+                    , basename  :: String
+                    , condition :: FileDirect }
 
-orgFileName :: Integer -> Int -> FilePath
-orgFileName = printf "%s%04d%02d.org" orgDir 
+config = OC { topdir    = "f:/Org/news/"
+            , basename  = "%s%04d%02d.org"
+            , condition = (FD (const True) ("org" <^>))}
+
+orgFileName :: Integer -> Int -> Reader OrgConfig FilePath
+orgFileName year month = do
+  dir  <- topdir <$> ask
+  base <- basename <$> ask
+  return $ printf base dir year month
 ----------------------------------------------------------------------------------------------------
 data Lines s =
   OrgDate s
@@ -116,7 +129,7 @@ takePaperParse = try inner <|> (anyChar >> takePaperParse)
                         (many1 (noneOf "]"))
 
 makePaperMap :: (StringLike a, Monoid a) => Contents a -> PaperMap a
-makePaperMap = U.makeMap (timeToDay . time) paper'
+makePaperMap = makeMap (timeToDay . time) paper'
   where timeToDay Nothing = 0
         timeToDay (Just d) = toDay d
 
@@ -144,7 +157,7 @@ dateFold s = thd . (`St.execState` (mempty, mempty, [])) $
   where thd (_, _, a) = a
 
 orgDateList :: Contents a -> Days
-orgDateList = map toDay . U.uniq . mapMaybe time
+orgDateList = map toDay . uniq . mapMaybe time
 
 notElemDay :: Days -> Contents a -> Days
 notElemDay dayList x = [ y | y <- dayList, y `notElem` orgDateList x]
@@ -155,7 +168,33 @@ orgLineList = dateFold . map toLine . lines . castString
 parseToDayList :: Integer -> Int -> IO [Day]
 parseToDayList year month = do
   today    <- todayDay
-  contents <- orgLineList <$> U.readUTF8File (orgFileName year month)
+  contents <- orgLineList <$> readUTF8File (orgFileName year month `runReader` config)
   let daylist = makeMonthList today year month
   let days    = notElemDay daylist contents
   return $ map (fromGregorian year month) days
+----------------------------------------------------------------------------------------------------
+headerTags :: String -> [String]
+headerTags head = case split ':' head of
+  [_] -> []
+  x   -> init $ tail x
+
+fileToTags :: FilePath -> IO [String]
+fileToTags fp = do
+  let extract = uniq . concatMap (headerTags . header)
+  extract <$> orgLineList <$> readUTF8File fp
+
+collectTags :: IO [String]
+collectTags = (`runReaderT` config) $ do
+  dir   <- topdir <$> ask
+  cond  <- condition <$> ask
+  files <- liftIO $ allfd dir cond
+  thunk <- liftIO $ mapM (async . fileToTags) files
+  liftIO $ uniq . concat <$> mapM wait thunk
+
+tagsOutput1 :: IO String
+tagsOutput1 = do
+  tags <- collectTags
+  return $
+    "(setq org-newspaper-tags-list '("     ++
+    (concat $ map (printf "\"%s\" ") tags) ++
+    "))"
