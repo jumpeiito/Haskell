@@ -8,176 +8,16 @@ import Util.StrEnum
 import Data.Time
 import Data.List
 import Data.Maybe                       (isJust, fromJust, fromMaybe)
+import Meibo.Base                       (runRubyString, Line (..), Key (..), deleteStr, deleteStrMap, trans)
 import Text.Parsec                      hiding (Line, State)
 import Text.Parsec.String
 import Control.Arrow                    ((&&&))
 import Control.Monad.Writer
 import Control.Monad.State
-import System.Process
 import System.Environment
 import qualified Data.Map               as Map
 import qualified System.IO              as I
-
--- file = ".test"
-
-data Line = Line { bunkai :: String,
-                   bknum  :: String,
-                   han    :: String,
-                   kind   :: String,
-                   hancho :: Maybe String,
-                   gen    :: String,
-                   name   :: String,
-                   nameP  :: (String, String),
-                   ad     :: String,
-                   tel    :: [Telephone],
-                   work   :: String,
-                   exp    :: String,
-                   furi   :: String,
-                   birthS :: String,
-                   birth  :: Maybe Day,
-                   year   :: Maybe Integer
-                 } deriving (Show, Eq)
-
-data Key =
-  Bunkai String
-  | Bk String
-  | Han String
-  | K String
-  | Name String
-  | Address String
-  | Ftel String
-  | Mtel String
-  | Work String
-  | Year String
-  | Old (Maybe Day, Maybe Day)
-  | Or  [Key]
-  | And [Key]
-  | Not Key deriving (Show, Eq, Read)
-
-test :: Day -> Parser Line
-test day = do
-  bnk   <- choice (map string ["石田", "日野", "小栗栖", "一言寺", "三宝院", "点在"]) <* sep'
-  hn    <- many1 digit <* sep'
-  sym   <- cell <* sep'
-  hcho  <- cell <* sep'
-  nm    <- cell <* sep'
-  ad'   <- cell <* sep'
-  tel'  <- cell <* sep'
-  exp'  <- cell <* sep'
-  exp2' <- cell <* sep'
-  fu'   <- cell <* sep'
-  bir   <- cell
-  let adtel  = ad' ++ "・" ++ tel'
-  let telp   = telParse adtel
-  let birth' = strdt bir
-  return Line { bunkai = bnk,
-                bknum  = bunkaiNumber bnk,
-                han    = hn,
-                kind   = removeSymbol sym,
-                hancho = case hcho of "" -> Nothing; _ -> Just "●",
-                gen    = adtel ++ "\n",
-                name   = nm,
-                nameP  = nameParse nm,
-                ad     = deleteStrMap (map telString telp) adtel,
-                tel    = telp,
-                work   = exp',
-                furi   = fu',
-                birthS = bir,
-                birth  = birth',
-                year   = howOld <$> birth' <*> Just day,
-                Main.exp = exp2' }
-    where sep  = ','
-          cell = many $ noneOf [sep]
-          sep' = char sep
-          
-removeSymbol :: String -> String
-removeSymbol = deleteStrMap ["◎", "○"]
-
-bunkaiNumber :: String -> String
-bunkaiNumber s = case s of
-  "石田"   -> "01"
-  "日野"   -> "02"
-  "小栗栖" -> "03"
-  "一言寺" -> "04"
-  "三宝院" -> "05"
-  "点在"   -> "50"
-  _        -> ""
-----------------------------------------------------------------------------------------------------
-_nameParse :: Parser (String, String)
-_nameParse = (,) <$> (many1 (noneOf "　") <* char '　')
-                 <*> many1 (noneOf "　")
-
-nameParse :: String -> (String, String)
-nameParse n = either (const ("", "")) id
-                     $ parse _nameParse "" n
-----------------------------------------------------------------------------------------------------
-deleteStr :: String -> String -> String
-deleteStr key target = snd $ runWriter (delStr key target)
-  where (>>>) x = drop (length x)
-        delStr :: String -> String -> Writer String String
-        delStr _ [] = return []
-        delStr key' target'@(t:ts)
-          | key' `isPrefixOf` target' = delStr key' (key' >>> target')
-          | otherwise               = do { tell [t]; delStr key' ts}
-  
-deleteStrMap :: [String] -> String -> String
-deleteStrMap xs s = foldl (flip deleteStr) s xs
-
-toL :: String -> [String]
-toL = split ','
-
-(<@>) :: String -> Int -> String
-(<@>) str n = toL str !! n
-
-blankP :: String -> Int -> Bool
-blankP s n = (s <@> n) == ""
-
--- syncF ["a", "b", "c"] ["d", "e", "f"] [2] (++)
--- -> ["a","b","cf"]
-syncF :: [a] -> [a] -> [Int] -> (a -> a -> a) -> [a]
-syncF a b numList f = snd $ runWriter (syncFr a b 0)
-  where syncFr [] _ _ = tell mempty
-        syncFr _ [] _ = tell mempty
-        syncFr (x:xs) (y:ys) n = do
-          if n `elem` numList
-            then tell [f x y]
-            else tell [x]
-          syncFr xs ys (n+1)
-
-lineMerge :: String -> [String] -> [String]
-lineMerge _ [] = []
-lineMerge str (l:ls) =
-  intercalate "," syn : ls
-  where str'     = toL str
-        header   = toL l
-        plus a b = a ++ "・" ++ b
-        syn      = syncF header str' [5,6] plus
         
-firstTrans :: [String] -> [String]
-firstTrans lyne = reverse answer
-  where (_, answer) = (`execState` ("0", [])) $ fTrans2 lyne
-
-fTrans2 :: [String] -> State (String, [String]) [()]
-fTrans2 ls = 
-  forM ls $ \n -> do
-    (num, ret) <- get
-    case (n `blankP` 4, n `blankP` 1) of
-      (True, _) -> put (num,   n `lineMerge` ret)
-      (_, True) -> put (num,   inner num n : ret)
-      (_, _)    -> put (n<@>1, n:ret)
-  where inner n l = case toL l of
-          h:_:r -> intercalate "," $ h:n:r
-          _ -> ""
-
-secondTrans :: Day -> [String] -> [Line]
-secondTrans _ [] = []
-secondTrans day (x:xs) = case parse (test day) "" x of
-  Right s -> s : secondTrans day xs
-  Left _  -> secondTrans day xs
-
-trans :: Day -> [String] -> [Line]
-trans day = secondTrans day . firstTrans
-
 fixTel, mobileTel :: Line -> [Telephone]
 fixTel = fixFilter . tel
 mobileTel = mobileFilter . tel
@@ -210,6 +50,7 @@ mainString :: Line -> String
 mainString =
   functionsToString [bunkai
                     , han
+                    , fromMaybe "" . hancho
                     , kind
                     , name
                     , furi
@@ -218,7 +59,7 @@ mainString =
                     , lineMobile
                     , lineFix
                     , work
-                    , Main.exp
+                    , Meibo.Base.exp
                     -- , show . fromMaybe (fromGregorian 1900 1 1)  . birth
                     , show . fromMaybe 0 . year
                     , name
@@ -266,12 +107,12 @@ hanOutput (month, day) today' = opfunc . hanchoList
   where arguments (bn:_:h:_:n:l:_) =
           intercalate "}{" [h, l, n, m bn, d bn]
         arguments _ = ""
-        d bn = fromMaybe "0" $ hanDay day bn
-        m bn = case read (d bn) of
-          0 -> ""
-          x -> if today' > x
-               then show $ month + 1
-               else show month
+        d bn = fromMaybe "" $ hanDay day bn
+        m bn | d bn == "" = ""
+             | otherwise = if today' > read (d bn)
+                           then show $ month + 1
+                           else show month
+
         opfunc list = 
           "\\hancholine{" ++ arguments list ++ "}"
 ----------------------------------------------------------------------------------------------------
@@ -417,16 +258,15 @@ keyParse str = either (const $ And []) head
 seekS :: String -> [Line] -> [Line]
 seekS str = seek (keyParse str)
 ----------------------------------------------------------------------------------------------------
-runRuby :: IO (I.Handle, I.Handle, I.Handle, ProcessHandle)
-runRuby = runInteractiveProcess "ruby" ["meibo.rb"] Nothing Nothing
+
 ----------------------------------------------------------------------------------------------------
 main :: IO ()
 main = do
   I.hSetEncoding I.stdout I.utf8
   (y', m', d')    <- today
-  (_, sout, _, _) <- runRuby
+  commandOutput   <- runRubyString ["meibo.rb"]
   let currentDay = fromGregorian y' m' d'
-  mainList        <- trans currentDay . lines <$> I.hGetContents sout
+  let mainList = trans currentDay commandOutput
   args            <- getArgs
 ----------------------------------------------------------------------------------------------------
   case args of
@@ -440,11 +280,3 @@ main = do
   where printer f = mapM_ (putStrLn . f)
         mainOut   = printer mainString
         mapToList = Map.assocs . hanchoMap
-
-
-testIO = do
-  I.hSetEncoding I.stdout I.utf8
-  (y', m', d')    <- today
-  (_, sout, _, _) <- runRuby
-  let currentDay = fromGregorian y' m' d'
-  trans currentDay . lines <$> I.hGetContents sout

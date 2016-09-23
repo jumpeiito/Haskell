@@ -30,7 +30,7 @@ begin
   if File.exists?("s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm")
     bk = ex.Workbooks.Open("s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm")
   else
-    bk = ex.Workbooks.Open("f:/組合員名簿.xlsm")
+    bk = ex.Workbooks.Open("f:/組合員名簿/組合員名簿.xlsm")
   end
   # bk = ex.Workbooks.Open("f:/組合員名簿.xlsm")
   ary = Array.new
