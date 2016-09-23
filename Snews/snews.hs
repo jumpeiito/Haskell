@@ -2,7 +2,6 @@ import           Util                           (withAppendFile, withOutFile)
 import           Util.Strdt                     (strdt, toYear, toMonth, todayDay, dayStr6)
 import           Snews.OrgParse                 (parseToDayList, tagsOutput1)
 import           Snews.NewsArticle.Base
-import           Control.Monad                  (forM, forM_, when)
 import           Control.Monad.Reader
 import           Control.Concurrent.Async
 import           Network.HTTP                   (simpleHTTP, getRequest, getResponseBody)

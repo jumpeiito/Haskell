@@ -6,6 +6,7 @@ module Snews.OrgParse  where
 import Util                             (makeMap, uniq, readUTF8File, FileDirect (..), (<^>), allfd)
 import Util.Strdt                       (strdt, toYear, toMonth, toDay, todayDay)
 import Util.StrEnum                     (split)
+import Data.List                        (sort)
 import Data.Time                        (Day (..), fromGregorian)
 import Data.Maybe                       (isJust, mapMaybe)
 import Text.Printf                      (printf)

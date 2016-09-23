@@ -12,4 +12,3 @@ fushimiDistrict   = District "京都市伏見区" ["醍醐", "石田", "日野",
 shigaDistrict     = District "滋賀県"      ["大津市", "草津市", "栗東市"]
 ujiDistrict       = District "京都府"      ["宇治市", "城陽市", "八幡市", "向日市", "長岡京市", "京田辺市"]
 yamashinaDistrict = District "京都市"      ["山科区"]
-

@@ -10,6 +10,7 @@ data Config = Con { haskellDir :: FilePath
                   , options    :: [String]
                   }
 
+config :: Config
 config = Con { haskellDir = "f:/Haskell"
              , direction  = FD (".stack-work" <!~>) ("hs" <^>)
              , hasktags   = "f:/Haskell/hasktags.exe"
