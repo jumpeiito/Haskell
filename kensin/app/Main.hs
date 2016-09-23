@@ -48,19 +48,19 @@ config = Con { file       = "f:/Haskell/.kensin"
 data Gender = Male | Female deriving (Show, Eq)
 data Status = Already | Yet deriving (Show, Eq)
 data Kind   = H | K deriving (Show, Eq)
-data KensinData = KensinData { day     :: Maybe Day,
-                               sortKey :: Maybe String,
-                               name    :: String, 
-                               gender  :: Gender,
-                               old     :: Maybe Integer, 
-                               number  :: Maybe String,
-                               kind    :: Kind,
-                               stat    :: Status,
-                               kday    :: String, 
-                               amount  :: Maybe Integer,
-                               key     :: Maybe (Day, Integer, Integer),
-                               pay     :: Maybe [String],
-                               nonPay  :: Maybe [String] } deriving (Show, Eq)
+data KensinData = KensinData { day     :: Maybe Day
+                             , sortKey :: Maybe String
+                             , name    :: String
+                             , gender  :: Gender
+                             , old     :: Maybe Integer
+                             , number  :: Maybe String
+                             , kind    :: Kind
+                             , stat    :: Status
+                             , kday    :: String
+                             , amount  :: Maybe Integer
+                             , key     :: Maybe (Day, Integer, Integer)
+                             , pay     :: Maybe [String]
+                             , nonPay  :: Maybe [String] } deriving (Show, Eq)
 
 instance Ord KensinData where
   compare (KensinData _ x _ _ _ _ _ _ _ _ _ _ _) (KensinData _ y _ _ _ _ _ _ _ _ _ _ _)
@@ -171,7 +171,6 @@ toPay _ str =
   [""] -> Nothing
   s' -> Just s'
 
-
 lookup3 :: (Eq a) => a -> [(a,b,c)] -> Maybe (a,b,c)
 lookup3 _ [] = Nothing
 lookup3 key' (v@(a',_,_):as)
@@ -209,20 +208,19 @@ lineToData :: [String] -> Reader Config KensinData
 lineToData line = do
   nendo' <- year <$> ask
   let old' = flip howOld (nendoEnd nendo') <$> (strdt birth :: Maybe Day)
-  return $ KensinData { day       = d,
-                        kday      = kday',
-                        Main.name = n,
-                        gender    = g',
-                        old       = old',
-                        kind      = kind',
-                        number    = number',
-                        stat      = stat',
-                        key       = key',
-                        amount    = makeAmount stat' <$> old' <*> pay',
-                        nonPay    = toPay d nop,
-                        pay       = pay',
-                        sortKey   = genSortKey <$> key' }
--- 森本　勝,ﾓﾘﾓﾄ ﾏｻﾙ,ﾓﾘﾓﾄ ﾏｻﾙ,ﾓﾘﾓﾄ ﾏｻﾙ,男,1952-12-03 00:00:00 +0900,64,建１６醍２１,5077,本人,醍05077,本,大阪府三島郡島本町山崎４丁目１９ユニハイム山崎２棟６１５号,618-0001,962-0575,110761,再読影,11210301,　　　　　　　　　　,,　月　　　日,1・2・3・4・5・6・7・8・9,1・2・3・4・5・6・7・8・9・10・11・12・13・14,モ,,
+  return $ KensinData { day       = d
+                      , kday      = kday'
+                      , Main.name = n
+                      , gender    = g'
+                      , old       = old'
+                      , kind      = kind'
+                      , number    = number'
+                      , stat      = stat'
+                      , key       = key'
+                      , amount    = makeAmount stat' <$> old' <*> pay'
+                      , nonPay    = toPay d nop
+                      , pay       = pay'
+                      , sortKey   = genSortKey <$> key' }
   where [n, g, birth, num, k, st, day', kday', nop, op] = extractElement line
         key'       = toKey day'
         d          = fst3 <$> key'
@@ -243,16 +241,7 @@ toKey str =
 toCsvData :: [String] -> [KensinData]
 toCsvData = filter (isJust . key) . map ((`runReader` config) . lineToData . split ',')
 
--- makeMap :: [KensinData] -> M.Map (Maybe String) [KensinData]
--- makeMap = foldl coref M.empty
---   where coref map' kd = 
---           let key' = sortKey kd in
---           case M.lookup key' map' of
---           Just xl -> M.insert key' (kd:xl) map'
---           Nothing -> M.insert key' [kd] map'
-
 makeKensinMap = makeMap sortKey id
-
 
 translateJusin :: [KensinData] -> [(Maybe String, [Int])]
 translateJusin =
@@ -305,11 +294,7 @@ csvRubyData = do
 
 main :: IO ()
 main = do
-  -- opt <- cmdArgs option
-  -- print opt
   I.hSetEncoding I.stdout I.utf8
   csv  <- csvRubyData `runReaderT` config
-  -- cont <- sort <$> toCsvData <$> readUTF8File file
   let showS = mapM_ (putStrLn . show)
   showS $ translateJusin csv
-  -- mapM_ (putStrLn . amountShow) $ translateAmount $ sort csv
