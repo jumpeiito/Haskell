@@ -10,6 +10,7 @@ import Control.Monad.Trans              (liftIO)
 import Control.Monad.Writer
 import Control.Monad.State
 import System.Directory
+import System.Process
 import Text.StringLike                  (StringLike, castString)
 import qualified Data.Map               as Map
 import qualified System.IO              as I
@@ -213,3 +214,11 @@ include xs target = either (const False) (const True)
 rotate :: Int -> [a] -> [a]
 rotate _ [] = []
 rotate n x = (drop n x) ++ (take n x)
+
+runRuby :: [String] -> IO (I.Handle, I.Handle, I.Handle, ProcessHandle)
+runRuby opt = runInteractiveProcess "ruby" opt Nothing Nothing
+
+runRubyString :: [String] -> IO [String]
+runRubyString opt = do
+  (_, sout, _, _) <- runRuby opt
+  lines <$> I.hGetContents sout
