@@ -2,7 +2,8 @@
 require 'win32ole'
 require 'pp'
 
-FILE = "f:/Haskell/kensin/16t‚ÌŒ’fó•t–¼•ë.xlsx"
+# FILE = "f:/Haskell/kensin/16t‚ÌŒ’fó•t–¼•ë.xlsx"
+FILE = ARGV[0]
 SHEET_INDEX = [1,2]
 
 bunkai = { 1 => "Î“c",
@@ -24,7 +25,7 @@ end
 
 def filter_blank lines
   # lines.keep_if {|line| line.compact != [] }
-  lines.keep_if {|line| line[3] }
+  lines.keep_if {|line| line[0] }
 end
 
 begin
@@ -47,7 +48,7 @@ begin
   ary = Array.new
   SHEET_INDEX.each do |sh_index|
     sh = bk.Worksheets.Item(sh_index)
-    val = filter_blank sh.Range("A1:AC2000").Value
+    val = filter_blank sh.Range("D2:AC2000").Value
     ary = ary + val
   end
 

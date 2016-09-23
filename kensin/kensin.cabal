@@ -27,6 +27,7 @@ executable kensin-exe
                      , process
                      , time
                      , Util
+                     , containers
                      , kensin
   default-language:    Haskell2010
 
