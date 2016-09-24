@@ -1,48 +1,20 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+module Main where
 
-import Util
-import Util.Strdt
+import Util                             (makeMap, readUTF8File, runRubyString)
+import Util.Strdt                       (howOld, nendoEnd, strdt)
 import Util.StrEnum                     (split)
-import Data.Time
-import Data.List
-import Data.Maybe
+import KensinConfig
+import Data.Time                        (Day)
+import Data.Maybe                       (fromJust, isJust, mapMaybe)
+import Data.Either                      (rights)
 import Data.Monoid
+import Data.Array
+import Text.Read
 import Control.Monad.Reader
-import Control.Applicative
 import qualified Data.Map               as M
--- import System.Console.CmdArgs as Arg
 import qualified Data.Foldable          as F
 import qualified Text.Printf            as TP
 import qualified System.IO              as I
-
-data Config = Con { file       :: FilePath
-                  , excelFile  :: FilePath
-                  , rubyProg   :: FilePath
-                  , keyColNum  :: Int
-                  , year       :: Integer
-                  , valueAlist :: [(String, Integer, Integer)] }
-
-config = Con { file       = "f:/Haskell/.kensin"
-             , excelFile  = "f:/Haskell/kensin/16春の健診受付名簿.xlsx"
-             , rubyProg   = "f:/Haskell/kensin/kensin.rb"
-             , keyColNum  = 12
-             , year       = 2016
-             , valueAlist =
-               [ ("1", 6000, 3000) -- 胃バリウム
-               , ("2", 2500, 2500) -- 腹部エコー
-               , ("3", 8500, 5500) -- 胃バリウム + 腹部エコー
-               , ("4", 1500, 1500) -- 肝炎ウィルス
-               , ("5", 1500,  500) -- ペプシノーゲン
-               , ("6", 1500,  500) -- ピロリ菌
-               , ("7", 1500,  500) -- 前立腺がん
-               , ("8", 5000,    0) -- 乳がん・マンモ
-               , ("9", 5000,    0) -- 乳がん・乳腺エコー
-               , ("10",3000, 2000) -- 子宮がん
-               , ("11",8000, 4000) -- 胃カメラ
-               , ("12",1000, 1000) -- 骨密度
-               , ("13",3500, 3500) -- アスベスト
-               , ("14",3500, 3500) -- じん肺
-               ]}
 
 ----------------------------------------------------------------------------------------------------
 data Gender = Male | Female deriving (Show, Eq)
@@ -76,7 +48,7 @@ takeAny f list =
 
 keyContains :: (KensinData -> Maybe [String]) -> [String] -> KensinBool
 keyContains f opList kd =
-  takeAny (\n -> Any $ bool n) opList
+  takeAny (Any . bool) opList
   where bool n' = case f kd of
           Just l -> n' `elem` l
           Nothing -> False
@@ -114,7 +86,7 @@ tokP kd = fromJust $ (\o -> o>=40 && o <75) <$> old kd
 
 numberCount :: [KensinData] -> [Int]
 numberCount kds =
-  map (flip countIf kds) [ladies1P, ladies2P, jinpaiP, cameraP] 
+  map (`countIf` kds) [ladies1P, ladies2P, jinpaiP, cameraP] 
 ----------------------------------------------------------------------------------------------------
 genSortKey :: (Day, Integer, Integer) -> String
 genSortKey (date, hour, minute) =
@@ -145,24 +117,11 @@ genSortKey (date, hour, minute) =
 --   , op                  -- (22) 有料オプション
 --   ]
 
-extractAlist :: [(Integer, String)]
-extractAlist = [ (0, "氏名")
-               , (4, "性別")
-               , (5, "生年月日")
-               , (10, "保険証番号")
-               , (9, "区分")
-               , (18, "補助")
-               , (19, "日時")
-               , (20, "申込日時")
-               , (21, "無料オプション")
-               , (22, "有料オプション")]
+extractElement :: [String] -> Reader Config [String]
+extractElement line = do
+  let csvAry = listArray (0, length line) line
+  map ((csvAry !) . fst) . extract <$> ask
 
-extractElement :: [String] -> [String]
-extractElement line =
-  map snd $ filter numberExtract csvLine
-  where csvLine  = zip [0..] line
-        alistNum = map fst extractAlist
-        numberExtract (n, _) = n `elem` alistNum
 
 toPay :: Maybe Day -> String -> Maybe [String]
 toPay Nothing _ = Nothing
@@ -171,32 +130,24 @@ toPay _ str =
   [""] -> Nothing
   s' -> Just s'
 
-lookup3 :: (Eq a) => a -> [(a,b,c)] -> Maybe (a,b,c)
-lookup3 _ [] = Nothing
-lookup3 key' (v@(a',_,_):as)
-  | key' == a' = Just v
-  | otherwise  = lookup3 key' as
-
 fst3 :: (a, b, c) -> a
-snd3 :: (a, b, c) -> b
-thd3 :: (a, b, c) -> c
 fst3 (a, _, _) = a
-snd3 (_, a, _) = a
-thd3 (_, _, a) = a
 
 type KensinPrice = (String, Integer, Integer)
 
-makeAmountCore :: (KensinPrice -> Integer) -> [String] -> Reader Config Integer
+-- ["2","8","14"]などのオプション番号のリストから自己負担代を計算。
+-- 仮引数paymentは上記の例でいうと、["2","8","14"]などのリスト。
+-- fはfstかsndのどちらか。
+makeAmountCore :: ((Integer, Integer) -> Integer) -> [String] -> Reader Config Integer
 makeAmountCore f payment = do
-  alist <- valueAlist <$> ask
-  let seek payStr = f <$> lookup3 payStr alist
-  return $ foldl (+) 0 $ mapMaybe id $ map seek payment
+  ary <- vArray <$> ask
+  -- [String]から[Int]への変換
+  let paymentInt = rights $ map readEither payment
+  return $ sum $ map (f. (ary !)) paymentInt
 
-makeAmountOver40 :: [String] -> Integer
-makeAmountOver40 = (`runReader` config) . makeAmountCore thd3
-
-makeAmountUnder40 :: [String] -> Integer
-makeAmountUnder40 = (`runReader` config) . makeAmountCore snd3
+makeAmountOver40, makeAmountUnder40 :: [String] -> Integer
+makeAmountOver40  = (`runReader` config) . makeAmountCore snd
+makeAmountUnder40 = (`runReader` config) . makeAmountCore fst
 
 makeAmount :: Status -> Integer -> [String] -> Integer
 makeAmount st old' payment
@@ -207,21 +158,21 @@ makeAmount st old' payment
 lineToData :: [String] -> Reader Config KensinData
 lineToData line = do
   nendo' <- year <$> ask
-  let old' = flip howOld (nendoEnd nendo') <$> (strdt birth :: Maybe Day)
-  return $ KensinData { day       = d
-                      , kday      = kday'
-                      , Main.name = n
-                      , gender    = g'
-                      , old       = old'
-                      , kind      = kind'
-                      , number    = number'
-                      , stat      = stat'
-                      , key       = key'
-                      , amount    = makeAmount stat' <$> old' <*> pay'
-                      , nonPay    = toPay d nop
-                      , pay       = pay'
-                      , sortKey   = genSortKey <$> key' }
-  where [n, g, birth, num, k, st, day', kday', nop, op] = extractElement line
+  let old' = flip howOld (nendoEnd nendo') <$> strdt birth
+  return KensinData { day       = d
+                    , kday      = kday'
+                    , Main.name = n
+                    , gender    = g'
+                    , old       = old'
+                    , kind      = kind'
+                    , number    = number'
+                    , stat      = stat'
+                    , key       = key'
+                    , amount    = makeAmount stat' <$> old' <*> pay'
+                    , nonPay    = toPay d nop
+                    , pay       = pay'
+                    , sortKey   = genSortKey <$> key' }
+  where [n, g, birth, num, k, st, day', kday', nop, op] = extractElement line `runReader` config
         key'       = toKey day'
         d          = fst3 <$> key'
         number'    = case num of ""   -> Nothing; s -> Just s
@@ -235,18 +186,19 @@ toKey str =
   case split ' ' str of
   [date', time', _] -> Just (d, hour, minute)
     where [hour, minute, _] = map read $ split ':' time'
-          d = fromJust $ (strdt date')
+          d = fromJust $ strdt date'
   _ -> Nothing
 
 toCsvData :: [String] -> [KensinData]
 toCsvData = filter (isJust . key) . map ((`runReader` config) . lineToData . split ',')
 
+makeKensinMap :: [KensinData] -> M.Map (Maybe String) [KensinData]
 makeKensinMap = makeMap sortKey id
 
 translateJusin :: [KensinData] -> [(Maybe String, [Int])]
 translateJusin =
   map count' . M.toList . makeKensinMap
-  where count' (k, v) = (k, (length v):(numberCount v))
+  where count' (k, v) = (k, length v:numberCount v)
 
 translateAmount :: [KensinData] -> [(String, Maybe Day, Maybe Integer)]
 translateAmount =
@@ -296,5 +248,6 @@ main :: IO ()
 main = do
   I.hSetEncoding I.stdout I.utf8
   csv  <- csvRubyData `runReaderT` config
-  let showS = mapM_ (putStrLn . show)
+  let showS = mapM_ print
   showS $ translateJusin csv
+  mapM_ (putStrLn . amountShow) $ translateAmount csv

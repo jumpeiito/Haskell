@@ -14,6 +14,21 @@ import qualified Data.Foldable          as F
 import qualified Text.Printf            as TP
 import qualified System.IO              as I
 
+data Config = Con { file       :: String
+                  , keyColNum  :: Int
+                  , nendo      :: Integer
+                  , valueAlist :: [(String, Integer, Integer)] }
+
+config = Con { file       = "f:/Haskell/.kensin"
+             , keyColNum  = 12
+             , nendo      = 2016
+             , valueAlist =
+               [("1", 6000,3000), ("2", 2500,2500), ("3", 8500,5500),
+                ("4", 1500,1500), ("5", 1500, 500), ("6", 1500, 500),
+                ("7", 1500, 500), ("8", 5000,0), ("9", 5000,0),
+                ("10",3000,2000), ("11",8000,4000), ("12",1000,1000),
+                ("13",3500,3500), ("14",3500,3500)]}
+
 file      :: String
 keyColNum :: Int
 nendo     :: Integer
@@ -244,6 +259,11 @@ baseInfo kds =
   TP.printf "組合員本人: %d人、 家族: %d人\n特定健診: %d人、 以外: %d人" h' k' tok notTok
   where (h', k') = hkCount kds
         (tok, notTok) = tokCount kds
+
+csvData :: ReaderT Config IO [KensinData]
+csvData = do
+  contents <- liftIO $ readUTF8File <$> file <$> ask
+  return $ toCsvData contents
 
 main :: IO ()
 main = do
