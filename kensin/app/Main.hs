@@ -4,12 +4,14 @@ import Util                             (makeMap, readUTF8File, runRubyString)
 import Util.Strdt                       (howOld, nendoEnd, strdt)
 import Util.StrEnum                     (split)
 import KensinConfig
-import Data.Time                        (Day)
+import Data.Time                        (Day, fromGregorian)
 import Data.Maybe                       (fromJust, isJust, mapMaybe)
 import Data.Either                      (rights)
 import Data.Monoid
 import Data.Array
 import Text.Read
+import Text.Parsec
+import Text.Parsec.String
 import Control.Monad.Reader
 import qualified Data.Map               as M
 import qualified Data.Foldable          as F
@@ -41,17 +43,14 @@ instance Ord KensinData where
     | otherwise = LT
 ----------------------------------------------------------------------------------------------------
 type KensinBool = KensinData -> Bool
-
-takeAny :: F.Foldable t => (a -> Any) -> t a -> Bool
-takeAny f list =
-  getAny $ F.foldMap f list
-
+type CfgReader  = Reader Config
+type CfgReaderT = ReaderT Config IO
+type KensinPrice = (String, Integer, Integer)
+----------------------------------------------------------------------------------------------------
 keyContains :: (KensinData -> Maybe [String]) -> [String] -> KensinBool
 keyContains f opList kd =
-  takeAny (Any . bool) opList
-  where bool n' = case f kd of
-          Just l -> n' `elem` l
-          Nothing -> False
+  let bool n = isJust $ elem n <$> f kd
+  in any bool opList
 
 nonPayContains :: [String] -> KensinBool
 nonPayContains = keyContains nonPay
@@ -61,28 +60,18 @@ payContains = keyContains pay
 
 ladiesP :: [String] -> [String] -> KensinBool
 ladiesP npList pList kd =
-  takeAny (\ (f, key') -> Any $ f key' kd) [(nonPayContains, npList),
-                                            (payContains, pList)]
+  any (\ (f, key') -> f key' kd) [ (nonPayContains, npList)
+                                 , (payContains, pList)]
 
-ladies1P :: KensinBool
--- ladies1P = ladiesP ["4", "5", "6"] ["8", "9", "10"]
+ladies1P, ladies2P, jinpaiP, cameraP, tokP :: KensinBool
 ladies1P = ladiesP ["5", "6", "7", "8", "9"] ["8", "9", "10"]
-
-ladies2P :: KensinBool
--- ladies2P = ladiesP ["4", "5"] ["8", "9"]
 ladies2P = ladiesP ["5", "6", "8", "9"] ["8", "9"]
-
-jinpaiP :: KensinBool
-jinpaiP = payContains ["13", "14"]
-
-cameraP :: KensinBool
-cameraP = payContains ["11"]
+jinpaiP  = payContains ["13", "14"]
+cameraP  = payContains ["11"]
+tokP kd  = fromJust $ (\o -> o>=40 && o <75) <$> old kd
 
 countIf :: (a -> Bool) -> [a] -> Int
 countIf f = length . filter f
-
-tokP :: KensinBool
-tokP kd = fromJust $ (\o -> o>=40 && o <75) <$> old kd
 
 numberCount :: [KensinData] -> [Int]
 numberCount kds =
@@ -92,53 +81,24 @@ genSortKey :: (Day, Integer, Integer) -> String
 genSortKey (date, hour, minute) =
   show date ++ TP.printf "-%02d-%02d" hour minute
 
--- [ n                     -- (0) 名前
---   , _                   -- (1) フリガナ1
---   , _                   -- (2) フリガナ2
---   , _                   -- (3) フリガナ3
---   , g                   -- (4) 性別
---   , birth               -- (5) 誕生日
---   , _                   -- (6) 年齢
---   , _                   -- (7) 保険証記号
---   , num                 -- (8) 保険証番号
---   , _                   -- (9) 本人/家族
---   , _                   -- (10) 保険証記号番号
---   , k                   -- (11) 本/家
---   , _                   -- (12) 住所
---   , _                   -- (13) 郵便番号
---   , _                   -- (14) 電話
---   , _                   -- (15) 組合員番号
---   , _                   -- (16) ？
---   , _                   -- (17) 世帯番号
---   , st                  -- (18) 受診フラグ
---   , day'                -- (19) 受付日時
---   , kday'               -- (20) 受診日時
---   , nop                 -- (21) 無料オプション
---   , op                  -- (22) 有料オプション
---   ]
-
-extractElement :: [String] -> Reader Config [String]
+extractElement :: [String] -> CfgReader [String]
 extractElement line = do
   let csvAry = listArray (0, length line) line
   map ((csvAry !) . fst) . extract <$> ask
 
-
 toPay :: Maybe Day -> String -> Maybe [String]
 toPay Nothing _ = Nothing
-toPay _ str =
-  case split '・' str of
+toPay _ str =  case split '・' str of
   [""] -> Nothing
-  s' -> Just s'
+  s'   -> Just s'
 
 fst3 :: (a, b, c) -> a
 fst3 (a, _, _) = a
 
-type KensinPrice = (String, Integer, Integer)
-
 -- ["2","8","14"]などのオプション番号のリストから自己負担代を計算。
 -- 仮引数paymentは上記の例でいうと、["2","8","14"]などのリスト。
 -- fはfstかsndのどちらか。
-makeAmountCore :: ((Integer, Integer) -> Integer) -> [String] -> Reader Config Integer
+makeAmountCore :: ((Integer, Integer) -> Integer) -> [String] -> CfgReader Integer
 makeAmountCore f payment = do
   ary <- vArray <$> ask
   -- [String]から[Int]への変換
@@ -155,7 +115,7 @@ makeAmount st old' payment
   | old' >= 40    = makeAmountOver40 payment
   | otherwise     = makeAmountUnder40 payment
 
-lineToData :: [String] -> Reader Config KensinData
+lineToData :: [String] -> CfgReader KensinData
 lineToData line = do
   nendo' <- year <$> ask
   let old' = flip howOld (nendoEnd nendo') <$> strdt birth
@@ -181,16 +141,27 @@ lineToData line = do
         kind'      = case k   of "本" -> H;       _ -> K
         pay'       = toPay d op
         
+toKeyParse :: Parser (Day, Integer, Integer)
+toKeyParse = do
+  year'   <- read <$> count 4 digit <* char '-'
+  month'  <- read <$> count 2 digit <* char '-'
+  day'    <- read <$> count 2 digit <* char ' '
+  hour'   <- read <$> count 2 digit <* char ':'
+  minute' <- read <$> count 2 digit <* many anyChar
+  return $ (fromGregorian year' month' day', hour', minute')
+
 toKey :: String -> Maybe (Day, Integer, Integer)
-toKey str = 
-  case split ' ' str of
+toKey str = case split ' ' str of
   [date', time', _] -> Just (d, hour, minute)
     where [hour, minute, _] = map read $ split ':' time'
           d = fromJust $ strdt date'
   _ -> Nothing
 
 toCsvData :: [String] -> [KensinData]
-toCsvData = filter (isJust . key) . map ((`runReader` config) . lineToData . split ',')
+toCsvData = filter (isJust . key) .
+            map ((`runReader` config) .
+                 lineToData .
+                 split ',')
 
 makeKensinMap :: [KensinData] -> M.Map (Maybe String) [KensinData]
 makeKensinMap = makeMap sortKey id
@@ -231,13 +202,13 @@ baseInfo kds =
   where (h', k') = hkCount kds
         (tok, notTok) = tokCount kds
 
-csvData :: ReaderT Config IO [KensinData]
+csvData :: CfgReaderT [KensinData]
 csvData = do
   file' <- file <$> ask
   contents <- liftIO $ readUTF8File file'
   return $ toCsvData $ lines contents
 
-csvRubyData :: ReaderT Config IO [KensinData]
+csvRubyData :: CfgReaderT [KensinData]
 csvRubyData = do
   file' <- excelFile <$> ask
   prog  <- rubyProg <$> ask
@@ -246,8 +217,10 @@ csvRubyData = do
 
 main :: IO ()
 main = do
+  -- sjis <- I.mkTextEncoding "CP932"
+  -- -- SJISで出力 (-s)
+  -- when (sjis' opt) $ I.hSetEncoding I.stdout sjis
   I.hSetEncoding I.stdout I.utf8
   csv  <- csvRubyData `runReaderT` config
-  let showS = mapM_ print
-  showS $ translateJusin csv
+  mapM_ print $ translateJusin csv
   mapM_ (putStrLn . amountShow) $ translateAmount csv
