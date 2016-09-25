@@ -8,9 +8,8 @@ import Data.List                        (intercalate)
 import Data.Time                        (Day, fromGregorian)
 import Data.Maybe                       (fromJust, isJust, mapMaybe, fromMaybe)
 import Data.Either                      (rights)
-import Data.Monoid
-import Data.Array
-import Text.Read
+import Data.Array                       ((!), listArray)
+import Text.Read                        (readEither)
 import Text.Parsec
 import Text.Parsec.String
 import Text.Parsec.Error
@@ -80,12 +79,8 @@ tokP kd  = old kd>=40 && old kd<75
 countIf :: (a -> Bool) -> [a] -> Int
 countIf f = length . filter f
 
-numberCount :: [KensinData] -> [Int]
+numberCount :: [KensinData] -> [(String, Int)]
 numberCount kds =
-  map (`countIf` kds) [ladies1P, ladies2P, jinpaiP, cameraP]
-
-numberCount2 :: [KensinData] -> [(String, Int)]
-numberCount2 kds =
   map (\(str, f) -> (str, countIf f kds))
                 [ ("全女性検診", ladies1P)
                 , ("乳がんのみ", ladies2P)
@@ -183,7 +178,7 @@ makeKensinMap = makeMap sortKey id
 translateJusin :: [KensinData] -> [(Maybe String, [(String, Int)])]
 translateJusin =
   map count' . M.toList . makeKensinMap
-  where count' (k, v) = (k, ("全受診者", length v):numberCount2 v)
+  where count' (k, v) = (k, ("全受診者", length v):numberCount v)
 
 translateAmount :: [KensinData] -> [(String, KParse Day, KParse Integer)]
 translateAmount =
