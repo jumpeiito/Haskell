@@ -128,6 +128,11 @@ makeAmount st old' payment
   | old' >= 40    = makeAmountOver40 payment
   | otherwise     = makeAmountUnder40 payment
 
+(==>) :: (String, String) -> (a, a) -> a
+(sym, target) ==> (yes, no)
+  | sym == target = yes
+  | otherwise     = no
+
 lineToData :: [String] -> CfgReader KensinData
 lineToData line = do
   nendo' <- year <$> ask
@@ -149,9 +154,9 @@ lineToData line = do
         key'       = toKey day'
         d          = fst3 <$> key'
         number'    = case num of ""   -> Nothing; s -> Just s
-        g'         = case g   of "男" -> Male ;   _ -> Female
-        stat'      = case st  of "1"  -> Already; _ -> Yet
-        kind'      = case k   of "本" -> H;       _ -> K
+        g'         = (g,  "男") ==> (Male, Female)
+        stat'      = (st, "1")  ==> (Already, Yet)
+        kind'      = (k,  "本") ==> (H, K)
         pay'       = toPay op d
         
 toKeyParse :: Parser (Day, Integer, Integer)
@@ -186,13 +191,14 @@ translateAmount =
   where filterAmount = filter (isRight . amount)
 
 jusinShowPair :: (String, Int) -> String
-jusinShowPair (title, len) =
-  TP.printf "%s: %d" title len
+jusinShowPair (title, len)
+  | len == 0  = "------------"
+  | otherwise = TP.printf "%s: %d" title len
 
 jusinShowLine :: (Maybe String, [(String, Int)]) -> String
 jusinShowLine (Nothing, _) = ""
 jusinShowLine (Just date, pairs) =
-  TP.printf "%s :: %s" date' ps
+  TP.printf "%s :: %s\t:: %s" date' ps date'
   where ps = intercalate "\t" $ map jusinShowPair pairs
         date' = drop 5 date
 
