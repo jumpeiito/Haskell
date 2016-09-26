@@ -3,7 +3,7 @@ module Main where
 import Util                             (makeMap, readUTF8File, runRubyString)
 import Util.Strdt                       (howOld, nendoEnd, strdt)
 import Util.StrEnum                     (split)
-import KensinConfig
+import KensinConfig                     (Config (..), config)
 import Data.List                        (intercalate)
 import Data.Time                        (Day, fromGregorian)
 import Data.Maybe                       (fromJust, isJust, mapMaybe, fromMaybe)
@@ -49,25 +49,26 @@ type CfgReader   = Reader Config
 type CfgReaderT  = ReaderT Config IO
 type KensinPrice = (String, Integer, Integer)
 type KParse      = Either ParseError
+type Option      = [String]
 ----------------------------------------------------------------------------------------------------
 isRight :: Either a b -> Bool
 isRight (Right _) = True
 isRight (Left _)  = False
 
-keyContains :: (KensinData -> KParse [String]) -> [String] -> KensinBool
+keyContains :: (KensinData -> KParse Option) -> Option -> KensinBool
 keyContains f opList kd = any bool opList
   where bool n = case elem n <$> f kd of
                    Right x -> x
                    _ -> False
 
-nonPayContains :: [String] -> KensinBool
+nonPayContains :: Option -> KensinBool
 nonPayContains = keyContains nonPay
 
-payContains :: [String] -> KensinBool
+payContains :: Option -> KensinBool
 payContains = keyContains pay
 
-ladiesP :: [String] -> [String] -> KensinBool
-ladiesP npList pList kd = any id [nonPayContains npList kd , payContains pList kd]
+ladiesP :: Option -> Option -> KensinBool
+ladiesP npList pList kd = or [nonPayContains npList kd , payContains pList kd]
 
 ladies1P, ladies2P, jinpaiP, cameraP, tokP :: KensinBool
 ladies1P = ladiesP ["5", "6", "7", "8", "9"] ["8", "9", "10"] -- 乳がん・子宮がん
@@ -97,13 +98,13 @@ extractElement line = do
   let csvAry = listArray (0, length line) line
   map ((csvAry !) . fst) . extract <$> ask
 
-toPay :: String -> KParse Day -> KParse [String]
+toPay :: String -> KParse Day -> KParse Option
 toPay _ (Left x) = Left x
 toPay str _ = case split '・' str of
   [""] -> Left makeMessage
   s'   -> Right s'
   where makeMessage =
-          newErrorMessage (Expect "numStr combinated with '・'") (newPos "Main.hs" 99 0)
+          newErrorMessage (Expect "numStr combinated with a dot") (newPos "Main.hs" 99 0)
 
 fst3 :: (a, b, c) -> a
 fst3 (a, _, _) = a
@@ -111,18 +112,18 @@ fst3 (a, _, _) = a
 -- ["2","8","14"]などのオプション番号のリストから自己負担代を計算。
 -- 仮引数paymentは上記の例でいうと、["2","8","14"]などのリスト。
 -- fはfstかsndのどちらか。
-makeAmountCore :: ((Integer, Integer) -> Integer) -> [String] -> CfgReader Integer
+makeAmountCore :: ((Integer, Integer) -> Integer) -> Option -> CfgReader Integer
 makeAmountCore f payment = do
   ary <- vArray <$> ask
   -- [String]から[Int]への変換
   let paymentInt = rights $ map readEither payment
   return $ sum $ map (f. (ary !)) paymentInt
 
-makeAmountOver40, makeAmountUnder40 :: [String] -> Integer
+makeAmountOver40, makeAmountUnder40 :: Option -> Integer
 makeAmountOver40  = (`runReader` config) . makeAmountCore snd
 makeAmountUnder40 = (`runReader` config) . makeAmountCore fst
 
-makeAmount :: Status -> Integer -> [String] -> Integer
+makeAmount :: Status -> Integer -> Option -> Integer
 makeAmount st old' payment
   | st == Already = (+) 10000 $ makeAmountUnder40 payment
   | old' >= 40    = makeAmountOver40 payment
@@ -136,7 +137,7 @@ makeAmount st old' payment
 lineToData :: [String] -> CfgReader KensinData
 lineToData line = do
   nendo' <- year <$> ask
-  let old' = fromMaybe 0 $ (`howOld` (nendoEnd nendo')) <$> strdt birth
+  let old' = fromMaybe 0 $ (`howOld` nendoEnd nendo') <$> strdt birth
   return KensinData { day       = d
                     , kday      = kday'
                     , Main.name = n
@@ -166,10 +167,10 @@ toKeyParse = do
   day'    <- read <$> count 2 digit <* char ' '
   hour'   <- read <$> count 2 digit <* char ':'
   minute' <- read <$> count 2 digit <* many anyChar
-  return $ (fromGregorian year' month' day', hour', minute')
+  return (fromGregorian year' month' day', hour', minute')
 
 toKey :: String -> KParse (Day, Integer, Integer)
-toKey str = parse toKeyParse "" str
+toKey = parse toKeyParse ""
 
 toCsvData :: [String] -> [KensinData]
 toCsvData = filter (isRight . key) .
@@ -247,8 +248,7 @@ csvRubyData = do
 main :: IO ()
 main = do
   -- sjis <- I.mkTextEncoding "CP932"
-  -- -- SJISで出力 (-s)
-  -- when (sjis' opt) $ I.hSetEncoding I.stdout sjis
+  -- I.hSetEncoding I.stdout sjis
   I.hSetEncoding I.stdout I.utf8
   csv  <- csvRubyData `runReaderT` config
   mapM_ (putStrLn . jusinShowLine) $ translateJusin csv
