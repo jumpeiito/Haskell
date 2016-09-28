@@ -1,26 +1,35 @@
 \documentclass[a4j,12pt]{jsarticle}
-\usepackage{graphics,palatino}
+\usepackage{graphics,palatino,color}
 \pagestyle{empty}
 \setlength{\topmargin}{-85pt}
 \setlength{\oddsidemargin}{-40pt}
-\def\initwriter#1#2#3#4#5#6#7{
-  \put(#1, #2){\begin{minipage}[b]{70mm}
-      \centerline{\LARGE\bf 領収書#3}\par
-      \rightline{#4}\par\vspace*{8pt}
-      \underline{\parbox[b]{6zw}{\centerline{\Large #5}}}分会\hspace*{2zw}
-      \underline{\parbox[b]{8.5zw}{\centerline{\Large #6}}}様\par\vspace*{3pt}
-      \centerline{金 \underline{\parbox[b]{8.5zw}{\centerline{\Large #7}}} 円}\par\vspace*{6pt}
-      春の健康診断受診料\par
+\newcounter{wCount}
+\setcounter{wCount}{0}
+\def\initwriter#1#2#3#4#5#6{
+  \put(#1, \thewCount){\begin{minipage}[b]{70mm}
+      \centerline{\LARGE\bf 領収書#2}\par
+      \rightline{#3}\par\vspace*{8pt}
+      \underline{\parbox[b]{6zw}{\centerline{\Large #4}}}分会\hspace*{.7zw}
+      \underline{\parbox[b]{11zw}{\centerline{\Large #5}}}様\par\vspace*{3pt}
+      \centerline{金 \underline{\parbox[b]{7zw}{\centerline{\Large #6}}} 円}\par\vspace*{6pt}
+      健康診断受診料\par
       \rightline{全京都建築労働組合 醍醐支部\hspace*{5zw}}\par
 \end{minipage}}}
-\def\writer#1#2#3#4#5{\initwriter{5}{#1}{(控)}{#2}{#3}{#4}{#5}
-\initwriter{85}{#1}{}{#2}{#3}{#4}{#5}}
-\begin{document}
-{\setlength{\unitlength}{1mm}
-%% \begin{picture}(160,240)(0,0)
+\def\writer#1#2#3#4{\initwriter{5}{(控)}{#1}{#2}{#3}{#4}
+  \initwriter{85}{}{#1}{#2}{#3}{#4}
+\addtocounter{wCount}{-48}}
+\newenvironment{receiptPage}[0]{
+  \setcounter{wCount}{197}
   \begin{picture}(0,0)(0,235)
     \multiput(0,0)(80,0){3}{\line(0,1){240}}
     \multiput(0,0)(0,48){6}{\line(1,0){160}}
-    \input{insert}
-  \end{picture}}
+    \multiput(148,6.5)(0,48){5}{\inn}}
+{\end{picture}\newpage}
+\def\inn{\begin{picture}(0,0)(0,0)
+    \put(0,0){\textcolor{cyan}{\circle{5}}}
+    \put(-1.5,-1.4){\textcolor{cyan}{印}}
+\end{picture}}
+\begin{document}
+\setlength{\unitlength}{1mm}
+\input{insert}
 \end{document}
