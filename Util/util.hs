@@ -222,3 +222,18 @@ runRubyString :: [String] -> IO [String]
 runRubyString opt = do
   (_, sout, _, _) <- runRuby opt
   lines <$> I.hGetContents sout
+
+group :: Num n => Eq n => n -> [a] -> [[a]]
+group n l =
+  let answer (_, (_, _, x)) = reverse x in
+  answer . (`runState` (0, [], [])) $ do
+    forM_ l $ \el -> do
+      (counter, small, big) <- get
+      if n == counter
+        then put (1, [el], small : big)
+        else put (counter + 1, small ++ [el], big)
+    (counter, small, big) <- get
+    put (0, [], small : big)
+
+ketaNum :: String -> String
+ketaNum str = reverse $ intercalate "," $ Util.group 3 $ reverse str
