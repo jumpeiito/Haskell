@@ -4,6 +4,7 @@ module KensinConfig
     ) where
 
 import Data.Array
+import Data.Time
 
 data Config = Con { file       :: FilePath
                   , excelFile  :: FilePath
@@ -11,7 +12,10 @@ data Config = Con { file       :: FilePath
                   , keyColNum  :: Int
                   , year       :: Integer
                   , vArray     :: Array Int (Integer, Integer)
-                  , extract    :: [(Int, String)]}
+                  , extract    :: [(Int, String)]
+                  , bkArray    :: Array Int String
+                  , sunday     :: Day
+                  }
 
 config = Con { file       = "f:/Haskell/.kensin"
              , excelFile  = "f:/Haskell/kensin/16春の健診受付名簿.xlsx"
@@ -34,38 +38,18 @@ config = Con { file       = "f:/Haskell/.kensin"
                                  , (3500, 3500) -- (13)アスベスト
                                  , (3500, 3500) -- (14)じん肺
                                  ]
--- [ n                     -- (0) 名前
---   , _                   -- (1) フリガナ1
---   , _                   -- (2) フリガナ2
---   , _                   -- (3) フリガナ3
---   , g                   -- (4) 性別
---   , birth               -- (5) 誕生日
---   , _                   -- (6) 年齢
---   , _                   -- (7) 保険証記号
---   , num                 -- (8) 保険証番号
---   , _                   -- (9) 本人/家族
---   , _                   -- (10) 保険証記号番号
---   , k                   -- (11) 本/家
---   , _                   -- (12) 住所
---   , _                   -- (13) 郵便番号
---   , _                   -- (14) 電話
---   , _                   -- (15) 組合員番号
---   , _                   -- (16) ？
---   , _                   -- (17) 世帯番号
---   , st                  -- (18) 受診フラグ
---   , day'                -- (19) 受付日時
---   , kday'               -- (20) 受診日時
---   , nop                 -- (21) 無料オプション
---   , op                  -- (22) 有料オプション
---   ]
-             , extract     = [ (0, "氏名")
-                             , (4, "性別")
-                             , (5, "生年月日")
-                             , (10, "保険証番号")
-                             , (9, "区分")
-                             , (18, "補助")
-                             , (19, "日時")
-                             , (20, "申込日時")
-                             , (21, "無料オプション")
-                             , (22, "有料オプション")]
+             , extract     = [ (0, "分会")
+                             , (2, "氏名")
+                             , (6, "性別")
+                             , (7, "生年月日")
+                             , (12, "保険証番号")
+                             , (11, "区分")
+                             , (20, "補助")
+                             , (21, "日時")
+                             , (22, "申込日時")
+                             , (23, "無料オプション")
+                             , (24, "有料オプション")]
+             , bkArray     =
+               listArray (0, 5) ["石田", "日野", "小栗栖", "一言寺", "三宝院", "点在"]
+             , sunday      = fromGregorian 2016 4 17
              }

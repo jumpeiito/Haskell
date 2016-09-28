@@ -48,7 +48,7 @@ begin
   ary = Array.new
   SHEET_INDEX.each do |sh_index|
     sh = bk.Worksheets.Item(sh_index)
-    val = filter_blank sh.Range("D2:AC2000").Value
+    val = filter_blank sh.Range("B2:AC2000").Value
     ary = ary + val
   end
 
