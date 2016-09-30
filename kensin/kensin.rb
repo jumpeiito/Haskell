@@ -24,7 +24,6 @@ def float_to_int line
 end
 
 def filter_blank lines
-  # lines.keep_if {|line| line.compact != [] }
   lines.keep_if {|line| line[0] }
 end
 
@@ -32,17 +31,6 @@ begin
   ex = WIN32OLE.new('Excel.Application')
   ex.Visible = false;
   ex.DisplayAlerts = false;
-  # if File.exists?("s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm")
-  #   bk = ex.Workbooks.Open("s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm")
-  # else
-  #   bk = ex.Workbooks.Open("f:/組合員名簿.xlsm")
-  # end
-  # ary = Array.new
-  # 1.upto(6) do |i|
-  #   sh = bk.Worksheets.Item(i)
-  #   val = filter_blank sh.Range("A6:J300").Value
-  #   ary = ary + val.map {|line| [bunkai[i]] + line }
-  # end
 
   bk = ex.Workbooks.Open(FILE)
   ary = Array.new
