@@ -3,16 +3,52 @@ module Util.ZenkakuHankaku where
 import Data.Maybe               (fromMaybe)
 import Text.Parsec
 import Test.Hspec
+import Test.QuickCheck
 import qualified Data.Map as M
+----------------------------------------------------------------------------------------------------
+withReverse :: (String -> String) -> String -> String
+withReverse f = reverse . f . reverse
+
 ----------------------------------------------------------------------------------------------------
 preAlnum, postAlnum, preKigou, postKigou, preKana, postKana, preStr, postStr
   :: String
 preAlnum  = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']
 postAlnum = ['ａ'..'ｚ'] ++ ['Ａ'..'Ｚ'] ++ ['０'..'９']
-preKigou  = "$<>+@() ･+?:;=!#$%&/_^.､ⅠⅡⅢⅣⅤⅥⅦⅧⅨ~~~-ｰ"
-postKigou = "＄＜＞＋＠（）　・＋？：；＝！＃＄％＆／＿＾．、１２３４５６７８９〜～ーーー"
+preKigou  = "$<>+@() ･+?:;=!#$%&/_^.､~~-ｰ"
+postKigou = "＄＜＞＋＠（）　・＋？：；＝！＃＄％＆／＿＾．、〜～ーー"
 preKana   = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝｧｨｩｪｫｯｬｭｮ"
 postKana  = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンァィゥェォッャュョ"
+-- preKana2  = "ｶﾞｷﾞｸﾞｹﾞｺﾞｻﾞｼﾞｽﾞｾﾞｿﾞﾀﾞﾁﾞﾂﾞﾃﾞﾄﾞﾊﾞﾋﾞﾌﾞﾍﾞﾎﾞﾊﾟﾋﾟﾌﾟﾍﾟﾎﾟｳﾞ"
+-- postKana2 = "ガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポヴ"
+kanaMap = M.fromList [ ('ｶ', "ガ")
+                     , ('ｷ', "ギ")
+                     , ('ｸ', "グ")
+                     , ('ｹ', "ゲ")
+                     , ('ｺ', "ゴ")
+                     , ('ｻ', "ザ")
+                     , ('ｼ', "ジ")
+                     , ('ｽ', "ズ")
+                     , ('ｾ', "ゼ")
+                     , ('ｿ', "ゾ")
+                     , ('ﾀ', "ダ")
+                     , ('ﾁ', "ヂ")
+                     , ('ﾂ', "ヅ")
+                     , ('ﾃ', "デ")
+                     , ('ﾄ', "ド")
+                     , ('ﾊ', "バ")
+                     , ('ﾋ', "ビ")
+                     , ('ﾌ', "ブ")
+                     , ('ﾍ', "ベ")
+                     , ('ﾎ', "ボ")
+                     , ('ｳ', "ヴ")
+                     ]
+
+kanaMap2 = M.fromList [ ('ﾊ', "パ")
+                      , ('ﾋ', "ピ")
+                      , ('ﾌ', "プ")
+                      , ('ﾍ', "ペ")
+                      , ('ﾎ', "ポ")
+                      ]
 ----------------------------------------------------------------------------------------------------
 preStr    = concat [preAlnum, preKigou, preKana]
 postStr   = concat [postAlnum, postKigou, postKana]
@@ -22,8 +58,15 @@ charMap      = M.fromList $ zip preStr postStr
 charVerseMap = M.fromList $ zip postStr preStr
 
 toZenkaku, toHankaku :: String -> String
-toZenkaku "" = ""
-toZenkaku (x:xs) = fromMaybe x (M.lookup x charMap) : toZenkaku xs
+toZenkaku = reverse . _toZenkaku . reverse
+
+_toZenkaku "" = ""
+_toZenkaku [x] = [fromMaybe x (M.lookup x charMap)]
+_toZenkaku (x:y:xs)
+  | x == 'ﾞ' = fromMaybe [y] (M.lookup y kanaMap) ++ _toZenkaku xs
+  | x == 'ﾟ' = fromMaybe [y] (M.lookup y kanaMap2) ++ _toZenkaku xs
+  | otherwise =
+    fromMaybe x (M.lookup x charMap) : _toZenkaku (y:xs)
 
 toHankaku "" = ""
 toHankaku (x:xs) = fromMaybe x (M.lookup x charVerseMap) : toHankaku xs
@@ -42,10 +85,10 @@ toZenkakuSpec = do
     it "09" $ toZenkaku "ﾎ1ｹﾞ2ﾝ34"   `shouldBe` "ホ１ゲ２ン３４"
     it "10" $ toZenkaku "ほ@%&()!"   `shouldBe` "ほ＠％＆（）！"
     it "11" $ toZenkaku "$=<>?_+"    `shouldBe` "＄＝＜＞？＿＋"
-    it "12" $ toZenkaku "V1~5"       `shouldBe` "Ｖ１ー５"
+    it "12" $ toZenkaku "V1~5"       `shouldBe` "Ｖ１～５"
     it "13" $ toZenkaku ""           `shouldBe` ""
     it "14" $ toZenkaku " "          `shouldBe` "　"
-    it "15" $ toZenkaku "久世中久町705-1 ﾙﾐｴｰﾙ桂川301号" `shouldBe` "久世中久町７０５ー１ ルミエール桂川３０１号"
+    it "15" $ toZenkaku "久世中久町705-1 ﾙﾐｴｰﾙ桂川301号" `shouldBe` "久世中久町７０５ー１　ルミエール桂川３０１号"
 
 toHankakuSpec :: Spec
 toHankakuSpec = do
