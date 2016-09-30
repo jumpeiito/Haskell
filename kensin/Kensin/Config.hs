@@ -1,4 +1,4 @@
-module KensinConfig
+module Kensin.Config
     ( Config (..)
     , config
     ) where

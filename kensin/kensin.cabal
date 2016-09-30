@@ -14,15 +14,22 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  hs-source-dirs:      src
-  exposed-modules:     KensinConfig
+  hs-source-dirs:      .
+  exposed-modules:     Kensin.Config
+                     , Kensin.Base
+                     , Kensin.Receipt
+                     , Kensin.Meibo
   build-depends:       base >= 4.7 && < 5
                      , array
                      , time
+                     , Util
+                     , mtl
+                     , parsec
+                     , containers
   default-language:    Haskell2010
 
 executable kensin
-  hs-source-dirs:      app, src
+  hs-source-dirs:      app, src, .
   main-is:             Main.hs
   ghc-options:         -O3
   build-depends:       base
@@ -35,18 +42,21 @@ executable kensin
                      , array
                      , parsec
                      , optparse-applicative
-  other-modules:       KensinConfig
+  other-modules:       Kensin.Config
+                     , Kensin.Base
+                     , Kensin.Receipt
+                     , Kensin.Meibo
   default-language:    Haskell2010
 
-test-suite kensin-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Spec.hs
-  build-depends:       base
-                     , kensin
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  default-language:    Haskell2010
+-- test-suite kensin-test
+--   type:                exitcode-stdio-1.0
+--   hs-source-dirs:      test
+--   main-is:             Spec.hs
+--   build-depends:       base
+--                      , kensin
+--   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+--   default-language:    Haskell2010
 
-source-repository head
-  type:     git
-  location: https://github.com/jumpeiito/kensin
+-- source-repository head
+--   type:     git
+--   location: https://github.com/jumpeiito/kensin
