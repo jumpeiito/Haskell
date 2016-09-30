@@ -1,0 +1,18 @@
+\documentclass[a4j,12pt]{jsarticle}
+\usepackage{graphics,palatino,color,fancyhdr}
+\pagestyle{fancy}
+\cfoot{}
+\setlength{\topmargin}{-55pt}
+\setlength{\textheight}{620pt}
+\setlength{\textwidth}{420pt}
+\setlength{\headwidth}{\textwidth}
+\setlength{\oddsidemargin}{-20pt}
+\def\meibo#1#2#3#4#5#6{#1&{\bf\small #2}&#3&#4&\makebox[4zw][c]{#5}&#6\\\hline}
+\newenvironment{SundayMeibo}[1]{\makeatletter\def\@bblocktmp{#1}%
+  \begin{tabular}{|p{7zw}|p{9zw}|c|c|p{4zw}|c|}\hline
+    {\bf 名前}&{\bf フリガナ}&{\bf 時間}&{\bf 無料OP}&{\bf 有料OP}&{\bf 負担}\\\hline\hline\makeatother}
+               {\end{tabular}\rfoot{\bf\Huge \@bblocktmp}\newpage
+               }
+\begin{document}
+\input{meiboInsert}
+\end{document}
