@@ -1,92 +1,18 @@
 module Main where
 
-import Util                             (makeMap, readUTF8File, runRubyString)
+import Util                             (readUTF8File, runRubyString)
 import Util.StrEnum                     (split)
 import Kensin.Base
 import Kensin.Meibo
 import Kensin.Config                    (Config (..), config)
 import Kensin.Receipt                   (receiptSunday, receiptWeekday, toReceipt)
-import Data.List                        (sortBy, intercalate)
-import Data.Time                        (Day)
+import Kensin.Count                     (jusinShowLine, translateJusin)
 import Data.Monoid
 import Control.Monad.Reader
-import qualified Data.Map               as M
 import qualified Text.Printf            as TP
 import qualified System.IO              as I
 import qualified Options.Applicative    as O
-----------------------------------------------------------------------------------------------------
-keyContains :: (KensinData -> KParse Option) -> Option -> KensinBool
-keyContains f opList kd = any bool opList
-  where bool n = case elem n <$> f kd of
-                   Right x -> x
-                   _ -> False
-
-nonPayContains :: Option -> KensinBool
-nonPayContains = keyContains nonPay
-
-payContains :: Option -> KensinBool
-payContains = keyContains pay
-
-ladiesP :: Option -> Option -> KensinBool
-ladiesP npList pList kd = nonPayContains npList kd || payContains pList kd
-
-ladies1P, ladies2P, jinpaiP, cameraP, tokP :: KensinBool
-ladies1P = ladiesP ["5", "6", "7", "8", "9"] ["8", "9", "10"] -- 乳がん・子宮がん
-ladies2P = ladiesP ["5", "6", "8", "9"] ["8", "9"]            -- 乳がんのみ
-jinpaiP  = payContains ["13", "14"]
-cameraP  = payContains ["11"]
-tokP kd  = old kd>=40 && old kd<75
-
-countIf :: (a -> Bool) -> [a] -> Int
-countIf f = length . filter f
-
-numberCount :: [KensinData] -> [(String, Int)]
-numberCount kds =
-  map (\(str, f) -> (str, countIf f kds))
-                [ ("全女性検診", ladies1P)
-                , ("乳がんのみ", ladies2P)
-                , ("アスベスト", jinpaiP)
-                , ("胃カメラ", cameraP)]
-----------------------------------------------------------------------------------------------------
-toCsvData :: [String] -> [KensinData]
-toCsvData = filter (isRight . key) .
-            map ((`runReader` config) .
-                 lineToData .
-                 split ',')
-
-makeKensinMap :: [KensinData] -> M.Map (Maybe String) [KensinData]
-makeKensinMap = makeMap sortKey id
-
-translateJusin :: [KensinData] -> [(Maybe String, [(String, Int)])]
-translateJusin =
-  map count' . M.toList . makeKensinMap
-  where count' (k, v) = (k, ("全受診者", length v):numberCount v)
-
-translateAmount :: [KensinData] -> [(String, Day, KParse Integer)]
-translateAmount =
-  map (\kd -> (Kensin.Base.name kd, day kd, amount kd)) . filterAmount
-  where filterAmount = filter hasAmount
-
-jusinShowPair :: (String, Int) -> String
-jusinShowPair (title, len)
-  | len == 0  = "------------"
-  | otherwise = TP.printf "%s: %d" title len
-
-jusinShowLine :: (Maybe String, [(String, Int)]) -> String
-jusinShowLine (Nothing, _) = ""
-jusinShowLine (Just date, pairs) =
-  TP.printf "%s :: %s\t:: %s" date' ps date'
-  where ps = intercalate "\t" $ map jusinShowPair pairs
-        date' = drop 5 date
-
-jusinShow :: [(Maybe String, [(String, Int)])] -> [String]
-jusinShow = map jusinShowLine
-
-amountShow :: (String, Day, KParse Integer) -> String
-amountShow (_, _, Left _) = ""
-amountShow (name, d, Right a) =
-  name ++ "," ++ show d ++ "," ++ show a
-
+--basic info----------------------------------------------------------------------------------------
 counter :: (a -> Bool) -> (KensinData -> a) -> [KensinData] -> Int
 counter key field kds = length $ filter (key . field) kds
 
