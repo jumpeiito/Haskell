@@ -55,8 +55,8 @@ data KensinData = KensinData { day      :: Day
                              , kday     :: String
                              , amount   :: KParse Integer
                              , key      :: KParse (Day, Integer, Integer)
-                             , pay      :: KParse [String]
-                             , nonPay   :: KParse [String] } deriving (Show, Eq)
+                             , pay      :: KParse [Int]
+                             , nonPay   :: KParse [Int] } deriving (Show, Eq)
 
 instance Ord KensinData where
   compare (KensinData _ x _ _ _ _ _ _ _ _ _ _ _ _ _) (KensinData _ y _ _ _ _ _ _ _ _ _ _ _ _ _)
@@ -69,7 +69,7 @@ type CfgReader   = Reader Config
 type CfgReaderT  = ReaderT Config IO
 type KensinPrice = (String, Integer, Integer)
 type KParse      = Either ParseError
-type Option      = [String]
+type Option      = [Int]
 type Translator  = KensinData -> String
 ----------------------------------------------------------------------------------------------------
 strToBunkai :: String -> Bunkai
@@ -167,7 +167,7 @@ extractElement line = do
 toPayParse :: Parser String
 toPayParse = many $ oneOf "1234567890・"
 
-toPay :: String -> KParse Day -> KParse Option
+toPay :: String -> KParse Day -> KParse [Int]
 toPay _ (Left x) = Left x
 toPay str _ = 
   -- 最初に不適格な文字列("1234567890・"以外の文字で構成されている)を排除。
@@ -175,7 +175,7 @@ toPay str _ =
     Left s  -> Left s
     Right s -> case split '・' s of
                  [""] -> Left makeMessage
-                 s'   -> Right s'
+                 s'   -> Right $ map read s'
   where makeMessage =
           newErrorMessage (Expect "numStr combinated with a dot") (newPos "Base.hs" 164 0)
 
@@ -189,14 +189,13 @@ makeAmountCore f payment = do
   -- paymentが["2", "3", ""]の場合、
   -- map readEither payment → [Right 2, Right 3, Left ""]なので、
   -- rights $ map readEither payment → [2, 3]
-  let paymentInt = rights $ map readEither payment
-  return $ sum $ map (f. (ary !)) paymentInt
+  return $ sum $ map (f. (ary !)) payment
 
 makeAmountOver40, makeAmountUnder40 :: Option -> Integer
 makeAmountOver40  = (`runReader` config) . makeAmountCore snd
 makeAmountUnder40 = (`runReader` config) . makeAmountCore fst
 
-makeAmount :: Status -> Integer -> Option -> Integer
+makeAmount :: Status -> Integer -> [Int] -> Integer
 makeAmount st old' payment
   | st == Already = (+) 10000 $ makeAmountUnder40 payment
   | old' >= 40    = makeAmountOver40 payment

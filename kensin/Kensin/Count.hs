@@ -41,19 +41,24 @@ keyContains f opList kd = any bool opList
                    _ -> False
 
 nonPayContains :: Option -> KensinBool
-nonPayContains = keyContains nonPay
+nonPayContains [] = const False
+nonPayContains op = keyContains nonPay op
 
 payContains :: Option -> KensinBool
 payContains = keyContains pay
 
-ladiesP :: Option -> Option -> KensinBool
-ladiesP npList pList kd = nonPayContains npList kd || payContains pList kd
+kensinBoolBuilder :: (Config -> [KensinOption]) -> KensinBool
+kensinBoolBuilder f kd = (`runReader` config) $ do
+  sym <- f <$> ask
+  nop <- makeNonPayList sym
+  op  <- makePayList sym
+  return $ nonPayContains nop kd || payContains op kd
 
 ladies1P, ladies2P, jinpaiP, cameraP, tokP :: KensinBool
-ladies1P = ladiesP ["5", "6", "7", "8", "9"] ["8", "9", "10"] -- 乳がん・子宮がん
-ladies2P = ladiesP ["5", "6", "8", "9"] ["8", "9"]            -- 乳がんのみ
-jinpaiP  = payContains ["13", "14"]
-cameraP  = payContains ["11"]
+ladies1P = kensinBoolBuilder optionLadies1
+ladies2P = kensinBoolBuilder optionLadies2
+jinpaiP  = kensinBoolBuilder optionJinpai
+cameraP  = kensinBoolBuilder optionCamera
 tokP kd  = old kd>=40 && old kd<75
 
 countIf :: (a -> Bool) -> [a] -> Int

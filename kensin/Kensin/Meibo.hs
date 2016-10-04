@@ -31,7 +31,7 @@ sundayMeiboString kd = (`runReader` config) $ do
                                 , joinPay $ nonPay kd
                                 , joinPay $ pay kd
                                 , ketaNum $ either (const "") show $ amount kd ]
-  where joinPay = either (const "") (concatnate '・')
+  where joinPay = either (const "") (concatnate '・' . map show)
 
 meiboPageString :: Bunkai -> [KensinData] -> String
 meiboPageString bunkai kds = (`runReader` config) $ do

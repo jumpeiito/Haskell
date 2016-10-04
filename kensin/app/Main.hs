@@ -4,7 +4,7 @@ import Util                             (readUTF8File, runRubyString)
 import Util.StrEnum                     (split)
 import Kensin.Base
 import Kensin.Meibo
-import Kensin.Config                    (Config (..), config)
+import Kensin.Config                    (Config (..), config, Gender (..))
 import Kensin.Receipt                   (receiptSunday, receiptWeekday, toReceipt)
 import Kensin.Count                     (jusinShowLine, translateJusin)
 import Data.Monoid
