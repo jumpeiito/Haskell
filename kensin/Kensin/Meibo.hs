@@ -2,7 +2,7 @@ module Kensin.Meibo (meiboOutput) where
 
 import Util                             (makeMap, ketaNum, group)
 import Util.ZenkakuHankaku              (toZenkaku)
-import Control.Monad
+import Control.Monad.Reader
 import Data.Function                    (on)
 import Data.List                        (sortBy)
 import Kensin.Config
@@ -23,25 +23,29 @@ concatnate _ [x] = x
 concatnate c (x:xs) = x ++ [c] ++ concatnate c xs
 
 sundayMeiboString :: Translator
-sundayMeiboString kd = 
-  latexCommand "meibo" [ name kd
-                       , toZenkaku $ furigana kd
-                       , toTime kd
-                       , joinPay $ nonPay kd
-                       , joinPay $ pay kd
-                       , ketaNum $ either (const "") show $ amount kd ]
+sundayMeiboString kd = (`runReader` config) $ do
+  comname <- meiboCommand <$> ask
+  return $ latexCommand comname [ name kd
+                                , toZenkaku $ furigana kd
+                                , toTime kd
+                                , joinPay $ nonPay kd
+                                , joinPay $ pay kd
+                                , ketaNum $ either (const "") show $ amount kd ]
   where joinPay = either (const "") (concatnate '・')
 
-meiboPageOutput :: Bunkai -> [KensinData] -> IO ()
-meiboPageOutput bunkai kds = do
-  putStrLn $ "\\begin{SundayMeibo}{" ++ bunkaiToStr bunkai ++ "分会}"
-  forM_ kds (putStrLn . sundayMeiboString)
-  putStrLn "\\end{SundayMeibo}"
+meiboPageString :: Bunkai -> [KensinData] -> String
+meiboPageString bunkai kds = (`runReader` config) $ do
+  envname <- meiboEnvironment <$> ask
+  return $ latexEnvironment envname
+                            (Just bstr)
+                            $ concatMap sundayMeiboString kds
+  where bstr = bunkaiToStr bunkai ++ "分会"
 
-meiboOutput :: [KensinData] -> IO ()
+meiboOutput :: [KensinData] -> ReaderT Config IO ()
 meiboOutput kds = do
+  length' <- meiboLength <$> ask
   let bmap    = bunkaiMap kds
   let bunkais = [minBound..maxBound]
   forM_ bunkais $ \bunkai -> do
     let Just persons = sortByHour <$> M.lookup bunkai bmap
-    forM_ (group 35 persons) (meiboPageOutput bunkai)
+    forM_ (group length' persons) (liftIO . putStrLn . meiboPageString bunkai)
