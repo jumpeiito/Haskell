@@ -32,7 +32,15 @@ baseInfo kds =
   TP.printf "組合員本人: %d人、 家族: %d人\n特定健診: %d人、 以外: %d人" h' k' tok notTok
   where (h', k') = hkCount kds
         (tok, notTok) = tokCount kds
-----------------------------------------------------------------------------------------------------
+--fundamental---------------------------------------------------------------------------------------
+toCsvData :: [String] -> [KensinData]
+toCsvData = filter (isRight . key) .
+            map ((`runReader` config) .
+                 lineToData .
+                 split ',')
+  where isRight (Right _) = True
+        isRight (Left _)  = False
+
 csvData :: CfgReaderT [KensinData]
 csvData = do
   file'    <- file <$> ask
@@ -59,13 +67,14 @@ main = do
     (False, True, False) -> do
       putStrLn $ toReceipt $ receiptSunday csv
       putStrLn $ toReceipt $ receiptWeekday csv
-    (False, False, True) -> meiboOutput csv
+    (False, False, True) -> meiboOutput csv `runReaderT` config
     (False, False, False) -> jusin csv
     (_, _, _) -> jusin csv
 --Command Line Option-------------------------------------------------------------------------------
 data Options = Options { count'    :: Bool
                        , receipt'  :: Bool
                        , meibo'    :: Bool
+                       , base'     :: Bool
                        } deriving (Show)
 
 countP :: O.Parser Bool
@@ -77,12 +86,16 @@ receiptP = O.switch $ O.short 'r' <> O.long "receipt" <> O.help "Output receipts
 meiboP :: O.Parser Bool
 meiboP = O.switch $ O.short 'm' <> O.long "meibo" <> O.help "Output meibo."
 
+baseP :: O.Parser Bool
+baseP = O.switch $ O.short 'b' <> O.long "base" <> O.help "Output basic info."
+
 optionsP :: O.Parser Options
 optionsP = (<*>) O.helper
            $ Options
            <$> countP
            <*> receiptP
            <*> meiboP
+           <*> baseP
 
 myParserInfo :: O.ParserInfo Options
 myParserInfo = O.info optionsP $ mconcat 
