@@ -1,5 +1,4 @@
-module Kensin.Base ( Gender (..)
-                   , Status (..)
+module Kensin.Base ( Status (..)
                    , Kind (..)
                    , Bunkai (..)
                    , KensinData (..)
@@ -12,9 +11,9 @@ module Kensin.Base ( Gender (..)
                    , Translator
                    , strToBunkai
                    , bunkaiToStr
-                   , isRight
                    , lineToData
                    , latexCommand
+                   , latexEnvironment
                    , splitSundayOrNot
                    , hasAmount
                    , toTime
@@ -35,7 +34,6 @@ import Text.Read                        (readEither)
 import Kensin.Config
 import qualified Text.Printf            as TP
 
-data Gender = Male | Female deriving (Show, Eq)
 data Status = Already | Yet deriving (Show, Eq)
 data Kind   = H | K deriving (Show, Eq)
 data Bunkai = Ishida
@@ -86,10 +84,6 @@ bunkaiToStr :: Bunkai -> String
 bunkaiToStr bk = (`runReader` config) $ do
   ary <- bkArray <$> ask
   return $ ary ! fromEnum bk
-
-isRight :: Either a b -> Bool
-isRight (Right _) = True
-isRight (Left _)  = False
 
 fst3 :: (a, b, c) -> a
 fst3 (a, _, _) = a
@@ -145,6 +139,13 @@ latexCommand :: String -> [String] -> String
 latexCommand com args = "\\" ++ com ++ concatMap enclose args
   where enclose str = "{" ++ str ++ "}"
 
+latexEnvironment :: String -> Maybe String -> String -> String
+latexEnvironment name option inner = 
+  "\\begin{" ++ name ++ "}" ++ optionStr ++
+  inner ++ 
+  "\\end{" ++ name ++ "}"
+  where optionStr = maybe "" (\n -> "{" ++ n ++ "}") option
+
 splitWhether :: (a -> Bool) -> [a] -> ([a], [a])
 splitWhether f target = (filter f target, filter (not . f) target)
 
@@ -163,13 +164,20 @@ extractElement line = do
   let csvAry = listArray (0, length line) line
   map ((csvAry !) . fst) . extract <$> ask
 
+toPayParse :: Parser String
+toPayParse = many $ oneOf "1234567890・"
+
 toPay :: String -> KParse Day -> KParse Option
 toPay _ (Left x) = Left x
-toPay str _ = case split '・' str of
-  [""] -> Left makeMessage
-  s'   -> Right s'
+toPay str _ = 
+  -- 最初に不適格な文字列("1234567890・"以外の文字で構成されている)を排除。
+  case parse toPayParse "" str of
+    Left s  -> Left s
+    Right s -> case split '・' s of
+                 [""] -> Left makeMessage
+                 s'   -> Right s'
   where makeMessage =
-          newErrorMessage (Expect "numStr combinated with a dot") (newPos "Main.hs" 99 0)
+          newErrorMessage (Expect "numStr combinated with a dot") (newPos "Base.hs" 164 0)
 
 -- ["2","8","14"]などのオプション番号のリストから自己負担代を計算。
 -- 仮引数paymentは上記の例でいうと、["2","8","14"]などのリスト。
@@ -178,6 +186,9 @@ makeAmountCore :: ((Integer, Integer) -> Integer) -> Option -> CfgReader Integer
 makeAmountCore f payment = do
   ary <- vArray <$> ask
   -- [String]から[Int]への変換
+  -- paymentが["2", "3", ""]の場合、
+  -- map readEither payment → [Right 2, Right 3, Left ""]なので、
+  -- rights $ map readEither payment → [2, 3]
   let paymentInt = rights $ map readEither payment
   return $ sum $ map (f. (ary !)) paymentInt
 
