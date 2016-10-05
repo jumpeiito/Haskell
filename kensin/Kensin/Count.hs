@@ -12,27 +12,26 @@ import qualified Text.Printf            as TP
 indexAdd :: [a] -> [(Int, a)]
 indexAdd ls = assocs $ listArray (1, length ls) ls
 
-makePayListCombinator :: ( [KensinOption] -> Config -> [Bool] ) ->
+makePayListCombinator :: ( [KensinOption] -> CfgReader [Bool] ) ->
                          [KensinOption] ->
                          Reader Config [Int]
 makePayListCombinator f1 kop = do
-  ls <- f1 kop <$> ask
+  ls <- f1 kop
   let boolList = indexAdd ls
   return $ map fst $ filter snd boolList
 
-nonPayBoolList :: [KensinOption] -> Config -> [Bool]
-nonPayBoolList kop cfg = 
-  let opts = map snd $ nonPayList cfg
-  in map (any (`elem` kop)) opts
+pBoolList, npBoolList :: [KensinOption] -> CfgReader [Bool]
+pBoolList kop = do
+  opts <- map fst . payList <$> ask
+  return $ map (`elem` kop) opts
 
-payBoolList :: [KensinOption] -> Config -> [Bool]
-payBoolList kop cfg =
-  let opts = map fst $ payList cfg
-  in map (`elem` kop) opts
+npBoolList kop = do
+  opts <- map snd . nonPayList <$> ask
+  return $ map (any (`elem` kop)) opts
 
 makeNonPayList, makePayList :: [KensinOption] -> Reader Config [Int]
-makeNonPayList = makePayListCombinator nonPayBoolList
-makePayList    = makePayListCombinator payBoolList
+makeNonPayList = makePayListCombinator npBoolList
+makePayList    = makePayListCombinator pBoolList
 
 keyContains :: (KensinData -> KParse Option) -> Option -> KensinBool
 keyContains f opList kd = any bool opList
