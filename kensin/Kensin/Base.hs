@@ -9,7 +9,6 @@ module Kensin.Base ( Status (..)
                    , KParse
                    , Option
                    , Translator
-                   , ShowDirector (..)
                    , strToBunkai
                    , bunkaiToStr
                    , lineToData
@@ -66,16 +65,6 @@ instance Ord KensinData where
     | x > y = GT
     | x == y = EQ
     | otherwise = LT
-
-data ShowDirector =
-  DayStr Char
-  | Bunkai
-  | Name
-  | Amount
-  | Furigana
-  | Time
-  | Paylist
-  | Nonpaylist deriving (Show, Eq)
 --alias---------------------------------------------------------------------------------------------
 type KensinBool  = KensinData -> Bool
 type CfgReader   = Reader Config

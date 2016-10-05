@@ -25,7 +25,8 @@ concatnate c (x:xs) = x ++ [c] ++ concatnate c xs
 sundayMeiboString :: Translator
 sundayMeiboString kd = (`runReader` config) $ do
   comname <- meiboCommand <$> ask
-  return $ latexCommand comname [ Name, Furigana, Time, Nonpaylist, Paylist, Amount ] kd
+  direct  <- meiboDirector <$> ask
+  return $ latexCommand comname direct kd
 
 meiboPageString :: Bunkai -> [KensinData] -> String
 meiboPageString bunkai kds = (`runReader` config) $ do

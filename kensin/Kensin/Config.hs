@@ -5,6 +5,7 @@ module Kensin.Config
     , YearClass (..)
     , Config (..)
     , KensinOption (..)
+    , ShowDirector (..)
     , config
     ) where
 
@@ -32,6 +33,16 @@ data KensinOption =
   | AB                          -- 腹部エコー+胃バリウム
   deriving (Show, Eq)
 
+data ShowDirector =
+  DayStr Char
+  | Bunkai
+  | Name
+  | Amount
+  | Furigana
+  | Time
+  | Paylist
+  | Nonpaylist deriving (Show, Eq)
+
 data Config = Con { file               :: FilePath
                   , excelFile          :: FilePath
                   , rubyProg           :: FilePath
@@ -45,8 +56,10 @@ data Config = Con { file               :: FilePath
                   , sunday             :: Day
                   , receiptCommand     :: String
                   , receiptEnvironment :: String
+                  , receiptDirector    :: [ShowDirector]
                   , meiboCommand       :: String
                   , meiboEnvironment   :: String
+                  , meiboDirector      :: [ShowDirector]
                   , meiboLength        :: Int
                   , optionLadies1      :: [KensinOption]
                   , optionLadies2      :: [KensinOption]
@@ -125,8 +138,10 @@ config = Con { file       = "f:/Haskell/.kensin"
              , sunday             = fromGregorian 2016 4 17
              , receiptCommand     = "writer"
              , receiptEnvironment = "receiptPage"
+             , receiptDirector    = [DayStr '/', Bunkai, Name, Amount]
              , meiboCommand       = "meibo"
              , meiboEnvironment   = "SundayMeibo"
+             , meiboDirector      = [Name, Furigana, Time, Nonpaylist, Paylist, Amount]
              , meiboLength        = 35
              , optionLadies1      = [MammaryGlandEcho, Mammography, Uterine] -- 女性がん健診
              , optionLadies2      = [MammaryGlandEcho, Mammography] -- 乳がん健診

@@ -28,7 +28,8 @@ receiptWeekday = makeReceiptData snd sortByDay
 kensinDataToReceipt :: Translator
 kensinDataToReceipt kd = (`runReader` config) $ do
   comname <- receiptCommand <$> ask
-  return $ latexCommand comname [ DayStr '/', Bunkai, Name, Amount ] kd
+  direct  <- receiptDirector <$> ask
+  return $ latexCommand comname direct kd
 
 toReceiptPage :: [KensinData] -> String
 toReceiptPage kds = (`runReader` config) $ do
