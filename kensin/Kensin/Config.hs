@@ -148,22 +148,3 @@ config = Con { file       = "f:/Haskell/.kensin"
              , optionJinpai       = [Asbestos, Pneumoconiosis] -- アスベスト・じん肺
              , optionCamera       = [Gastroscope]              -- 胃カメラ
              }
-
-
-
-kensinPayList = [ (Barium,           (6000, 3000)) -- (1)胃バリウム
-                , (AbdominalEcho,    (2500, 2500)) -- (2)腹部エコー
-                , (AB,               (8500, 5500)) -- (3)胃バリウム + 腹部エコー
-                , (HepatitisVirus,   (1500, 1500)) -- (4)肝炎ウィルス
-                , (Pepsinogen,       (1500,  500)) -- (5)ペプシノーゲン
-                , (Pylori,           (1500,  500)) -- (6)ピロリ菌
-                , (PSA,              (1500,  500)) -- (7)前立腺がん
-                , (Mammography,      (5000,    0)) -- (8)乳がん・マンモ
-                , (MammaryGlandEcho, (5000,    0)) -- (9)乳がん・乳腺エコー
-                , (Uterine,          (3000, 2000)) -- (10)子宮がん
-                , (Gastroscope,      (8000, 4000)) -- (11)胃カメラ
-                , (BoneDensity,      (1000, 1000)) -- (12)骨密度
-                , (Asbestos,         (3500, 3500)) -- (13)アスベスト
-                , (Pneumoconiosis,   (3500, 3500)) -- (14)じん肺
-                ]
-

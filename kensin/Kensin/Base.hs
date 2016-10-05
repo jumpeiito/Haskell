@@ -23,17 +23,17 @@ import Util                             (ketaNum)
 import Util.StrEnum                     (split)
 import Util.Strdt                       (howOld, nendoEnd, strdt, dayStrWithSep)
 import Util.ZenkakuHankaku              (toZenkaku)
-import Data.Time
+import Data.Time                        (Day, fromGregorian)
 import Data.Array                       ((!), listArray)
 import Data.Maybe                       (fromMaybe)
 import Data.Either                      (rights)
-import Control.Monad.Reader
+import Control.Monad.Reader             
 import Text.Parsec
-import Text.Parsec.String
-import Text.Parsec.Error
-import Text.Parsec.Pos
+import Text.Parsec.String               (Parser)
+import Text.Parsec.Error                (ParseError, newErrorMessage, Message (..))
+import Text.Parsec.Pos                  (newPos)
 import Text.Read                        (readEither)
-import Kensin.Config
+import Kensin.Config                    
 import qualified Text.Printf            as TP
 
 data Status = Already | Yet deriving (Show, Eq)
@@ -136,10 +136,6 @@ toKeyParse = do
 
 toKey :: String -> KParse (Day, Integer, Integer)
 toKey = parse toKeyParse ""
-
--- latexCommand :: String -> [String] -> String
--- latexCommand com args = "\\" ++ com ++ concatMap enclose args
---   where enclose str = "{" ++ str ++ "}"
 
 latexCommand :: String -> [ShowDirector] -> KensinData -> String
 latexCommand com sd kd = "\\" ++ com ++ translate sd kd

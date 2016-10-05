@@ -17,11 +17,6 @@ bunkaiMap = makeMap bunkai id . filterSunday
   where filterSunday kd = let (sun, week) = splitSundayOrNot kd
                           in sun
 
-concatnate :: Char -> [String] -> String
-concatnate _ [] = ""
-concatnate _ [x] = x
-concatnate c (x:xs) = x ++ [c] ++ concatnate c xs
-
 sundayMeiboString :: Translator
 sundayMeiboString kd = (`runReader` config) $ do
   comname <- meiboCommand <$> ask
@@ -32,9 +27,8 @@ meiboPageString :: Bunkai -> [KensinData] -> String
 meiboPageString bunkai kds = (`runReader` config) $ do
   envname <- meiboEnvironment <$> ask
   return $ latexEnvironment envname
-                            (Just bstr)
+                            (Just $ bunkaiToStr bunkai ++ "分会")
                             $ concatMap sundayMeiboString kds
-  where bstr = bunkaiToStr bunkai ++ "分会"
 
 meiboOutput :: [KensinData] -> ReaderT Config IO ()
 meiboOutput kds = do
@@ -43,4 +37,5 @@ meiboOutput kds = do
   let bunkais = [minBound..maxBound]
   forM_ bunkais $ \bunkai -> do
     let Just persons = sortByHour <$> M.lookup bunkai bmap
-    forM_ (group length' persons) (liftIO . putStrLn . meiboPageString bunkai)
+    forM_ (group length' persons) $
+      liftIO . putStrLn . meiboPageString bunkai
