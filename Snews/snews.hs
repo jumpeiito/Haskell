@@ -9,6 +9,7 @@ import           Data.Time                      (Day (..))
 import           Data.Monoid                    ((<>))
 import           Text.StringLike                (castString)
 import           Text.HTML.TagSoup.Tree
+import           System.Directory               (doesFileExist)
 import qualified Options.Applicative            as O
 import qualified Snews.NewsArticle.Akahata      as Ak
 import qualified Snews.NewsArticle.Common       as Cm
@@ -47,6 +48,8 @@ dayMaker :: Bool -> Day -> IO ()
 dayMaker bp td = do
   --(deciding output destination)-------------------------
   let orgFile = "f:/Org/news/" ++ dayStr6 td ++ ".org"
+  bool <- doesFileExist orgFile
+  
   let (trueOutput, headOutput)
         | bp        = (printer, Txio.putStrLn)
         | otherwise = (fPrinter orgFile, filePrinter orgFile)
@@ -156,8 +159,4 @@ myParserInfo = O.info optionsP $ mconcat
     , O.header "snews.exe -- get a daily news article program."
     , O.footer ""
     , O.progDesc ""
-    ]    
-
-----------------------------------------------------------------------------------------------------
--- testIO = do
-  
+    ]

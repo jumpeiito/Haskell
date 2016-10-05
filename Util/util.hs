@@ -168,7 +168,10 @@ withOutFile oFile func = do
 
 withAppendFile :: FilePath -> (I.Handle -> IO ()) -> IO ()
 withAppendFile oFile func = do
-  bracket (I.openFile oFile I.AppendMode) (I.hClose) $ \h -> do
+  bool <- doesFileExist oFile
+  let mode | bool      = I.AppendMode
+           | otherwise = I.WriteMode
+  bracket (I.openFile oFile mode) (I.hClose) $ \h -> do
     encoding <- I.mkTextEncoding "cp65001"
     I.hSetEncoding h encoding
     func h
