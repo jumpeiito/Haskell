@@ -49,16 +49,3 @@ executable kensin
                      , Kensin.Meibo
                      , Kensin.Count
   default-language:    Haskell2010
-
--- test-suite kensin-test
---   type:                exitcode-stdio-1.0
---   hs-source-dirs:      test
---   main-is:             Spec.hs
---   build-depends:       base
---                      , kensin
---   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
---   default-language:    Haskell2010
-
--- source-repository head
---   type:     git
---   location: https://github.com/jumpeiito/kensin

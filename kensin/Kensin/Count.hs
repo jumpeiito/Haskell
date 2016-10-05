@@ -52,6 +52,7 @@ kensinBoolBuilder f kd = (`runReader` config) $ do
   sym <- f <$> ask
   nop <- makeNonPayList sym
   op  <- makePayList sym
+  -- nopが[]の場合、||の左辺は必ずFalseを返す。
   return $ nonPayContains nop kd || payContains op kd
 
 ladies1P, ladies2P, jinpaiP, cameraP, tokP :: KensinBool

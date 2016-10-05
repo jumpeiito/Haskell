@@ -52,7 +52,7 @@ data Config = Con { file               :: FilePath
                   , optionLadies2      :: [KensinOption]
                   , optionCamera       :: [KensinOption]
                   , optionJinpai       :: [KensinOption]
-                  }
+                  } deriving (Show)
 
 config = Con { file       = "f:/Haskell/.kensin"
              , excelFile  = "f:/Haskell/kensin/16春の健診受付名簿.xlsx"
@@ -128,10 +128,10 @@ config = Con { file       = "f:/Haskell/.kensin"
              , meiboCommand       = "meibo"
              , meiboEnvironment   = "SundayMeibo"
              , meiboLength        = 35
-             , optionLadies1      = [MammaryGlandEcho, Mammography, Uterine]
-             , optionLadies2      = [MammaryGlandEcho, Mammography]
-             , optionJinpai       = [Asbestos, Pneumoconiosis]
-             , optionCamera       = [Gastroscope]
+             , optionLadies1      = [MammaryGlandEcho, Mammography, Uterine] -- 女性がん健診
+             , optionLadies2      = [MammaryGlandEcho, Mammography] -- 乳がん健診
+             , optionJinpai       = [Asbestos, Pneumoconiosis] -- アスベスト・じん肺
+             , optionCamera       = [Gastroscope]              -- 胃カメラ
              }
 
 
