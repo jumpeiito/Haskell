@@ -9,6 +9,7 @@ module Kensin.Base ( Status (..)
                    , KParse
                    , Option
                    , Translator
+                   , ShowDirector (..)
                    , strToBunkai
                    , bunkaiToStr
                    , lineToData
@@ -19,8 +20,10 @@ module Kensin.Base ( Status (..)
                    , toTime
                    , (==>)) where
 
+import Util                             (ketaNum)
 import Util.StrEnum                     (split)
-import Util.Strdt                       (howOld, nendoEnd, strdt)
+import Util.Strdt                       (howOld, nendoEnd, strdt, dayStrWithSep)
+import Util.ZenkakuHankaku              (toZenkaku)
 import Data.Time
 import Data.Array                       ((!), listArray)
 import Data.Maybe                       (fromMaybe)
@@ -63,6 +66,16 @@ instance Ord KensinData where
     | x > y = GT
     | x == y = EQ
     | otherwise = LT
+
+data ShowDirector =
+  DayStr Char
+  | Bunkai
+  | Name
+  | Amount
+  | Furigana
+  | Time
+  | Paylist
+  | Nonpaylist deriving (Show, Eq)
 --alias---------------------------------------------------------------------------------------------
 type KensinBool  = KensinData -> Bool
 type CfgReader   = Reader Config
@@ -135,9 +148,12 @@ toKeyParse = do
 toKey :: String -> KParse (Day, Integer, Integer)
 toKey = parse toKeyParse ""
 
-latexCommand :: String -> [String] -> String
-latexCommand com args = "\\" ++ com ++ concatMap enclose args
-  where enclose str = "{" ++ str ++ "}"
+-- latexCommand :: String -> [String] -> String
+-- latexCommand com args = "\\" ++ com ++ concatMap enclose args
+--   where enclose str = "{" ++ str ++ "}"
+
+latexCommand :: String -> [ShowDirector] -> KensinData -> String
+latexCommand com sd kd = "\\" ++ com ++ translate sd kd
 
 latexEnvironment :: String -> Maybe String -> String -> String
 latexEnvironment name option inner = 
@@ -179,16 +195,10 @@ toPay str _ =
   where makeMessage =
           newErrorMessage (Expect "numStr combinated with a dot") (newPos "Base.hs" 164 0)
 
--- ["2","8","14"]などのオプション番号のリストから自己負担代を計算。
--- 仮引数paymentは上記の例でいうと、["2","8","14"]などのリスト。
 -- fはfstかsndのどちらか。
 makeAmountCore :: ((Integer, Integer) -> Integer) -> Option -> CfgReader Integer
 makeAmountCore f payment = do
   ary <- vArray <$> ask
-  -- [String]から[Int]への変換
-  -- paymentが["2", "3", ""]の場合、
-  -- map readEither payment → [Right 2, Right 3, Left ""]なので、
-  -- rights $ map readEither payment → [2, 3]
   return $ sum $ map (f. (ary !)) payment
 
 makeAmountOver40, makeAmountUnder40 :: Option -> Integer
@@ -208,3 +218,28 @@ toTime :: KensinData -> String
 toTime kd = case key kd of
   Right (_, h, m) -> TP.printf "%02d:%02d" h m
   Left _          -> ""
+----------------------------------------------------------------------------------------------------
+concatnate :: Char -> [String] -> String
+concatnate _ [] = ""
+concatnate _ [x] = x
+concatnate c (x:xs) = x ++ [c] ++ concatnate c xs
+
+joinPay :: KParse [Int] -> String
+joinPay = either (const "") (concatnate '・' . map show)
+
+_toFunction :: ShowDirector -> Translator
+_toFunction (DayStr c) = dayStrWithSep c . day
+_toFunction Bunkai     = bunkaiToStr . bunkai
+_toFunction Name       = name
+_toFunction Amount     = ketaNum . show . either (const 0) id . amount
+_toFunction Furigana   = toZenkaku . furigana
+_toFunction Time       = toTime
+_toFunction Paylist    = joinPay . pay
+_toFunction Nonpaylist = joinPay . nonPay
+
+toFunction :: ShowDirector -> Translator
+toFunction sd kd = enclose $ _toFunction sd kd
+  where enclose s = "{" ++ s ++ "}"
+
+translate :: [ShowDirector] -> KensinData -> String
+translate sd kd = concatMap (`toFunction` kd) sd
