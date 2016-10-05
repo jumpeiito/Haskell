@@ -1,8 +1,10 @@
+DIR=c:/Users/sibuc526.NEWNET/AppData/Roaming/local/bin/
+
 echo "Haskell Program build up"
 stack build
 echo "extracting receipt data"
-stack exec -- kensin.exe -r > ./insert.tex
+${DIR}/kensin.exe -r > ./insert.tex
 echo "extracting meibo data"
-stack exec -- kensin.exe -m > ./meiboInsert.tex
+${DIR}/kensin.exe -m > ./meiboInsert.tex
 echo "make pdf"
 make all
