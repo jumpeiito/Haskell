@@ -17,9 +17,11 @@ module Kensin.Base ( Status (..)
                    , splitSundayOrNot
                    , hasAmount
                    , toTime
+                   , testKensinData
+                   , toCsvData
                    , (==>)) where
 
-import Util                             (ketaNum)
+import Util                             (ketaNum, readUTF8File)
 import Util.StrEnum                     (split)
 import Util.Strdt                       (howOld, nendoEnd, strdt, dayStrWithSep)
 import Util.ZenkakuHankaku              (toZenkaku)
@@ -171,7 +173,7 @@ toPayParse = many $ oneOf "1234567890・"
 toPay :: String -> KParse Day -> KParse [Int]
 toPay _ (Left x) = Left x
 toPay str _ = 
-  -- 最初に不適格な文字列("1234567890・"以外の文字で構成されている)を排除。
+  -- 不適格な文字列("1234567890・"以外の文字で構成されている)を排除。
   case parse toPayParse "" str of
     Left s  -> Left s
     Right s -> case split '・' s of
@@ -209,14 +211,14 @@ concatnate _ [] = ""
 concatnate _ [x] = x
 concatnate c (x:xs) = x ++ [c] ++ concatnate c xs
 
-joinPay :: KParse [Int] -> String
+joinPay :: KParse Option -> String
 joinPay = either (const "") (concatnate '・' . map show)
 
 _toFunction :: ShowDirector -> Translator
 _toFunction (DayStr c) = dayStrWithSep c . day
 _toFunction Bunkai     = bunkaiToStr . bunkai
 _toFunction Name       = name
-_toFunction Amount     = ketaNum . show . either (const 0) id . amount
+_toFunction Amount     = ketaNum . either (const "") show . amount
 _toFunction Furigana   = toZenkaku . furigana
 _toFunction Time       = toTime
 _toFunction Paylist    = joinPay . pay
@@ -228,3 +230,20 @@ toFunction sd kd = enclose $ _toFunction sd kd
 
 translate :: [ShowDirector] -> KensinData -> String
 translate sd kd = concatMap (`toFunction` kd) sd
+----------------------------------------------------------------------------------------------------
+toCsvData :: [String] -> [KensinData]
+toCsvData = filter (isRight . key) .
+            map ((`runReader` config) .
+                 lineToData .
+                 split ',')
+  where isRight (Right _) = True
+        isRight (Left _)  = False
+
+csvData :: CfgReaderT [KensinData]
+csvData = do
+  file'    <- file <$> ask
+  contents <- liftIO $ readUTF8File file'
+  return $ toCsvData $ lines contents
+--test--------------------------------------------------------------------------------------------------
+testKensinData = csvData `runReaderT` config
+  

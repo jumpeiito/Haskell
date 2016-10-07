@@ -9,6 +9,7 @@ import Kensin.Receipt                   (receiptSunday, receiptWeekday, toReceip
 import Kensin.Count                     (jusinShowLine, translateJusin)
 import Data.Monoid
 import Control.Monad.Reader
+import Test.Hspec
 import qualified Text.Printf            as TP
 import qualified System.IO              as I
 import qualified Options.Applicative    as O
@@ -33,20 +34,6 @@ baseInfo kds =
   where (h', k') = hkCount kds
         (tok, notTok) = tokCount kds
 --fundamental---------------------------------------------------------------------------------------
-toCsvData :: [String] -> [KensinData]
-toCsvData = filter (isRight . key) .
-            map ((`runReader` config) .
-                 lineToData .
-                 split ',')
-  where isRight (Right _) = True
-        isRight (Left _)  = False
-
-csvData :: CfgReaderT [KensinData]
-csvData = do
-  file'    <- file <$> ask
-  contents <- liftIO $ readUTF8File file'
-  return $ toCsvData $ lines contents
-
 csvRubyData :: CfgReaderT [KensinData]
 csvRubyData = do
   file'    <- excelFile <$> ask
@@ -56,7 +43,10 @@ csvRubyData = do
 --main----------------------------------------------------------------------------------------------
 main :: IO ()
 main = do
-  I.hSetEncoding I.stdout I.utf8
+  sjis <- I.mkTextEncoding "CP932"
+  I.hSetEncoding I.stdout sjis
+
+  -- I.hSetEncoding I.stdout I.utf8
   csv  <- csvRubyData `runReaderT` config
   opt <- O.customExecParser (O.prefs O.showHelpOnError) myParserInfo
 
@@ -105,3 +95,5 @@ myParserInfo = O.info optionsP $ mconcat
     , O.footer ""
     , O.progDesc ""
     ]
+--test----------------------------------------------------------------------------------------------
+
