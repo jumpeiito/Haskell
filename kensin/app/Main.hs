@@ -43,10 +43,8 @@ csvRubyData = do
 --main----------------------------------------------------------------------------------------------
 main :: IO ()
 main = do
-  sjis <- I.mkTextEncoding "CP932"
-  I.hSetEncoding I.stdout sjis
+  I.hSetEncoding I.stdout I.utf8
 
-  -- I.hSetEncoding I.stdout I.utf8
   csv  <- csvRubyData `runReaderT` config
   opt <- O.customExecParser (O.prefs O.showHelpOnError) myParserInfo
 
