@@ -69,7 +69,8 @@ data Config = Con { file               :: FilePath
                   } deriving (Show, Read)
 
 config = Con { file       = "f:/Haskell/kensin/test.csv"
-             , excelFile  = "f:/Haskell/kensin/16春の健診受付名簿.xlsx"
+             -- , excelFile  = "f:/Haskell/kensin/16春の健診受付名簿.xlsx"
+             , excelFile  = "s:/原田フォルダ/2016年度/健康診断/16秋の健康診断/16秋の健診受付名簿.xlsx"
              , rubyProg   = "f:/Haskell/kensin/kensin.rb"
              , keyColNum  = 12
              , year       = 2016
@@ -136,7 +137,7 @@ config = Con { file       = "f:/Haskell/kensin/test.csv"
                              , (24, "有料オプション")]
              , bkArray     =
                listArray (0, 5) ["石田", "日野", "小栗栖", "一言寺", "三宝院", "点在"]
-             , sunday             = fromGregorian 2016 4 17
+             , sunday             = fromGregorian 2016 10 23
              , receiptCommand     = "writer"
              , receiptEnvironment = "receiptPage"
              , receiptDirector    = [DayStr '/', Bunkai, Name, Amount]
