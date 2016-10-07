@@ -13,8 +13,8 @@ import Control.Monad.Reader
 import Data.Array
 import Data.Time
 
-data Gender = Male | Female deriving (Show, Eq)
-data YearClass = Under Gender | Over Gender deriving (Show, Eq)
+data Gender = Male | Female deriving (Show, Eq, Read)
+data YearClass = Under Gender | Over Gender deriving (Show, Eq, Read)
 data KensinOption =
   Pylori                        -- ピロリ菌
   | Fundus                      -- 眼底検査
@@ -31,7 +31,7 @@ data KensinOption =
   | Asbestos                    -- アスベスト
   | Pneumoconiosis              -- じん肺
   | AB                          -- 腹部エコー+胃バリウム
-  deriving (Show, Eq)
+  deriving (Show, Eq, Read)
 
 data ShowDirector =
   DayStr Char
@@ -41,7 +41,7 @@ data ShowDirector =
   | Furigana
   | Time
   | Paylist
-  | Nonpaylist deriving (Show, Eq)
+  | Nonpaylist deriving (Show, Eq, Read)
 
 data Config = Con { file               :: FilePath
                   , excelFile          :: FilePath
@@ -57,6 +57,7 @@ data Config = Con { file               :: FilePath
                   , receiptCommand     :: String
                   , receiptEnvironment :: String
                   , receiptDirector    :: [ShowDirector]
+                  , receiptLength      :: Int
                   , meiboCommand       :: String
                   , meiboEnvironment   :: String
                   , meiboDirector      :: [ShowDirector]
@@ -65,9 +66,9 @@ data Config = Con { file               :: FilePath
                   , optionLadies2      :: [KensinOption]
                   , optionCamera       :: [KensinOption]
                   , optionJinpai       :: [KensinOption]
-                  } deriving (Show)
+                  } deriving (Show, Read)
 
-config = Con { file       = "f:/Haskell/.kensin"
+config = Con { file       = "f:/Haskell/kensin/test.csv"
              , excelFile  = "f:/Haskell/kensin/16春の健診受付名簿.xlsx"
              , rubyProg   = "f:/Haskell/kensin/kensin.rb"
              , keyColNum  = 12
@@ -139,6 +140,7 @@ config = Con { file       = "f:/Haskell/.kensin"
              , receiptCommand     = "writer"
              , receiptEnvironment = "receiptPage"
              , receiptDirector    = [DayStr '/', Bunkai, Name, Amount]
+             , receiptLength      = 5
              , meiboCommand       = "meibo"
              , meiboEnvironment   = "SundayMeibo"
              , meiboDirector      = [Name, Furigana, Time, Nonpaylist, Paylist, Amount]

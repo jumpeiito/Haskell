@@ -1,4 +1,5 @@
-module Kensin.Count (jusinShowLine, translateJusin) where
+module Kensin.Count ( jusinShowLine
+                    , translateJusin) where
 
 import Util                             (makeMap)
 import Kensin.Base

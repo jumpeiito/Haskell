@@ -10,15 +10,15 @@ import Kensin.Config
 import Data.Function                    (on)
 import Data.List                        (sortBy)
 
-sortByDay, sortByBunkai, sortByHour :: [KensinData] -> [KensinData]
+type SortFunction = [KensinData] -> [KensinData]
+type FstOrSnd     = (([KensinData], [KensinData]) -> [KensinData]) 
+
+sortByDay, sortByBunkai, sortByHour :: SortFunction
 sortByDay     = sortBy (compare `on` day)
 sortByBunkai  = sortBy (compare `on` bunkai)
 sortByHour    = sortBy (compare `on` toTime)
 
-makeReceiptData :: (([KensinData], [KensinData]) -> [KensinData]) -> -- fst or snd
-                   ([KensinData] -> [KensinData]) ->                 -- sort Function
-                   [KensinData] ->
-                   [KensinData]
+makeReceiptData :: FstOrSnd -> SortFunction -> [KensinData] -> [KensinData]
 makeReceiptData f sortf = sortf . filter hasAmount . f . splitSundayOrNot
 
 receiptSunday, receiptWeekday :: [KensinData] -> [KensinData]
@@ -39,4 +39,6 @@ toReceiptPage kds = (`runReader` config) $ do
                             $ concatMap kensinDataToReceipt kds
 
 toReceipt :: [KensinData] -> String
-toReceipt kds = concatMap toReceiptPage $ group 5 kds
+toReceipt kds = (`runReader` config) $ do
+  len <- receiptLength <$> ask
+  return $ concatMap toReceiptPage $ group len kds
