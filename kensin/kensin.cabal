@@ -29,7 +29,7 @@ library
                      , containers
   default-language:    Haskell2010
 
-executable kensin
+executable kens
   hs-source-dirs:      app, src, .
   main-is:             Main.hs
   ghc-options:         -O3
