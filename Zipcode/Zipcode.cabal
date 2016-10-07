@@ -27,6 +27,7 @@ executable Zipcode
                      , tagsoup
                      , array
                      , parallel
+                     , process
   other-modules:       Zipcode.ZipDist
                      , Zipcode.ZipFormatta
   default-language:    Haskell2010
