@@ -227,6 +227,7 @@ runRubyString opt = do
   lines <$> I.hGetContents sout
 
 group :: Num n => Eq n => n -> [a] -> [[a]]
+group n [] = []
 group n l =
   let answer (_, (_, _, x)) = reverse x in
   answer . (`runState` (0, [], [])) $ do
