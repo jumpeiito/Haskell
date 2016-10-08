@@ -82,7 +82,11 @@ readDate :: String -> String -> String -> Day
 readDate y m d =
   fromGregorian (read y) (read m) (read d)
 ----------------------------------------------------------------------------------------------------
-date8, date6, dateNormal, dateJapanese, calc :: Parser Day
+dateK, date8, date6, dateNormal, dateJapanese, calc :: Parser Day
+dateK = readDate <$> (stringToGengouYear <$> gengouParse <*> count 2 digit)
+                 <*> count 2 digit
+                 <*> count 2 digit
+
 date8 = readDate <$> count 4 digit
                  <*> count 2 digit
                  <*> count 2 digit
@@ -100,7 +104,8 @@ dateJapanese = readDate <$> (stringToGengouYear <$> gengouParse <*> sepYear)
                         <*> (try (many1 digit) <|> kanParseStr)
 
 calc = 
-  try date8
+  try dateK
+  <|> date8
   <|> try dateNormal
   <|> try dateJapanese
   <|> date6 
@@ -114,8 +119,8 @@ gengouToYear :: (String, Integer) -> Integer
 gengouToYear (g, y)
   | g `isInfixOf` "Mm明" || g == "明治" = 1867 + y
   | g `isInfixOf` "Tt大" || g == "大正" = 1911 + y
-  | g `isInfixOf` "Ss昭" || g == "昭和" = 1925 + y
-  | g `isInfixOf` "Hh平" || g == "平成" = 1988 + y
+  | g `isInfixOf` "Ss昭" || g == "昭和" || g == "3" = 1925 + y
+  | g `isInfixOf` "Hh平" || g == "平成" || g == "4" = 1988 + y
   | otherwise                          = 1988 + y
 
 stringToGengouYear :: String -> String -> String
@@ -123,7 +128,8 @@ stringToGengouYear g y = show $ gengouToYear (g, read y)
 
 gengouParse :: Parser String
 gengouParse =
-  try (choice [string "明治", string "大正", string "昭和", string "平成"])
+  try (choice [ string "明治", string "大正", string "昭和", string "平成"
+              , string "3", string "4" ])
   <|> (:[]) <$> oneOf "MTSHmtsh明大昭平"
 
 _strdt :: StringLike a => a -> Either ParseError Day
