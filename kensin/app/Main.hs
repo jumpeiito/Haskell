@@ -36,26 +36,35 @@ baseInfo kds =
 --fundamental---------------------------------------------------------------------------------------
 csvRubyData :: CfgReaderT [KensinData]
 csvRubyData = do
+  cfg      <- liftIO config
   file'    <- excelFile <$> ask
   prog     <- rubyProg <$> ask
   contents <- liftIO $ runRubyString [prog, file']
-  return $ toCsvData contents
+  return $ toCsvData contents `runReader` cfg
 --main----------------------------------------------------------------------------------------------
+getEncoding :: CfgReader (IO I.TextEncoding)
+getEncoding = encoding <$> ask
+
 main :: IO ()
 main = do
-  I.hSetEncoding I.stdout I.utf8
+  cfg <- config
 
-  csv  <- csvRubyData `runReaderT` config
+  encode <- getEncoding `runReader` cfg
+  I.hSetEncoding I.stdout encode
+
+  csv  <- csvRubyData `runReaderT` cfg
   opt <- O.customExecParser (O.prefs O.showHelpOnError) myParserInfo
 
-  let jusin = mapM_ (putStrLn . jusinShowLine) . translateJusin
+  let jusin kds = mapM_ (putStrLn . jusinShowLine) $ translateJusin kds `runReader` cfg
 
   case (count' opt, receipt' opt, meibo' opt) of
     (True, False, False) -> jusin csv
     (False, True, False) -> do
-      putStrLn $ toReceipt $ receiptSunday csv
-      putStrLn $ toReceipt $ receiptWeekday csv
-    (False, False, True) -> meiboOutput csv `runReaderT` config
+      let s = receiptSunday csv `runReader` cfg
+      let w = receiptWeekday csv `runReader` cfg
+      putStrLn $ toReceipt s `runReader` cfg
+      putStrLn $ toReceipt w `runReader` cfg
+    (False, False, True) -> putStrLn (meiboOutput csv `runReader` cfg)
     (False, False, False) -> jusin csv
     (_, _, _) -> jusin csv
 --Command Line Option-------------------------------------------------------------------------------

@@ -1,44 +1,49 @@
-module Kensin.Meibo (meiboOutput) where
+module Kensin.Meibo (meiboOutput, bunkaiMap) where
 
 import Util                             (makeMap, ketaNum, group)
 import Util.ZenkakuHankaku              (toZenkaku)
 import Control.Monad.Reader
 import Data.Function                    (on)
 import Data.List                        (sortBy)
+import Data.Maybe                       (mapMaybe)
 import Kensin.Config
 import Kensin.Base
 import qualified Data.Map               as M
 
+type BunkaiMap = M.Map Bunkai [KensinData]
+
 sortByHour :: [KensinData] -> [KensinData]
 sortByHour    = sortBy (compare `on` toTime)
 
-bunkaiMap :: [KensinData] -> M.Map Bunkai [KensinData]
-bunkaiMap = makeMap bunkai id . filterSunday
-  where filterSunday kd = let (sun, week) = splitSundayOrNot kd
-                          in sun
+bunkaiMap :: [KensinData] -> CfgReader BunkaiMap
+bunkaiMap kd = do
+  (sun, _) <- splitSundayOrNot kd
+  return $ makeMap bunkai id sun
 
-sundayMeiboString :: Translator
-sundayMeiboString kd = (`runReader` config) $ do
+sundayMeiboString :: KensinData -> CfgReader String
+sundayMeiboString kd = do
   comname <- meiboCommand <$> ask
   direct  <- meiboDirector <$> ask
   return $ latexCommand comname direct kd
 
-meiboPageString :: Bunkai -> [KensinData] -> String
-meiboPageString _ [] = ""
-meiboPageString bunkai kds = (`runReader` config) $ do
-  envname <- meiboEnvironment <$> ask
+meiboPageString :: Bunkai -> [KensinData] -> CfgReader String
+meiboPageString _ [] = return ""
+meiboPageString bunkai kds = do
+  envname   <- meiboEnvironment <$> ask
+  sundayStr <- mapM sundayMeiboString kds
   return $ latexEnvironment envname
                             (Just $ bunkaiToStr bunkai ++ "分会")
-                            $ concatMap sundayMeiboString kds
+                            $ concat sundayStr
 
-meiboOutput :: [KensinData] -> ReaderT Config IO ()
+meiboBunkaiString :: Int -> BunkaiMap -> Bunkai -> CfgReader String
+meiboBunkaiString len bmap bk = case M.lookup bk bmap of
+  Just kd -> do
+    let classed = group len $ sortByHour kd
+    concat <$> mapM (meiboPageString bk) classed
+  Nothing -> return ""
+
+meiboOutput :: [KensinData] -> CfgReader String
 meiboOutput kds = do
   length' <- meiboLength <$> ask
-  let bmap    = bunkaiMap kds
-  let bunkais = [minBound..maxBound]
-  forM_ bunkais $ \bunkai -> do
-    case M.lookup bunkai bmap of
-      Just persons -> do
-        let list = group length' $ sortByHour persons
-        forM_ list $ liftIO . putStrLn . meiboPageString bunkai
-      Nothing      -> return ()
+  bmap    <- bunkaiMap kds
+  concat <$> mapM (meiboBunkaiString length' bmap) [minBound..maxBound]

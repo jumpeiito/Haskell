@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
+
 module Kensin.Base ( Status (..)
                    , Kind (..)
                    , Bunkai (..)
@@ -17,8 +19,9 @@ module Kensin.Base ( Status (..)
                    , splitSundayOrNot
                    , hasAmount
                    , toTime
-                   , testKensinData
+                   -- , testKensinData
                    , toCsvData
+                   , concatMapM
                    , (==>)) where
 
 import Util                             (ketaNum, readUTF8File)
@@ -34,6 +37,7 @@ import Text.Parsec
 import Text.Parsec.String               (Parser)
 import Text.Parsec.Error                (ParseError, newErrorMessage, Message (..))
 import Text.Parsec.Pos                  (newPos)
+import Text.StringLike                  (castString)
 import Text.Read                        (readEither)
 import Kensin.Config                    
 import qualified Text.Printf            as TP
@@ -85,9 +89,9 @@ strToBunkai str | str == "石田"    = Ishida
                 | str == "点在"    = Tenzai
 
 bunkaiToStr :: Bunkai -> String
-bunkaiToStr bk = (`runReader` config) $ do
-  ary <- bkArray <$> ask
-  return $ ary ! fromEnum bk
+bunkaiToStr bk = 
+  let ary = listArray (0, 5) ["石田", "日野", "小栗栖", "一言寺", "三宝院", "点在"]
+  in ary ! fromEnum bk
 
 fst3 :: (a, b, c) -> a
 fst3 (a, _, _) = a
@@ -101,7 +105,20 @@ fst3 (a, _, _) = a
 lineToData :: [String] -> CfgReader KensinData
 lineToData line = do
   nendo' <- year <$> ask
-  let old' = fromMaybe 0 $ (`howOld` nendoEnd nendo') <$> strdt birth
+  [bk, n, furi, g, birth, num, k, st, day', kday', nop, op] <- extractElement line
+  let old'       = fromMaybe 0 $ (`howOld` nendoEnd nendo') <$> strdt birth
+  let key'       = toKey day'
+  let d          = fst3 <$> key'
+  let number'    = case num of ""   -> Nothing; s -> Just s
+  let g'         = (g,  "男") ==> (Male, Female)
+  let stat'      = (st, "1")  ==> (Already, Yet)
+  let kind'      = (k,  "本") ==> (H, K)
+  let pay'       = toPay op d
+  let realday    = either (const (fromGregorian 1900 1 1)) id d  
+  -- amount' <- either (const $ Left "") (Right . makeAmount stat' old') pay'
+  amount' <- case pay' of
+    Right x -> Right <$> makeAmount stat' old' x
+    Left x  -> return $ Left x
   return KensinData { day       = realday
                     , kday      = kday'
                     , Kensin.Base.name = n
@@ -113,19 +130,19 @@ lineToData line = do
                     , number    = number'
                     , stat      = stat'
                     , key       = key'
-                    , amount    = makeAmount stat' old' <$> pay'
+                    , amount    = amount'
                     , nonPay    = toPay nop d
                     , pay       = pay'
                     , sortKey   = genSortKey key' }
-  where [bk, n, furi, g, birth, num, k, st, day', kday', nop, op] = extractElement line `runReader` config
-        key'       = toKey day'
-        d          = fst3 <$> key'
-        number'    = case num of ""   -> Nothing; s -> Just s
-        g'         = (g,  "男") ==> (Male, Female)
-        stat'      = (st, "1")  ==> (Already, Yet)
-        kind'      = (k,  "本") ==> (H, K)
-        pay'       = toPay op d
-        realday    = either (const (fromGregorian 1900 1 1)) id d
+  -- where [bk, n, furi, g, birth, num, k, st, day', kday', nop, op] = extractElement line `runReader` config
+  --       key'       = toKey day'
+  --       d          = fst3 <$> key'
+  --       number'    = case num of ""   -> Nothing; s -> Just s
+  --       g'         = (g,  "男") ==> (Male, Female)
+  --       stat'      = (st, "1")  ==> (Already, Yet)
+  --       kind'      = (k,  "本") ==> (H, K)
+  --       pay'       = toPay op d
+  --       realday    = either (const (fromGregorian 1900 1 1)) id d
         
 toKeyParse :: Parser (Day, Integer, Integer)
 toKeyParse = do
@@ -152,8 +169,8 @@ latexEnvironment name option inner =
 splitWhether :: (a -> Bool) -> [a] -> ([a], [a])
 splitWhether f target = (filter f target, filter (not . f) target)
 
-splitSundayOrNot :: [KensinData] -> ([KensinData], [KensinData])
-splitSundayOrNot dat = (`runReader` config) $ do
+splitSundayOrNot :: [KensinData] -> CfgReader ([KensinData], [KensinData])
+splitSundayOrNot dat = do
   sun <- sunday <$> ask
   return $ splitWhether ((==sun) . day) dat
 
@@ -188,13 +205,13 @@ makeAmountCore f payment = do
   ary <- vArray <$> ask
   return $ sum $ map (f. (ary !)) payment
 
-makeAmountOver40, makeAmountUnder40 :: Option -> Integer
-makeAmountOver40  = (`runReader` config) . makeAmountCore snd
-makeAmountUnder40 = (`runReader` config) . makeAmountCore fst
+makeAmountOver40, makeAmountUnder40 :: Option -> CfgReader Integer
+makeAmountOver40  = makeAmountCore snd
+makeAmountUnder40 = makeAmountCore fst
 
-makeAmount :: Status -> Integer -> [Int] -> Integer
+makeAmount :: Status -> Integer -> [Int] -> CfgReader Integer
 makeAmount st old' payment
-  | st == Already = (+) 10000 $ makeAmountUnder40 payment
+  | st == Already = ((+) 10000) <$> makeAmountUnder40 payment
   | old' >= 40    = makeAmountOver40 payment
   | otherwise     = makeAmountUnder40 payment
 
@@ -231,19 +248,29 @@ toFunction sd kd = enclose $ _toFunction sd kd
 translate :: [ShowDirector] -> KensinData -> String
 translate sd kd = concatMap (`toFunction` kd) sd
 ----------------------------------------------------------------------------------------------------
-toCsvData :: [String] -> [KensinData]
-toCsvData = filter (isRight . key) .
-            map ((`runReader` config) .
-                 lineToData .
-                 split ',')
-  where isRight (Right _) = True
-        isRight (Left _)  = False
+-- toCsvData :: [String] -> [KensinData]
+-- toCsvData = filter (isRight . key) .
+--             map ((`runReader` config) .
+--                  lineToData .
+--                  split ',')
+--   where isRight (Right _) = True
+--         isRight (Left _)  = False
+isRight :: Either a b -> Bool
+isRight (Right _) = True
+isRight (Left _)  = False
 
-csvData :: CfgReaderT [KensinData]
-csvData = do
-  file'    <- file <$> ask
-  contents <- liftIO $ readUTF8File file'
-  return $ toCsvData $ lines contents
+toCsvData :: [String] -> CfgReader [KensinData]
+toCsvData s = do
+  translated <- mapM (lineToData . split ',') s
+  return $ filter (isRight . key) translated
+
+-- csvData :: CfgReaderT [KensinData]
+-- csvData = do
+--   file'    <- file <$> ask
+--   contents <- liftIO $ readUTF8File file'
+--   csvdata  <- toCsvData $ lines contents
+--   return $ csvdata
 --test--------------------------------------------------------------------------------------------------
-testKensinData = csvData `runReaderT` config
-  
+-- testKensinData = csvData `runReaderT` config
+concatMapM :: (Monad f, Traversable t) => (a1 -> f [a]) -> t a1 -> f [a]
+concatMapM f a = concat <$> mapM f a

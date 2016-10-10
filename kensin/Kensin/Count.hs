@@ -47,39 +47,42 @@ nonPayContains op = keyContains nonPay op
 payContains :: Option -> KensinBool
 payContains = keyContains pay
 
-kensinBoolBuilder :: (Config -> [KensinOption]) -> KensinBool
-kensinBoolBuilder f kd = (`runReader` config) $ do
+kensinBoolBuilder :: (Config -> [KensinOption]) -> KensinData -> CfgReader Bool
+kensinBoolBuilder f kd = do
   sym <- f <$> ask
   nop <- makeNonPayList sym
   op  <- makePayList sym
   -- nopが[]の場合、||の左辺は必ずFalseを返す。
   return $ nonPayContains nop kd || payContains op kd
 
-ladies1P, ladies2P, jinpaiP, cameraP, tokP :: KensinBool
+ladies1P, ladies2P, jinpaiP, cameraP :: KensinData -> CfgReader Bool
+allP _   = return True
 ladies1P = kensinBoolBuilder optionLadies1
 ladies2P = kensinBoolBuilder optionLadies2
 jinpaiP  = kensinBoolBuilder optionJinpai
 cameraP  = kensinBoolBuilder optionCamera
+
+tokP :: KensinBool
 tokP kd  = old kd>=40 && old kd<75
 
-countIf :: (a -> Bool) -> [a] -> Int
-countIf f = length . filter f
+countIf :: (a -> CfgReader Bool) -> [a] -> CfgReader Int
+countIf f kds = length <$> filterM f kds
 
-numberCount :: [KensinData] -> [(String, Int)]
-numberCount kds =
-  map (\(str, f) -> (str, countIf f kds))
-      [ ("全女性検診", ladies1P)
-      , ("乳がんのみ", ladies2P)
-      , ("アスベスト", jinpaiP)
-      , ("胃カメラ", cameraP)]
+numberCount :: [KensinData] -> CfgReader [(String, Int)]
+numberCount kds = do
+  let funcL = [allP, ladies1P, ladies2P, jinpaiP, cameraP]
+  let strL  = ["全受診者", "全女性検診", "乳がんのみ", "アスベスト", "胃カメラ"]
+  zip strL <$> mapM (`countIf` kds) funcL
 
 makeKensinMap :: [KensinData] -> M.Map (Maybe String) [KensinData]
 makeKensinMap = makeMap sortKey id
 
-translateJusin :: [KensinData] -> [(Maybe String, [(String, Int)])]
-translateJusin =
-  map count' . M.toList . makeKensinMap
-  where count' (k, v) = (k, ("全受診者", length v):numberCount v)
+translateJusin :: [KensinData] -> CfgReader [(Maybe String, [(String, Int)])]
+translateJusin kd = do
+  let alist = M.toList $ makeKensinMap kd
+  let days  = map fst alist
+  kds <- mapM numberCount $ map snd alist
+  return $ zip days kds
 
 jusinShowPair :: (String, Int) -> String
 jusinShowPair (title, len)

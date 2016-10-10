@@ -18,27 +18,28 @@ sortByDay     = sortBy (compare `on` day)
 sortByBunkai  = sortBy (compare `on` bunkai)
 sortByHour    = sortBy (compare `on` toTime)
 
-makeReceiptData :: FstOrSnd -> SortFunction -> [KensinData] -> [KensinData]
-makeReceiptData f sortf = sortf . filter hasAmount . f . splitSundayOrNot
+makeReceiptData :: FstOrSnd -> SortFunction -> [KensinData] -> CfgReader [KensinData]
+makeReceiptData f sortf kds = do
+  pairs <- splitSundayOrNot kds
+  return $ sortf $ filter hasAmount $ f pairs
 
-receiptSunday, receiptWeekday :: [KensinData] -> [KensinData]
+receiptSunday, receiptWeekday :: [KensinData] -> CfgReader [KensinData]
 receiptSunday  = makeReceiptData fst sortByBunkai
 receiptWeekday = makeReceiptData snd sortByDay
 
-kensinDataToReceipt :: Translator
-kensinDataToReceipt kd = (`runReader` config) $ do
+kensinDataToReceipt :: KensinData -> CfgReader String
+kensinDataToReceipt kd = do
   comname <- receiptCommand <$> ask
   direct  <- receiptDirector <$> ask
   return $ latexCommand comname direct kd
 
-toReceiptPage :: [KensinData] -> String
-toReceiptPage kds = (`runReader` config) $ do
+toReceiptPage :: [KensinData] -> CfgReader String
+toReceiptPage kds = do
   envname <- receiptEnvironment <$> ask
-  return $ latexEnvironment envname
-                            Nothing
-                            $ concatMap kensinDataToReceipt kds
+  args    <- concatMapM kensinDataToReceipt kds
+  return $ latexEnvironment envname Nothing args
 
-toReceipt :: [KensinData] -> String
-toReceipt kds = (`runReader` config) $ do
+toReceipt :: [KensinData] -> CfgReader String
+toReceipt kds = do
   len <- receiptLength <$> ask
-  return $ concatMap toReceiptPage $ group len kds
+  concatMapM toReceiptPage $ group len kds
