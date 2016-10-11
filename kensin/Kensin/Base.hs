@@ -11,6 +11,7 @@ module Kensin.Base ( Status (..)
                    , KParse
                    , Option
                    , Translator
+                   , CfgTranslator
                    , strToBunkai
                    , bunkaiToStr
                    , lineToData
@@ -79,6 +80,7 @@ type KensinPrice = (String, Integer, Integer)
 type KParse      = Either ParseError
 type Option      = [Int]
 type Translator  = KensinData -> String
+type CfgTranslator = [KensinData] -> CfgReader String
 ----------------------------------------------------------------------------------------------------
 strToBunkai :: String -> Bunkai
 strToBunkai str | str == "石田"    = Ishida
@@ -101,7 +103,6 @@ fst3 (a, _, _) = a
   | sym == target = yes
   | otherwise     = no
 
-
 lineToData :: [String] -> CfgReader KensinData
 lineToData line = do
   nendo' <- year <$> ask
@@ -115,7 +116,6 @@ lineToData line = do
   let kind'      = (k,  "本") ==> (H, K)
   let pay'       = toPay op d
   let realday    = either (const (fromGregorian 1900 1 1)) id d  
-  -- amount' <- either (const $ Left "") (Right . makeAmount stat' old') pay'
   amount' <- case pay' of
     Right x -> Right <$> makeAmount stat' old' x
     Left x  -> return $ Left x
@@ -134,15 +134,6 @@ lineToData line = do
                     , nonPay    = toPay nop d
                     , pay       = pay'
                     , sortKey   = genSortKey key' }
-  -- where [bk, n, furi, g, birth, num, k, st, day', kday', nop, op] = extractElement line `runReader` config
-  --       key'       = toKey day'
-  --       d          = fst3 <$> key'
-  --       number'    = case num of ""   -> Nothing; s -> Just s
-  --       g'         = (g,  "男") ==> (Male, Female)
-  --       stat'      = (st, "1")  ==> (Already, Yet)
-  --       kind'      = (k,  "本") ==> (H, K)
-  --       pay'       = toPay op d
-  --       realday    = either (const (fromGregorian 1900 1 1)) id d
         
 toKeyParse :: Parser (Day, Integer, Integer)
 toKeyParse = do
@@ -254,13 +245,6 @@ toFunction sd kd = enclose $ _toFunction sd kd
 translate :: [ShowDirector] -> KensinData -> String
 translate sd kd = concatMap (`toFunction` kd) sd
 ----------------------------------------------------------------------------------------------------
--- toCsvData :: [String] -> [KensinData]
--- toCsvData = filter (isRight . key) .
---             map ((`runReader` config) .
---                  lineToData .
---                  split ',')
---   where isRight (Right _) = True
---         isRight (Left _)  = False
 isRight :: Either a b -> Bool
 isRight (Right _) = True
 isRight (Left _)  = False
@@ -270,13 +254,16 @@ toCsvData s = do
   translated <- mapM (lineToData . split ',') s
   return $ filter (isRight . key) translated
 
--- csvData :: CfgReaderT [KensinData]
--- csvData = do
---   file'    <- file <$> ask
---   contents <- liftIO $ readUTF8File file'
---   csvdata  <- toCsvData $ lines contents
---   return $ csvdata
+csvData :: CfgReaderT [KensinData]
+csvData = do
+  cfg      <- liftIO config
+  file'    <- file <$> ask
+  contents <- liftIO $ readUTF8File file'
+  return $ toCsvData (lines contents) `runReader` cfg
 --test--------------------------------------------------------------------------------------------------
--- testKensinData = csvData `runReaderT` config
+testKensinData = do
+  cfg <- config
+  csvData `runReaderT` cfg
+----------------------------------------------------------------------------------------------------
 concatMapM :: (Monad f, Traversable t) => (a1 -> f [a]) -> t a1 -> f [a]
 concatMapM f a = concat <$> mapM f a

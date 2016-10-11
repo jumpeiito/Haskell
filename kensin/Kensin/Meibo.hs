@@ -26,7 +26,7 @@ sundayMeiboString kd = do
   direct  <- meiboDirector <$> ask
   return $ latexCommand comname direct kd
 
-meiboPageString :: Bunkai -> [KensinData] -> CfgReader String
+meiboPageString :: Bunkai -> CfgTranslator
 meiboPageString _ [] = return ""
 meiboPageString bunkai kds = do
   envname   <- meiboEnvironment <$> ask
@@ -42,7 +42,7 @@ meiboBunkaiString len bmap bk = case M.lookup bk bmap of
     concat <$> mapM (meiboPageString bk) classed
   Nothing -> return ""
 
-meiboOutput :: [KensinData] -> CfgReader String
+meiboOutput :: CfgTranslator
 meiboOutput kds = do
   length' <- meiboLength <$> ask
   bmap    <- bunkaiMap kds
