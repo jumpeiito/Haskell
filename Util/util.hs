@@ -241,3 +241,24 @@ group n l =
 
 ketaNum :: String -> String
 ketaNum str = reverse $ intercalate "," $ Util.group 3 $ reverse str
+----------------------------------------------------------------------------------------------------
+data Location = LocHome | LocOffice | LocOther deriving (Show, Eq)
+
+whereLoc :: IO Location
+whereLoc = do
+  hBool <- doesDirectoryExist "c:/Users/Jumpei"
+  oBool <- doesDirectoryExist "c:/Users/SIBUC526.NEWNET/"
+  case (hBool, oBool) of
+    (True, _) -> return LocHome
+    (_, True) -> return LocOffice
+    (_, _)    -> return LocOther
+     
+locEncoding :: IO ()
+locEncoding = do
+  loc <- whereLoc
+  case loc of
+    LocHome   -> I.hSetEncoding I.stdout I.utf8
+    LocOffice -> do
+      sjis <- I.mkTextEncoding "CP932"
+      I.hSetEncoding I.stdout sjis
+    LocOther  -> I.hSetEncoding I.stdout I.utf8
