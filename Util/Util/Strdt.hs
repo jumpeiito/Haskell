@@ -30,6 +30,7 @@ import Util.KanParse
 import Text.ParserCombinators.Parsec
 import Text.Printf
 import Text.StringLike                  (StringLike, castString)
+import Test.Hspec
 
 type Date      = (Int, Int, Int)
 type NendoDate = (Int, Int, Int, Int)
@@ -208,3 +209,62 @@ instance DiffDate String [(DayWeek, Integer)] where
     where diff  = fromInteger $ differ s1 s2
           n     = fromMaybe 0 (getWeekDateInt <$> strdt s1)
           wlist = take diff $ cycle (rotate (n - 1) [minBound..maxBound])
+
+strdtSpec :: Spec
+strdtSpec = do
+  let toD y m d = Just $ fromGregorian y m d
+  describe "strdt test" $ do
+    it "7 digit chars, gengou(3 or 4)-year(2 digit)-month(2 digit)-day(2 digit)" $ do
+      (strdt "3550714" :: Maybe Day)        `shouldBe` toD 1980 7 14
+      (strdt "3550714" :: Maybe String)     `shouldBe` Just "1980-07-14"
+      (strdt "3550714" :: Maybe Int)        `shouldBe` Just 1980
+      (strdt "3550714" :: Maybe (Int, Int)) `shouldBe` Just (7, 14)
+      (strdt "3550714" :: Maybe Date)       `shouldBe` Just (1980, 7, 14)
+      (strdt "3550714" :: Maybe NendoDate)  `shouldBe` Just (1980, 1980, 7, 14)
+      (strdt "4280201" :: Maybe Day)        `shouldBe` toD 2016 2 1
+      (strdt "4280201" :: Maybe String)     `shouldBe` Just "2016-02-01"
+      (strdt "4280201" :: Maybe Int)        `shouldBe` Just 2016
+      (strdt "4280201" :: Maybe (Int, Int)) `shouldBe` Just (2, 1)
+      (strdt "4280201" :: Maybe Date)       `shouldBe` Just (2016, 2, 1)
+      (strdt "4280201" :: Maybe NendoDate)  `shouldBe` Just (2015, 2016, 2, 1)
+    it "If it doesn't start 3 or 4, returns Nothing" $ do
+      (strdt "5550714" :: Maybe Day)        `shouldBe` Nothing
+      (strdt "0550714" :: Maybe Day)        `shouldBe` Nothing
+      -- to be fully implemented.
+      -- (strdt "4280001" :: Maybe Day)        `shouldBe` Nothing
+      -- (strdt "4280700" :: Maybe Day)        `shouldBe` Nothing
+      -- (strdt "4281301" :: Maybe Day)        `shouldBe` Nothing
+      -- (strdt "4270229" :: Maybe Day)        `shouldBe` Nothing
+      -- (strdt "4280229" :: Maybe Day)        `shouldBe` toD 2016 2 29
+      -- (strdt "4280931" :: Maybe Day)        `shouldBe` Nothing
+    it "8 digit chars, year(4 digit)-month(2 digit)-day(2 digit)" $ do
+      (strdt "19800714" :: Maybe Day)        `shouldBe` toD 1980 7 14
+      (strdt "19800714" :: Maybe String)     `shouldBe` Just "1980-07-14"
+      (strdt "19800714" :: Maybe Int)        `shouldBe` Just 1980
+      (strdt "19800714" :: Maybe (Int, Int)) `shouldBe` Just (7, 14)
+      (strdt "19800714" :: Maybe Date)       `shouldBe` Just (1980, 7, 14)
+      (strdt "19800714" :: Maybe NendoDate)  `shouldBe` Just (1980, 1980, 7, 14)
+      (strdt "20160201" :: Maybe Day)        `shouldBe` toD 2016 2 1
+      (strdt "20160201" :: Maybe String)     `shouldBe` Just "2016-02-01"
+      (strdt "20160201" :: Maybe Int)        `shouldBe` Just 2016
+      (strdt "20160201" :: Maybe (Int, Int)) `shouldBe` Just (2, 1)
+      (strdt "20160201" :: Maybe Date)       `shouldBe` Just (2016, 2, 1)
+      (strdt "20160201" :: Maybe NendoDate)  `shouldBe` Just (2015, 2016, 2, 1)
+
+--     -- it "dateNormal-01"
+--     -- it "dateNormal-02"
+--     -- it "dateNormal-03"
+--     -- it "dateNormal-04"
+--     -- it "dateNormal-05"
+--     -- it "dateJapanese-01"
+--     -- it "dateJapanese-02"
+--     -- it "dateJapanese-03"
+--     -- it "dateJapanese-04"
+--     -- it "dateJapanese-05"
+--     -- it "dateJapanese-06"
+--     -- it "date6-01"
+--     -- it "date6-02"
+--     -- it "date6-03"
+--     -- it "date6-04"
+--     -- it "date6-05"
+    
