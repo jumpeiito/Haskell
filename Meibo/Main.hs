@@ -262,7 +262,8 @@ seekS str = seek (keyParse str)
 ----------------------------------------------------------------------------------------------------
 main :: IO ()
 main = do
-  I.hSetEncoding I.stdout I.utf8
+  locEncoding
+
   (y', m', d')    <- today
   commandOutput   <- runRubyString ["f:/Haskell/Meibo/meibo.rb"]
   let currentDay = fromGregorian y' m' d'
