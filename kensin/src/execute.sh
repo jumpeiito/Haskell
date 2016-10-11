@@ -1,5 +1,5 @@
 echo "Haskell Program build up"
-stack build
+stack install
 echo "extracting receipt data"
 kensin.exe -r > ./insert.tex
 echo "extracting meibo data"
