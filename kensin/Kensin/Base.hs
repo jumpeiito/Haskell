@@ -187,14 +187,19 @@ extractElement line = do
 toPayParse :: Parser String
 toPayParse = many $ oneOf "1234567890・"
 
+toPayParse2 :: Parser String
+toPayParse2 = string "現場対応コース"
+  <|> (many $ oneOf "1234567890・")
+
 toPay :: String -> KParse Day -> KParse [Int]
 toPay _ (Left x) = Left x
 toPay str _ = 
   -- 不適格な文字列("1234567890・"以外の文字で構成されている)を排除。
-  case parse toPayParse "" str of
+  case parse toPayParse2 "" str of
     Left s  -> Left s
     Right s -> case split '・' s of
                  [""] -> Left makeMessage
+                 [x]  -> Right [0]
                  s'   -> Right $ map read s'
   where makeMessage =
           newErrorMessage (Expect "numStr combinated with a dot") (newPos "Base.hs" 164 0)
@@ -211,9 +216,10 @@ makeAmountUnder40 = makeAmountCore fst
 
 makeAmount :: Status -> Integer -> [Int] -> CfgReader Integer
 makeAmount st old' payment
-  | st == Already = ((+) 10000) <$> makeAmountUnder40 payment
-  | old' >= 40    = makeAmountOver40 payment
-  | otherwise     = makeAmountUnder40 payment
+  | payment == [0] = return 5400
+  | st == Already  = (10000 +) <$> makeAmountUnder40 payment
+  | old' >= 40     = makeAmountOver40 payment
+  | otherwise      = makeAmountUnder40 payment
 
 hasAmount :: KensinData -> Bool
 hasAmount kd = either (const False) (>0) $ amount kd

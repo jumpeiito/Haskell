@@ -19,7 +19,8 @@ import Data.Yaml                        hiding (Parser, Array)
 data Gender = Male | Female deriving (Show, Eq)
 data YearClass = Under Gender | Over Gender deriving (Show, Eq)
 data KensinOption =
-  Pylori                        -- ピロリ菌
+  Gemba                         -- 現場対応コース
+  | Pylori                      -- ピロリ菌
   | Fundus                      -- 眼底検査
   | Pepsinogen                  -- ペプシノーゲン
   | Barium                      -- 胃バリウム
@@ -103,7 +104,8 @@ defaultConfig = Con { file       = "f:/Haskell/kensin/test.csv"
                                      , [Fundus, Uterine, MammaryGlandEcho])
                                    , ( [Over Female]
                                      , [Fundus, Uterine, Mammography])]
-                    , payList    = [ (Barium,           (6000, 3000)) -- (1)胃バリウム
+                    , payList    = [ (Gemba,            (5400, 5400)) -- (0)現場対応コース
+                                   , (Barium,           (6000, 3000)) -- (1)胃バリウム
                                    , (AbdominalEcho,    (2500, 2500)) -- (2)腹部エコー
                                    , (AB,               (8500, 5500)) -- (3)胃バリウム + 腹部エコー
                                    , (HepatitisVirus,   (1500, 1500)) -- (4)肝炎ウィルス
@@ -119,7 +121,8 @@ defaultConfig = Con { file       = "f:/Haskell/kensin/test.csv"
                                    , (Pneumoconiosis,   (3500, 3500)) -- (14)じん肺
                                    ]
                     , vArray     =
-                      listArray (1, 14) [ (6000, 3000) -- (1)胃バリウム
+                      listArray (0, 15) [ (5400, 5400) -- (0)現場対応コース
+                                        , (6000, 3000) -- (1)胃バリウム
                                         , (2500, 2500) -- (2)腹部エコー
                                         , (8500, 5500) -- (3)胃バリウム + 腹部エコー
                                         , (1500, 1500) -- (4)肝炎ウィルス
