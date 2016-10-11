@@ -75,7 +75,7 @@ makeURL d = do
       murl gen  Base     = gen ++ base
       murl gen (MDay f)  = gen ++ f d
       murl gen (Str s)   = gen ++ s
-  return $ foldl murl "" recipe
+  return $ foldl' murl "" recipe
 ----------------------------------------------------------------------------------------------------
 findTree :: StringLike a => [ArticleKey] -> TagTree a -> [TagTree a]
 findTree akeys tb@TagBranch{} = execWriter $ find' akeys tb
