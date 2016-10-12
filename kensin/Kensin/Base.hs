@@ -20,7 +20,8 @@ module Kensin.Base ( Status (..)
                    , splitSundayOrNot
                    , hasAmount
                    , toTime
-                   -- , testKensinData
+                   , testKensinData
+                   , testData1
                    , toCsvData
                    , concatMapM
                    , (==>)) where
@@ -137,8 +138,8 @@ lineToData line = do
         
 toKeyParse :: Parser (Day, Integer, Integer)
 toKeyParse = do
-  year'   <- read <$> count 4 digit <* char '-'
-  month'  <- read <$> count 2 digit <* char '-'
+  year'   <- read <$> count 4 digit <* oneOf "/-"
+  month'  <- read <$> count 2 digit <* oneOf "/-"
   day'    <- read <$> count 2 digit <* char ' '
   hour'   <- read <$> count 2 digit <* char ':'
   minute' <- read <$> count 2 digit <* many anyChar
@@ -188,10 +189,10 @@ toPay str _ =
   -- 不適格な文字列("1234567890・"以外の文字で構成されている)を排除。
   case parse toPayParse2 "" str of
     Left s  -> Left s
-    Right s -> case split '・' s of
-                 [""] -> Left makeMessage
-                 [x]  -> Right [0]
-                 s'   -> Right $ map read s'
+    Right s -> case (s, split '・' s) of
+                 ("現場対応コース", _) -> Right [0]
+                 (_, [""]) -> Left makeMessage
+                 (_, s')   -> Right $ map read s'
   where makeMessage =
           newErrorMessage (Expect "numStr combinated with a dot") (newPos "Base.hs" 164 0)
 

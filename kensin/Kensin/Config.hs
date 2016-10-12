@@ -86,7 +86,8 @@ defaultConfig = Con { file       = "f:/Haskell/kensin/test.csv"
                     , rubyProg   = "f:/Haskell/kensin/kensin.rb"
                     , keyColNum  = 12
                     , year       = 2016
-                    , nonPayList = [ ( [Under Male, Under Female]
+                    , nonPayList = [ ([], [])
+                                   , ( [Under Male, Under Female]
                                      , [Pylori] )
                                    , ( [Over Male, Over Female]
                                      , [Fundus, Pylori, Pepsinogen])

@@ -11,7 +11,7 @@ import qualified Data.Map               as M
 import qualified Text.Printf            as TP
 
 indexAdd :: [a] -> [(Int, a)]
-indexAdd ls = assocs $ listArray (1, length ls) ls
+indexAdd ls = assocs $ listArray (0, length ls - 1) ls
 
 makePayListCombinator :: ( [KensinOption] -> CfgReader [Bool] ) ->
                          [KensinOption] ->
