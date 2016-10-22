@@ -1,5 +1,10 @@
-module Util.Telephone (telParse, telString, Telephone (..),
-                       fixFilter, mobileFilter) where
+module Util.Telephone (telParse
+                      , telFuncCore
+                      , telString
+                      , Telephone (..)
+                      , fixFilter
+                      , mobileFilter
+                      ) where
 
 import Util                     ((++++))
 import Text.Parsec
@@ -37,7 +42,7 @@ tailStr, tailFaxStr :: Parser String
 tailStr    = headStr <$> (many parenExp <* manyNoNumPlus)
 tailFaxStr = string "(F)" <* manyNoNumPlus
 
-mobileParse, fixParse, telFuncCore :: Parser Telephone
+mobileParse, mobileParse2, fixParse, telFuncCore :: Parser Telephone
 mobileParse = 
   Mobile <$> (manyNoNum *> count 3 digit)       ++++
              string "-"                         ++++
@@ -46,9 +51,16 @@ mobileParse =
              count 4 digit                      ++++
              tailStr
 
+mobileParse2 =
+  Mobile <$> (manyNoNum *> count 3 digit)       ++++
+             string "-"                         ++++
+             count 8 digit                      ++++
+             tailStr
+
 fixParse = try fixParse3 <|> fixParse2
 
 telFuncCore = try mobileParse
+          <|> try mobileParse2
           <|> try fixParse
           <|> (anyChar >> telFuncCore)
 
