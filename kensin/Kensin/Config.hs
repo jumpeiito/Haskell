@@ -15,6 +15,7 @@ import Data.Time
 import System.IO                       (TextEncoding, utf8, mkTextEncoding)
 import System.Environment
 import Data.Yaml                        hiding (Parser, Array)
+import GHC.Generics
 
 data Gender = Male | Female deriving (Show, Eq)
 data YearClass = Under Gender | Over Gender deriving (Show, Eq)
@@ -39,13 +40,19 @@ data KensinOption =
 
 data ShowDirector =
   DayStr Char
+  | MonthDay Char
   | Bunkai
+  | BunkaiHead
+  | Year
   | Name
   | Amount
   | Furigana
   | Time
   | Paylist
-  | Nonpaylist deriving (Show, Eq)
+  | Nonpaylist
+  | Space
+  | Tab
+  deriving (Show, Eq, Read)
 
 sjis :: IO TextEncoding
 sjis = mkTextEncoding "CP932"
@@ -57,6 +64,7 @@ data Config = Con { file               :: FilePath
                   , rcFile             :: IO FilePath
                   , encoding           :: IO TextEncoding
                   , excelFile          :: FilePath
+                  , outputCSV          :: FilePath
                   , rubyProg           :: FilePath
                   , keyColNum          :: Int
                   , year               :: Integer
@@ -77,12 +85,14 @@ data Config = Con { file               :: FilePath
                   , optionLadies2      :: [KensinOption]
                   , optionCamera       :: [KensinOption]
                   , optionJinpai       :: [KensinOption]
+                  , optionDirector     :: [ShowDirector]
                   } 
 
 defaultConfig = Con { file       = "f:/Haskell/kensin/test.csv"
                     , rcFile     = (++ ".kensinrc") <$> homeDirectory
                     , encoding   = return utf8
                     , excelFile  = "f:/Haskell/kensin/16春の健診受付名簿.xlsx"
+                    , outputCSV  = "f:/Haskell/kensin/output"
                     , rubyProg   = "f:/Haskell/kensin/kensin.rb"
                     , keyColNum  = 12
                     , year       = 2016
@@ -163,19 +173,29 @@ defaultConfig = Con { file       = "f:/Haskell/kensin/test.csv"
                     , optionLadies2      = [MammaryGlandEcho, Mammography] -- 乳がん健診
                     , optionJinpai       = [Asbestos, Pneumoconiosis] -- アスベスト・じん肺
                     , optionCamera       = [Gastroscope]              -- 胃カメラ
+                    , optionDirector     = [ MonthDay '-', Space
+                                           , Time, Space
+                                           , BunkaiHead, Tab
+                                           , Name, Tab
+                                           , Year, Space
+                                           , Amount, Space
+                                           , Nonpaylist, Space
+                                           , Paylist ]
                     }
 ----------------------------------------------------------------------------------------------------
 data MyConfig = MC { myEncoding      :: String
                    , myExcelFile     :: String
+                   , myOutputCSV     :: String
                    , myYear          :: Integer
                    , mySunday        :: Day
                    , myReceiptLength :: Int
                    , myMeiboLength   :: Int
-                   } deriving Show
+                   } deriving (Show)
 
 instance FromJSON MyConfig where
   parseJSON (Object v) = MC <$> v .: "Encoding"
                             <*> v .: "ExcelFile"
+                            <*> v .: "CSV"
                             <*> v .: "Year"
                             <*> v .: "Sunday"
                             <*> v .: "ReceiptLength"
@@ -189,9 +209,11 @@ config :: IO Config
 config = do
   home <- homeDirectory
   Just rc <- decodeFile (home ++ "/.kensinrc")
-  return $ defaultConfig { encoding      = encodeString $ myEncoding rc
-                         , excelFile     = myExcelFile rc
-                         , year          = myYear rc
-                         , sunday        = mySunday rc
-                         , receiptLength = myReceiptLength rc
-                         , meiboLength   = myMeiboLength rc}
+  return $ defaultConfig { encoding       = encodeString $ myEncoding rc
+                         , excelFile      = myExcelFile rc
+                         , outputCSV      = myOutputCSV rc
+                         , year           = myYear rc
+                         , sunday         = mySunday rc
+                         , receiptLength  = myReceiptLength rc
+                         , meiboLength    = myMeiboLength rc
+                         }

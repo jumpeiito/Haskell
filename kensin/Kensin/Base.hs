@@ -24,6 +24,8 @@ module Kensin.Base ( Status (..)
                    , testData1
                    , toCsvData
                    , concatMapM
+                   , translate
+                   , translateFree
                    , (==>)) where
 
 import Util                             (ketaNum, readUTF8File)
@@ -58,6 +60,7 @@ data KensinData = KensinData { day      :: Day
                              , furigana :: String
                              , gender   :: Gender
                              , old      :: Integer
+                             , birthday :: String
                              , bunkai   :: Bunkai
                              , number   :: Maybe String
                              , kind     :: Kind
@@ -69,7 +72,7 @@ data KensinData = KensinData { day      :: Day
                              , nonPay   :: KParse [Int] } deriving (Show, Eq)
 
 instance Ord KensinData where
-  compare (KensinData _ x _ _ _ _ _ _ _ _ _ _ _ _ _) (KensinData _ y _ _ _ _ _ _ _ _ _ _ _ _ _)
+  compare (KensinData _ x _ _ _ _ _ _ _ _ _ _ _ _ _ _) (KensinData _ y _ _ _ _ _ _ _ _ _ _ _ _ _ _)
     | x > y = GT
     | x == y = EQ
     | otherwise = LT
@@ -126,6 +129,7 @@ lineToData line = do
                     , furigana  = furi
                     , gender    = g'
                     , old       = old'
+                    , birthday  = birth
                     , kind      = kind'
                     , bunkai    = strToBunkai bk
                     , number    = number'
@@ -227,17 +231,31 @@ concatnate _ [x] = x
 concatnate c (x:xs) = x ++ [c] ++ concatnate c xs
 
 joinPay :: KParse Option -> String
-joinPay = either (const "") (concatnate '・' . map show)
+joinPay op = case op of
+  Right [0] -> "現場対応"
+  Right x   -> concatnate '・' $ map show x
+  otherwise -> ""
+
+blankPadding :: String -> String
+blankPadding str =
+  let len = 6 - length str
+      headerBlank = concat $ take len $ repeat " "
+  in headerBlank ++ str
 
 _toFunction :: ShowDirector -> Translator
-_toFunction (DayStr c) = dayStrWithSep c . day
-_toFunction Bunkai     = bunkaiToStr . bunkai
-_toFunction Name       = name
-_toFunction Amount     = ketaNum . either (const "") show . amount
-_toFunction Furigana   = toZenkaku . furigana
-_toFunction Time       = toTime
-_toFunction Paylist    = joinPay . pay
-_toFunction Nonpaylist = joinPay . nonPay
+_toFunction (DayStr c)   = dayStrWithSep c . day
+_toFunction (MonthDay c) = drop 5 . dayStrWithSep c . day
+_toFunction Bunkai       = bunkaiToStr . bunkai
+_toFunction BunkaiHead   = (:[]) . head . bunkaiToStr . bunkai
+_toFunction Year         = show . old
+_toFunction Name         = name
+_toFunction Amount       = blankPadding . ketaNum . either (const "") show . amount
+_toFunction Furigana     = toZenkaku . furigana
+_toFunction Time         = toTime
+_toFunction Paylist      = joinPay . pay
+_toFunction Nonpaylist   = joinPay . nonPay
+_toFunction Space        = const " "
+_toFunction Tab          = const "\t"
 
 toFunction :: ShowDirector -> Translator
 toFunction sd kd = enclose $ _toFunction sd kd
@@ -245,6 +263,9 @@ toFunction sd kd = enclose $ _toFunction sd kd
 
 translate :: [ShowDirector] -> KensinData -> String
 translate sd kd = concatMap (`toFunction` kd) sd
+
+translateFree :: [ShowDirector] -> KensinData -> String
+translateFree sd kd = concatMap (`_toFunction` kd) sd
 ----------------------------------------------------------------------------------------------------
 isRight :: Either a b -> Bool
 isRight (Right _) = True
@@ -268,3 +289,7 @@ testKensinData = do
 ----------------------------------------------------------------------------------------------------
 concatMapM :: (Monad f, Traversable t) => (a1 -> f [a]) -> t a1 -> f [a]
 concatMapM f a = concat <$> mapM f a
+
+testData1 = do
+  cfg <- config
+  return $ lineToData (split ',' "日野,,秋田　七央,,,ｱｷﾀ ﾅｵ,女,S54.07.30,37,,,,,,日野野色町70-12,601-1415,200-6914,,,,,2016/10/28 08:45,2016/10/7,1,11") `runReader` cfg

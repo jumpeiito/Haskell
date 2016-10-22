@@ -1,14 +1,16 @@
 module Main where
 
-import Util                             (readUTF8File, runRubyString)
+import Util                             (readUTF8File, runRubyString, locEncoding, writeUTF8File)
 import Util.StrEnum                     (split)
 import Kensin.Base
 import Kensin.Meibo
-import Kensin.Config                    (Config (..), config, Gender (..))
+import Kensin.Config                    (Config (..), config, Gender (..), ShowDirector (..))
 import Kensin.Receipt                   (receiptSunday, receiptWeekday, toReceipt)
-import Kensin.Count                     (jusinShowLine, translateJusin)
+import Kensin.Count                     (jusinShowLine, translateJusin, ladies1P, cameraP, jinpaiP)
 import Data.Monoid
+import Data.List                        (sort)
 import Control.Monad.Reader
+import System.Directory                 (getModificationTime, doesFileExist)
 import Test.Hspec
 import qualified Text.Printf            as TP
 import qualified System.IO              as I
@@ -41,6 +43,32 @@ csvRubyData = do
   prog     <- rubyProg <$> ask
   contents <- liftIO $ runRubyString [prog, file']
   return $ toCsvData contents `runReader` cfg
+
+normalPrint :: [KensinData] -> CfgReaderT ()
+normalPrint kds = do
+  direct <- optionDirector <$> ask
+  -- liftIO locEncoding
+  mapM_ (liftIO . putStrLn . translateFree direct) kds
+
+-- writeCSVfile :: CfgReaderT ()
+-- writeCSVfile = do
+--   output   <- outputCSV <$> ask
+--   excelM   <- liftIO $ getModificationTime <$> excelFile <$> ask
+--   outputP  <- liftIO $ doesFileExist output
+--   outputM  <- if outputP then liftIO $ getModificationTime output else return False
+--   file'    <- excelFile <$> ask
+--   prog     <- rubyProg  <$> ask
+--   contents <- liftIO $ runRubyString [prog, file']
+--   liftIO $ writeUTF8File output $ unlines contents
+
+--option--------------------------------------------------------------------------------------------
+optionPrint :: Config -> String -> [KensinData] -> IO ()
+optionPrint cfg sym kd = do
+  let func | sym == "lady"   = ladies1P
+           | sym == "camera" = cameraP
+           | sym == "jinpai" = jinpaiP
+  let list = sort (filterM func kd `runReader` cfg)
+  normalPrint list `runReaderT` cfg
 --main----------------------------------------------------------------------------------------------
 getEncoding :: CfgReader (IO I.TextEncoding)
 getEncoding = encoding <$> ask
@@ -57,21 +85,27 @@ main = do
 
   let jusin kds = mapM_ (putStrLn . jusinShowLine) $ translateJusin kds `runReader` cfg
 
-  case (count' opt, receipt' opt, meibo' opt) of
-    (True, False, False) -> jusin csv
-    (False, True, False) -> do
+  case (count' opt, receipt' opt, meibo' opt, option' opt) of
+    (True, _, _, _) -> jusin csv
+    (_, True, _, _) -> do
       let s = receiptSunday csv `runReader` cfg
       let w = receiptWeekday csv `runReader` cfg
       putStrLn $ toReceipt s `runReader` cfg
       putStrLn $ toReceipt w `runReader` cfg
-    (False, False, True) -> putStrLn (meiboOutput csv `runReader` cfg)
-    (False, False, False) -> jusin csv
-    (_, _, _) -> jusin csv
+    (_, _, True, _) -> putStrLn (meiboOutput csv `runReader` cfg)
+    (_, _, _, True) -> do
+      optionPrint cfg "lady" csv
+      putStrLn "--------------------------------------------------"
+      optionPrint cfg "camera" csv
+      putStrLn "--------------------------------------------------"
+      optionPrint cfg "jinpai" csv
+    (_, _, _, _) -> jusin csv
 --Command Line Option-------------------------------------------------------------------------------
 data Options = Options { count'    :: Bool
                        , receipt'  :: Bool
                        , meibo'    :: Bool
                        , base'     :: Bool
+                       , option'   :: Bool
                        } deriving (Show)
 
 countP :: O.Parser Bool
@@ -86,6 +120,10 @@ meiboP = O.switch $ O.short 'm' <> O.long "meibo" <> O.help "Output meibo."
 baseP :: O.Parser Bool
 baseP = O.switch $ O.short 'b' <> O.long "base" <> O.help "Output basic info."
 
+optionP :: O.Parser Bool
+optionP = O.switch $ O.short 'o' <> O.long "option" <> O.help "Output option data."
+
+
 optionsP :: O.Parser Options
 optionsP = (<*>) O.helper
            $ Options
@@ -93,6 +131,7 @@ optionsP = (<*>) O.helper
            <*> receiptP
            <*> meiboP
            <*> baseP
+           <*> optionP
 
 myParserInfo :: O.ParserInfo Options
 myParserInfo = O.info optionsP $ mconcat 

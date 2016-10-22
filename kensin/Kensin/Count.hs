@@ -1,5 +1,8 @@
 module Kensin.Count ( jusinShowLine
-                    , translateJusin) where
+                    , translateJusin
+                    , ladies1P
+                    , cameraP
+                    , jinpaiP) where
 
 import Util                             (makeMap)
 import Kensin.Base
@@ -68,11 +71,14 @@ tokP kd  = old kd>=40 && old kd<75
 countIf :: (a -> CfgReader Bool) -> [a] -> CfgReader Int
 countIf f kds = length <$> filterM f kds
 
+numberCountRow :: [KensinData] -> CfgReader [Int]
+numberCountRow kds = do
+  mapM (`countIf` kds) [allP, ladies1P, ladies2P, jinpaiP, cameraP]
+  
 numberCount :: [KensinData] -> CfgReader [(String, Int)]
 numberCount kds = do
-  let funcL = [allP, ladies1P, ladies2P, jinpaiP, cameraP]
-  let strL  = ["全受診者", "全女性検診", "乳がんのみ", "アスベスト", "胃カメラ"]
-  zip strL <$> mapM (`countIf` kds) funcL
+  let strL  = ["全", "全女", "乳", "ア", "胃"]
+  zip strL <$> numberCountRow kds
 
 makeKensinMap :: [KensinData] -> M.Map (Maybe String) [KensinData]
 makeKensinMap = makeMap sortKey id
@@ -86,7 +92,7 @@ translateJusin kd = do
 
 jusinShowPair :: (String, Int) -> String
 jusinShowPair (title, len)
-  | len == 0  = "------------"
+  | len == 0  = "----"
   | otherwise = TP.printf "%s: %d" title len
 
 jusinShowLine :: (Maybe String, [(String, Int)]) -> String
@@ -95,3 +101,27 @@ jusinShowLine (Just date, pairs) =
   TP.printf "%s :: %s\t:: %s" date' ps date'
   where ps = intercalate "\t" $ map jusinShowPair pairs
         date' = drop 5 date
+----------------------------------------------------------------------------------------------------
+numberCountArray :: [KensinData] -> CfgReader (Array Int Int)
+numberCountArray kds = listArray (0, 4) <$> numberCountRow kds
+
+translateJusinArray :: [KensinData] -> CfgReader [(Maybe String, Array Int Int)]
+translateJusinArray kds = do
+  let alist = M.toList $ makeKensinMap kds
+  let days  = map fst alist
+  kd <- mapM numberCountArray $ map snd alist
+  return $ zip days kd
+  
+showFigure :: (Int, Int) -> String
+showFigure (black, white) =
+  let bldiv = black `div` 10
+      blmod = black `mod` 10
+      whtop = 10 - blmod
+      whdiv = (white - whtop) `div` 10
+      whbot = white - whdiv * 10 - whtop
+      fbld  = mconcat $ take bldiv $ repeat "●●●●●●●●●●\n"
+      fblm  = mconcat $ take blmod $ repeat "●"
+      fwht  = mconcat $ take whtop $ repeat "○"
+      fwhd  = mconcat $ take whdiv $ repeat "○○○○○○○○○○\n"
+      fwhb  = mconcat $ take whbot $ repeat "○"
+  in fbld ++ fblm ++ fwht ++ "\n" ++ fwhd ++ fwhb
