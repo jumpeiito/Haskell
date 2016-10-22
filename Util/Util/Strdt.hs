@@ -104,12 +104,12 @@ dateJapanese = readDate <$> (stringToGengouYear <$> gengouParse <*> sepYear)
                         <*> sepMonth
                         <*> (try (many1 digit) <|> kanParseStr)
 
-calc = 
+calc = do
   try dateK
-  <|> date8
+  <|> try date8
   <|> try dateNormal
   <|> try dateJapanese
-  <|> date6 
+  <|> try date6 
 ----------------------------------------------------------------------------------------------------
 sepYear4, sepYear, sepMonth :: Parser String
 sepYear4 = (count 4 digit <|> kanParseStr) <* oneOf (separator ++ "年")
