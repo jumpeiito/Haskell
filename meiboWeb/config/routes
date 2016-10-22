@@ -1,0 +1,10 @@
+/static StaticR Static appStatic
+
+/favicon.ico FaviconR GET
+/robots.txt RobotsR GET
+
+/ HomeR GET POST
+
+/comments CommentR POST
+/makeMeibo/#String MakeMeiboR GET
+/csv/#String CSVR GET

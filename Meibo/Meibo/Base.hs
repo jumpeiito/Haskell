@@ -3,11 +3,14 @@ module Meibo.Base ( Line (..)
                   , Key (..)
                   , deleteStr
                   , deleteStrMap
-                  , trans
                   , firstTrans
                   , secondTrans
-                  , trans) where
+                  , trans
+                  , meiboMain
+                  , telephoneStr
+                  , addressStr) where
 
+import Util                             (runRubyString)
 import Util.Strdt
 import Util.Telephone
 import Util.StrEnum
@@ -172,3 +175,24 @@ secondTrans day (x:xs) = case parse (test day) "" x of
 
 trans :: Day -> [String] -> [Line]
 trans day = secondTrans day . firstTrans
+
+meiboMain :: String -> IO [Line]
+meiboMain bunkaiString = do
+  (y, m, d) <- today
+  output    <- runRubyString ["f:/Haskell/Meibo/meibo.rb"]
+  let currentDay = fromGregorian y m d
+  let allList = trans currentDay output
+  let filterF | bunkaiString == "全" = const True
+              | otherwise = (\n -> bunkaiString == bunkai n)
+  return $ filter filterF allList
+
+telephoneStr :: Line -> String
+telephoneStr l =
+  Data.List.intercalate "," $ map telString $ tel l
+
+addressStr :: Line -> String
+addressStr l =
+  take 20 str ++ postStr
+  where str = deleteStrMap ["・", "･", ","] $ ad l
+        postStr | length str <= 20 = ""
+                | otherwise = "..."

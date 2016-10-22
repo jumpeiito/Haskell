@@ -1,0 +1,192 @@
+んにちは、鈴木です。
+
+今回は Yesod の View 周りということで、Hamlet について調べます。
+
+ 
+制御構造など
+$forall
+
+繰り返しをするには $forall を使用します。
+
+まず、繰り返しに使用するための変数 values を Handler で定義します。変数 message は後で使用するので、ついでに定義しています。
+module Handler.Hello where
+
+import Import
+
+getHelloR :: Handler Html
+getHelloR = do
+    let
+        message = "Hello"
+        values = [1..10] :: [Int]
+    defaultLayout $(widgetFile "hello")
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+	
+module Handler.Hello where
+ 
+import Import
+ 
+getHelloR :: Handler Html
+getHelloR = do
+    let
+        message = "Hello"
+        values = [1..10] :: [Int]
+    defaultLayout $(widgetFile "hello")
+
+View (templates/hello.hamlet) で、変数 values の値を一つずつ表示します。
+$forall i <- values
+    #{i}
+1
+2
+	
+$forall i <- values
+    #{i}
+
+$if, $elseif, $else
+
+条件分岐をするには $if, $elseif, $else を使用します。
+$if message == "good morning!"
+    <p>おはよう！
+$elseif message == "hello!"
+    <p>こんにちは！
+$else
+    <p>さようなら！
+1
+2
+3
+4
+5
+6
+	
+$if message == "good morning!"
+    <p>おはよう！
+$elseif message == "hello!"
+    <p>こんにちは！
+$else
+    <p>さようなら！
+
+$maybe, $nothing
+
+Maybe 型（Maybe Int とか Maybe String とか）を扱うには $maybe と $nothing を使用します。
+$maybe x <- lucky
+    運勢は #{x} です。
+$nothing
+    運勢を測定できません。
+1
+2
+3
+4
+	
+$maybe x <- lucky
+    運勢は #{x} です。
+$nothing
+    運勢を測定できません。
+
+lucky が 「Just 777 :: Maybe Int」などであれば「運勢は 777 です。」と表示され、Nothing であれば「運勢を測定できません。」と表示されます。
+$case, $of
+
+パターンマッチを行うには $case と $of を使用します。
+
+上記の $maybe, $nothing の例を $case, $of を使用するように書き換えると、以下のようになります。
+$case lucky
+    $of Just x
+        運勢は #{x} です。
+    $of Nothing
+        運が足りません。
+1
+2
+3
+4
+5
+	
+$case lucky
+    $of Just x
+        運勢は #{x} です。
+    $of Nothing
+        運が足りません。
+
+$with
+
+$with を使用すると式の別名（シノニム）を作ることができます。長い式を何度も使う場合は $with を使用すると良さそうです。
+$with longMessage = message ++ "!!!!!"
+1
+	
+$with longMessage = message ++ "!!!!!"
+
+$newline never
+
+ドキュメントには書かれていないようなのですが、「$newline never」と書いておくと HTML 生成時に改行が削除されるようです。
+$newline never
+1
+	
+$newline never
+
+ 
+変数補間: #{ ... }
+
+変数の値を埋め込むには #{変数名} と記述します。
+メッセージは #{message} です。
+1
+	
+メッセージは #{message} です。
+
+ 
+Type-Safe URL: @{ ... }
+
+URL を生成するには @{リソース名} と記述します。
+トップページの URL は @{HomeR} です。
+
+<a href=@{HomeR}>トップページはこちら！</a>
+1
+2
+3
+	
+トップページの URL は @{HomeR} です。
+ 
+<a href=@{HomeR}>トップページはこちら！</a>
+
+ 
+Widget の埋め込み: ^{ ... }
+
+Yesod ではテンプレートの中に他のテンプレートを埋め込むことができます。埋め込むことができるパーツのことを Widget と呼びます。
+
+まずは Widget を定義してみます。（Handler/Hello.hs）
+sampleWidget :: Widget
+sampleWidget = $(widgetFile "sample-widget")
+1
+2
+	
+sampleWidget :: Widget
+sampleWidget = $(widgetFile "sample-widget")
+
+次に sampleWidget 用のテンプレート templates/sample-widget.hamlet を作成します。
+<div>
+    Widget です。
+1
+2
+	
+<div>
+    Widget です。
+
+作成した sampleWidget を埋め込むには、次のように記述します。
+^{sampleWidget}
+1
+	
+^{sampleWidget}
+
+ 
+まとめ
+
+制御構造などは動的なページを生成する場合には必須の機能なので、きちんと把握する必要がありそうです。
+
+他にも $maybe や $case のような Haskell だからこそ必要な機能や、Widget のようなパーツを組み合わせる仕組みがありました。
+
+うまく使いこなせば View まわりの実装が綺麗にできるかもしれません。
