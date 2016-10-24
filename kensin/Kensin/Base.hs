@@ -289,7 +289,3 @@ testKensinData = do
 ----------------------------------------------------------------------------------------------------
 concatMapM :: (Monad f, Traversable t) => (a1 -> f [a]) -> t a1 -> f [a]
 concatMapM f a = concat <$> mapM f a
-
-testData1 = do
-  cfg <- config
-  return $ lineToData (split ',' "日野,,秋田　七央,,,ｱｷﾀ ﾅｵ,女,S54.07.30,37,,,,,,日野野色町70-12,601-1415,200-6914,,,,,2016/10/28 08:45,2016/10/7,1,11") `runReader` cfg
