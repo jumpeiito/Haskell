@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
 module Meibo.Base ( Line (..)
                   , Key (..)
                   , deleteStr
@@ -9,17 +9,27 @@ module Meibo.Base ( Line (..)
                   , meiboMain
                   , telephoneStr
                   , addressStr
-                  , output) where
+                  , output
+                  , getMeibo) where
 
-import Util                             (runRubyString, readUTF8File)
+import Codec.Xlsx                       hiding (Parser)
+import Codec.Xlsx.Formatted
+import qualified Data.ByteString.Lazy as L
+import Control.Lens                     hiding (noneOf)
+import Data.Maybe
+import Data.Text                        (unpack, pack, Text)
+import Data.Time.Calendar
+import GHC.Float
+import Util                             (runRubyString, readUTF8File, group)
 import Util.Strdt
 import Util.Telephone
 import Util.StrEnum
-import Data.List
+import Data.List                        hiding (group)
 import Data.Maybe                       (fromMaybe, isJust)
 import Control.Monad.Writer
 import Control.Monad.State
 import Data.Time
+import Control.Concurrent.Async
 import System.Process
 import Text.Parsec                      hiding (Line, State)
 import Text.Parsec.String
@@ -95,6 +105,30 @@ test day = do
           cell = many $ noneOf [sep]
           sep' = char sep
           
+test2 :: Day -> [Text] -> Line
+test2 day tx = 
+  let [bnk, hn, sym, hcho, nm, ad', tel', exp', exp2', fu', bir] =
+        map unpack tx
+      adtel  = ad' ++ "・" ++ tel'
+      telp   = telParse adtel
+      birth' = strdt bir
+  in Line { bunkai = bnk
+          , bknum  = bunkaiNumber bnk
+          , han    = hn
+          , kind   = removeSymbol sym
+          , hancho = case hcho of "" -> Nothing; _ -> Just "●"
+          , gen    = adtel ++ "\n"
+          , name   = nm
+          , nameP  = nameParse nm
+          , ad     = deleteStrMap (map telString telp) adtel
+          , tel    = telp
+          , work   = exp'
+          , furi   = fu'
+          , birthS = bir
+          , birth  = birth'
+          , year   = howOld <$> birth' <*> Just day
+          , Meibo.Base.exp = exp2' }
+
 removeSymbol :: String -> String
 removeSymbol = deleteStrMap ["◎", "○"]
 
@@ -144,45 +178,70 @@ zipWithNth numList a b f = snd $ runWriter (loop a b 0)
           | n `elem` numList = do { tell [f x y]; loop xs ys (n+1) }
           | otherwise        = do { tell [x];     loop xs ys (n+1) }
           
-replaceConcat :: String -> [String] -> [String]
-replaceConcat line (head:rest) =
-  intercalate "," replaced : rest
-  where (lineX, headX) = (split ',' line, split ',' head)
-        a `plus` b     = a ++ "・" ++ b
-        replaced       = zipWithNth [5,6] headX lineX plus
+-- replaceConcat :: String -> [String] -> [String]
+-- replaceConcat line (head:rest) =
+--   intercalate "," replaced : rest
+--   where (lineX, headX) = (split ',' line, split ',' head)
+--         a `plus` b     = a ++ "・" ++ b
+--         replaced       = zipWithNth [5,6] headX lineX plus
 
-firstTrans :: [String] -> [String]
-firstTrans lyne = reverse answer
-  where (_, answer) = (`execState` ("0", [])) $ ftrans lyne
+-- firstTrans :: [Text] -> [Text]
+-- firstTrans lyne = reverse answer
+--   where (_, answer) = (`execState` ("0", [])) $ ftrans lyne
 
-ftrans :: [String] -> State (String, [String]) [()]
-ftrans csv = do
+-- ftrans :: [Text] -> State (Text, [Text]) [()]
+-- ftrans csv = do
+--   forM csv $ \line -> do
+--     (hanNum, csvReturn) <- get
+--     let nameBlankP = line `blankP` 4
+--     let hanBlankP  = line `blankP` 1
+--     case (nameBlankP, hanBlankP) of
+--       (True, _) -> put (hanNum, line `replaceConcat` csvReturn)
+--       (_, True) -> put (hanNum, replace hanNum line : csvReturn)
+--       (_, _)    -> put (line <@> 1, line : csvReturn)
+--   where replace hNum lyne = case split ',' lyne of
+--                               head':_:rest' -> intercalate "," $ head':hNum:rest'
+--                               _             -> ""
+
+-- secondTrans :: Day -> [Text] -> [Line]
+-- secondTrans _ [] = []
+-- secondTrans day (x:xs) = case parse (test2 day) "" x of
+--   Right s -> s : secondTrans day xs
+--   Left _  -> secondTrans day xs
+
+-- trans :: Day -> [Text] -> [Line]
+-- trans day = secondTrans day . firstTrans
+firstTrans = undefined
+secondTrans = undefined
+trans day tx = st2 day $ snd $ (`execState` ("", [])) $ ft2 tx
+
+combinate :: [Text] -> [[Text]] -> [[Text]]
+combinate txLine (car:cdr) = replaced : cdr
+  where a `plus` b = mconcat [a, "・" , b]
+        replaced   = zipWithNth [5,6] car txLine plus
+
+ft2 :: [[Text]] -> State (Text, [[Text]]) [()]
+ft2 csv = do
   forM csv $ \line -> do
-    (hanNum, csvReturn) <- get
-    let nameBlankP = line `blankP` 4
-    let hanBlankP  = line `blankP` 1
-    case (nameBlankP, hanBlankP) of
-      (True, _) -> put (hanNum, line `replaceConcat` csvReturn)
-      (_, True) -> put (hanNum, replace hanNum line : csvReturn)
-      (_, _)    -> put (line <@> 1, line : csvReturn)
-  where replace hNum lyne = case split ',' lyne of
-                              head':_:rest' -> intercalate "," $ head':hNum:rest'
-                              _             -> ""
+    (hanNumber, ret) <- get
+    case (line!!4=="", line!!1=="") of
+      (True, _)  -> put (hanNumber, line `combinate` ret)
+      (_, True)  -> put (hanNumber, changeHanNum hanNumber line : ret)
+      (_, _)     -> put (line!!1, line : ret)
+  where changeHanNum h (head':_:rest') = head':h:rest'
+        changeHanNum _ _ = []
 
-secondTrans :: Day -> [String] -> [Line]
-secondTrans _ [] = []
-secondTrans day (x:xs) = case parse (test day) "" x of
-  Right s -> s : secondTrans day xs
-  Left _  -> secondTrans day xs
-
-trans :: Day -> [String] -> [Line]
-trans day = secondTrans day . firstTrans
+st2 :: Day -> [[Text]] -> [Line]
+st2 day = map (test2 day)
 
 meiboMain :: String -> IO [Line]
 meiboMain bunkaiString = do
   (y, m, d) <- today
   -- _         <- runRubyString ["-U", "f:/Haskell/Meibo/meibo.rb"]
-  output    <- runRubyString ["-U", "f:/Haskell/Meibo/meibo.rb"]
+  -- garbage <- async $ runRubyString ["-U", "c:/Users/Jumpei/Haskell/Meibo/meibo.rb"]
+  -- dummy   <- wait garbage
+  -- output  <- lines <$> readUTF8File "c:/Users/Jumpei/Haskell/Meibo/.meibo"
+  output  <- getMeibo
   let currentDay = fromGregorian y m d
   let allList = trans currentDay output
   let filterF | bunkaiString == "全" = const True
@@ -222,3 +281,35 @@ output l =
            , ("hancho", bool)]
   where bool | isJust $ hancho l = "1"
              | otherwise = "0"
+
+_toString :: CellValue -> Text
+_toString (CellText x) = x
+_toString (CellDouble d) = pack . show . truncate $ d
+_toString (CellBool d) = pack $ show d
+_toString (CellRich []) = ""
+_toString (CellRich x) = mconcat $ map _richTextRunText x
+
+toString :: Maybe CellValue -> Text
+toString Nothing = ""
+toString (Just x) = _toString x
+
+getMeibo :: IO [[Text]]
+getMeibo = do
+  bs <- L.readFile "F:/組合員名簿/組合員名簿.xlsm"
+  let book  = toXlsx bs
+  ms <- mapM (getMeiboSheet book) [ "石田"
+                                  , "日野"
+                                  , "小栗栖"
+                                  , "一言寺"
+                                  , "三宝院"
+                                  , "点在" ]
+  return $ concat ms
+  
+
+getMeiboSheet :: Xlsx -> Text -> IO [[Text]]
+getMeiboSheet xlsx idx = do
+  let flatten idx = [ xlsx ^? ixSheet idx . ixCell x . cellValue . _Just
+                    | x <- (,) <$> [6..300] <*> [1..10]]
+  let initial = group 10 (map toString $ flatten idx)
+  return $ map (idx:) initial
+

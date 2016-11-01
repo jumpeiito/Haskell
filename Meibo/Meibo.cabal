@@ -23,6 +23,13 @@ executable Meibo
                      , mtl
                      , process
                      , containers
+                     , async
+                     , process
+                     , xlsx
+                     , bytestring
+                     , lens
+                     , xlsx
+                     , text
   other-modules:       Meibo.Base
   default-language:    Haskell2010
 
@@ -40,6 +47,10 @@ library
                      , containers
                      , async
                      , process
+                     , xlsx
+                     , bytestring
+                     , lens
+                     , xlsx
 
 source-repository head
   type:     git

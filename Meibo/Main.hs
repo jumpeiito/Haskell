@@ -8,7 +8,7 @@ import Util.StrEnum
 import Data.Time
 import Data.List
 import Data.Maybe                       (isJust, fromJust, fromMaybe)
-import Meibo.Base                       (Line (..), Key (..), deleteStr, deleteStrMap, trans)
+import Meibo.Base                       (Line (..), Key (..), deleteStr, deleteStrMap, trans, getMeibo)
 import Text.Parsec                      hiding (Line, State)
 import Text.Parsec.String
 import Control.Arrow                    ((&&&))
@@ -265,8 +265,9 @@ main = do
   locEncoding
 
   (y', m', d')    <- today
-  _               <- runRubyString ["f:/Haskell/Meibo/meibo.rb"]
-  commandOutput   <- lines <$> readUTF8File "f:/Haskell/Meibo/.meibo"
+  -- _               <- runRubyString ["f:/Haskell/Meibo/meibo.rb"]
+  -- commandOutput   <- lines <$> readUTF8File "f:/Haskell/Meibo/.meibo"
+  commandOutput <- getMeibo
   let currentDay = fromGregorian y' m' d'
   let mainList = trans currentDay commandOutput
   args            <- getArgs

@@ -11,8 +11,8 @@ Bunkai = { 1 => "石田",
          }
 
 INITFILE = "s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm"
-TESTFILE = "f:/組合員名簿.xlsm"
-TEXTFILE = "f:/Haskell/meibo/.meibo"
+TESTFILE = "f:/組合員名簿/組合員名簿.xlsm"
+TEXTFILE = "c:/Users/Jumpei/Haskell/Meibo/.meibo"
 
 def file()
   File.exists?(INITFILE) ? INITFILE : TESTFILE
@@ -71,4 +71,6 @@ def write_textfile()
 end
 
 write_textfile() if textfile_writable_p
-puts File.read(TEXTFILE)
+# puts File.read(TEXTFILE)
+# File.readlines(TEXTFILE).each {|line| puts line }
+puts ""
