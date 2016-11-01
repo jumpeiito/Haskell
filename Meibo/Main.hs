@@ -265,7 +265,8 @@ main = do
   locEncoding
 
   (y', m', d')    <- today
-  commandOutput   <- runRubyString ["f:/Haskell/Meibo/meibo.rb"]
+  _               <- runRubyString ["f:/Haskell/Meibo/meibo.rb"]
+  commandOutput   <- lines <$> readUTF8File "f:/Haskell/Meibo/.meibo"
   let currentDay = fromGregorian y' m' d'
   let mainList = trans currentDay commandOutput
   args            <- getArgs

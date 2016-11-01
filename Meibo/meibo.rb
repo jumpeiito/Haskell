@@ -1,51 +1,74 @@
-# coding: cp932
+# coding: utf-8
 require 'win32ole'
 require 'pp'
 
-bunkai = { 1 => "Î“c",
-           2 => "“ú–ì",
-           3 => "¬ŒI²",
-           4 => "ˆêŒ¾›",
-           5 => "O•ó‰@",
-           6 => "“_İ"
+Bunkai = { 1 => "çŸ³ç”°",
+           2 => "æ—¥é‡",
+           3 => "å°æ —æ –",
+           4 => "ä¸€è¨€å¯º",
+           5 => "ä¸‰å®é™¢",
+           6 => "ç‚¹åœ¨"
          }
 
-def float_to_int line
-  line.map {|i|
-    if i.kind_of?(Float)
-    then i.to_i
-    else i
-    end
-  }
+INITFILE = "s:/é¦¬å ´ãƒ•ã‚©ãƒ«ãƒ€/çµ„åˆå“¡åç°¿/çµ„åˆå“¡åç°¿.xlsm"
+TESTFILE = "f:/çµ„åˆå“¡åç°¿.xlsm"
+TEXTFILE = "f:/Haskell/meibo/.meibo"
+
+def file()
+  File.exists?(INITFILE) ? INITFILE : TESTFILE
 end
 
-def filter_blank lines
+def float_to_int(line)
+  line.map {|el| case el
+                 when Float; el.to_i
+                 else el
+                 end }
+end
+
+def filter_blank(lines)
   lines.keep_if {|line| line.compact != [] }
 end
 
-begin
-  ex = WIN32OLE.new('Excel.Application')
-  ex.Visible = false;
-  ex.DisplayAlerts = false;
-  if File.exists?("s:/”nêƒtƒHƒ‹ƒ_/‘g‡ˆõ–¼•ë/‘g‡ˆõ–¼•ë.xlsm")
-    bk = ex.Workbooks.Open("s:/”nêƒtƒHƒ‹ƒ_/‘g‡ˆõ–¼•ë/‘g‡ˆõ–¼•ë.xlsm")
-  else
-    bk = ex.Workbooks.Open("f:/‘g‡ˆõ–¼•ë/‘g‡ˆõ–¼•ë.xlsm")
+def with_excel()
+  begin
+    ex = WIN32OLE.new('Excel.Application')
+    ex.Visible = false;
+    ex.DisplayAlerts = false;
+    bk = ex.Workbooks.Open(file())
+    yield(bk)
+  ensure
+    bk.Close()
+    ex.Quit()
   end
-  # bk = ex.Workbooks.Open("f:/‘g‡ˆõ–¼•ë.xlsm")
-  ary = Array.new
-  1.upto(6) do |i|
-    sh = bk.Worksheets.Item(i)
-    val = filter_blank sh.Range("A6:J300").Value
-    ary = ary + val.map {|line| [bunkai[i]] + line }
-  end
-
-  ary.each do |lines|
-    lines = float_to_int lines
-    puts lines.join(",")
-  end
-
-ensure
-  bk.Close()
-  ex.Quit()
 end
+
+def excel_contents 
+  ary = Array.new
+  with_excel {|book|
+    1.upto(6) {|index|
+      sheet = book.Worksheets.Item(index)
+      value = filter_blank(sheet.Range("A6:J300").Value)
+      lines = value.map {|line| [Bunkai[index]] + line }
+        .map {|line| float_to_int(line) }
+        .map {|line| line.join(",") }
+      ary   = ary + lines 
+    }
+  }
+  return ary.join("\n").encode('utf-8')
+end
+
+def textfile_writable_p
+  not(File.exists?(TEXTFILE)) ||
+    File.size(TEXTFILE) == 0  ||
+    File.mtime(TEXTFILE) < File.mtime(file())
+end
+
+def write_textfile()
+  File.open(TEXTFILE, 'w') {|f|
+    # excel_contents().each {|line| f.puts(line) }
+    f.puts excel_contents()
+  }
+end
+
+write_textfile() if textfile_writable_p
+puts File.read(TEXTFILE)

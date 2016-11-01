@@ -219,7 +219,8 @@ rotate _ [] = []
 rotate n x = (drop n x) ++ (take n x)
 
 runRuby :: [String] -> IO (I.Handle, I.Handle, I.Handle, ProcessHandle)
-runRuby opt = runInteractiveProcess "ruby" opt Nothing Nothing
+runRuby opt = do
+  runInteractiveProcess "ruby" opt Nothing Nothing
 
 runRubyString :: [String] -> IO [String]
 runRubyString opt = do

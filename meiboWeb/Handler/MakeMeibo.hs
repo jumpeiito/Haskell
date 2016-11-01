@@ -23,13 +23,13 @@ buttonMakeCSV bunkai allList = do
   toWidget [whamlet|
                    <script type="text/javascript">
                       function getCheckbox () {
-                         var ret = "";
-                         for (var i = 0; i < #{length allList}; i++) {
-                            if (document.forms.CheckBox[i].checked == true) {
-                               ret = ret + String(i) + ",";
-                            }
-                         }
-                         window.open("/csv/#{bunkai}," + ret, '_blank');
+                         // var ret = "";
+                         // for (var i = 0; i < #{length allList}; i++) {
+                         //    if (document.forms.CheckBox[i].checked == true) {
+                         //       ret = ret + String(i) + ",";
+                         //    }
+                         // }
+                         window.open("/csv/全", '_blank');
                       }
                    |]
 

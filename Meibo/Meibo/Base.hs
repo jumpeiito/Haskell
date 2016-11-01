@@ -8,13 +8,15 @@ module Meibo.Base ( Line (..)
                   , trans
                   , meiboMain
                   , telephoneStr
-                  , addressStr) where
+                  , addressStr
+                  , output) where
 
-import Util                             (runRubyString)
+import Util                             (runRubyString, readUTF8File)
 import Util.Strdt
 import Util.Telephone
 import Util.StrEnum
 import Data.List
+import Data.Maybe                       (fromMaybe, isJust)
 import Control.Monad.Writer
 import Control.Monad.State
 import Data.Time
@@ -179,7 +181,8 @@ trans day = secondTrans day . firstTrans
 meiboMain :: String -> IO [Line]
 meiboMain bunkaiString = do
   (y, m, d) <- today
-  output    <- runRubyString ["f:/Haskell/Meibo/meibo.rb"]
+  -- _         <- runRubyString ["-U", "f:/Haskell/Meibo/meibo.rb"]
+  output    <- runRubyString ["-U", "f:/Haskell/Meibo/meibo.rb"]
   let currentDay = fromGregorian y m d
   let allList = trans currentDay output
   let filterF | bunkaiString == "全" = const True
@@ -196,3 +199,26 @@ addressStr l =
   where str = deleteStrMap ["・", "･", ","] $ ad l
         postStr | length str <= 20 = ""
                 | otherwise = "..."
+
+outputBase :: Line -> String
+outputBase l = 
+  bun ++ han' ++ " " ++ name' ++ "\t" ++ telephoneStr l
+  where bun   = (:[]) $ head $ bunkai l
+        head' = take (2 - length (han l)) $ repeat '0'
+        tail' = take (16 - length (name l)) $ repeat ' '
+        name' = name l ++ tail'
+        han'  = head' ++ han l
+
+sexpSymbol :: (String, String) -> String
+sexpSymbol (sym, val) = ":" ++ sym ++ " \"" ++ val ++ "\" "
+
+sexpList :: [(String, String)] -> String
+sexpList sxl = "(" ++ concatMap sexpSymbol sxl ++ ")"
+
+output :: Line -> String
+output l =
+  sexpList [ ("value", outputBase l)
+           , ("type", kind l)
+           , ("hancho", bool)]
+  where bool | isJust $ hancho l = "1"
+             | otherwise = "0"
