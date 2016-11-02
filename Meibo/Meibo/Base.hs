@@ -3,8 +3,6 @@ module Meibo.Base ( Line (..)
                   , Key (..)
                   , deleteStr
                   , deleteStrMap
-                  , firstTrans
-                  , secondTrans
                   , trans
                   , meiboMain
                   , telephoneStr
@@ -69,42 +67,6 @@ data Key =
   | And [Key]
   | Not Key deriving (Show, Eq, Read)
 ----------------------------------------------------------------------------------------------------
-test :: Day -> Parser Line
-test day = do
-  bnk   <- choice (map string ["石田", "日野", "小栗栖", "一言寺", "三宝院", "点在"]) <* sep'
-  hn    <- many1 digit <* sep'
-  sym   <- cell <* sep'
-  hcho  <- cell <* sep'
-  nm    <- cell <* sep'
-  ad'   <- cell <* sep'
-  tel'  <- cell <* sep'
-  exp'  <- cell <* sep'
-  exp2' <- cell <* sep'
-  fu'   <- cell <* sep'
-  bir   <- cell
-  let adtel  = ad' ++ "・" ++ tel'
-  let telp   = telParse adtel
-  let birth' = strdt bir
-  return Line { bunkai = bnk,
-                bknum  = bunkaiNumber bnk,
-                han    = hn,
-                kind   = removeSymbol sym,
-                hancho = case hcho of "" -> Nothing; _ -> Just "●",
-                gen    = adtel ++ "\n",
-                name   = nm,
-                nameP  = nameParse nm,
-                ad     = deleteStrMap (map telString telp) adtel,
-                tel    = telp,
-                work   = exp',
-                furi   = fu',
-                birthS = bir,
-                birth  = birth',
-                year   = howOld <$> birth' <*> Just day,
-                Meibo.Base.exp = exp2' }
-    where sep  = ','
-          cell = many $ noneOf [sep]
-          sep' = char sep
-          
 test2 :: Day -> [Text] -> Line
 test2 day tx = 
   let [bnk, hn, sym, hcho, nm, ad', tel', exp', exp2', fu', bir] =
@@ -178,41 +140,6 @@ zipWithNth numList a b f = snd $ runWriter (loop a b 0)
           | n `elem` numList = do { tell [f x y]; loop xs ys (n+1) }
           | otherwise        = do { tell [x];     loop xs ys (n+1) }
           
--- replaceConcat :: String -> [String] -> [String]
--- replaceConcat line (head:rest) =
---   intercalate "," replaced : rest
---   where (lineX, headX) = (split ',' line, split ',' head)
---         a `plus` b     = a ++ "・" ++ b
---         replaced       = zipWithNth [5,6] headX lineX plus
-
--- firstTrans :: [Text] -> [Text]
--- firstTrans lyne = reverse answer
---   where (_, answer) = (`execState` ("0", [])) $ ftrans lyne
-
--- ftrans :: [Text] -> State (Text, [Text]) [()]
--- ftrans csv = do
---   forM csv $ \line -> do
---     (hanNum, csvReturn) <- get
---     let nameBlankP = line `blankP` 4
---     let hanBlankP  = line `blankP` 1
---     case (nameBlankP, hanBlankP) of
---       (True, _) -> put (hanNum, line `replaceConcat` csvReturn)
---       (_, True) -> put (hanNum, replace hanNum line : csvReturn)
---       (_, _)    -> put (line <@> 1, line : csvReturn)
---   where replace hNum lyne = case split ',' lyne of
---                               head':_:rest' -> intercalate "," $ head':hNum:rest'
---                               _             -> ""
-
--- secondTrans :: Day -> [Text] -> [Line]
--- secondTrans _ [] = []
--- secondTrans day (x:xs) = case parse (test2 day) "" x of
---   Right s -> s : secondTrans day xs
---   Left _  -> secondTrans day xs
-
--- trans :: Day -> [Text] -> [Line]
--- trans day = secondTrans day . firstTrans
-firstTrans = undefined
-secondTrans = undefined
 trans day tx = st2 day $ snd $ (`execState` ("", [])) $ ft2 tx
 
 combinate :: [Text] -> [[Text]] -> [[Text]]
@@ -237,11 +164,7 @@ st2 day = map (test2 day)
 meiboMain :: String -> IO [Line]
 meiboMain bunkaiString = do
   (y, m, d) <- today
-  -- _         <- runRubyString ["-U", "f:/Haskell/Meibo/meibo.rb"]
-  -- garbage <- async $ runRubyString ["-U", "c:/Users/Jumpei/Haskell/Meibo/meibo.rb"]
-  -- dummy   <- wait garbage
-  -- output  <- lines <$> readUTF8File "c:/Users/Jumpei/Haskell/Meibo/.meibo"
-  output  <- getMeibo
+  output    <- getMeibo
   let currentDay = fromGregorian y m d
   let allList = trans currentDay output
   let filterF | bunkaiString == "全" = const True
@@ -295,7 +218,7 @@ toString (Just x) = _toString x
 
 getMeibo :: IO [[Text]]
 getMeibo = do
-  bs <- L.readFile "F:/組合員名簿/組合員名簿.xlsm"
+  bs <- L.readFile "s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm"
   let book  = toXlsx bs
   ms <- mapM (getMeiboSheet book) [ "石田"
                                   , "日野"
