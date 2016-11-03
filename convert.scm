@@ -48,14 +48,14 @@
 
 (define (replace-convert line)
   (let loop ((r "") (l line))
-    (let ((match (replace-regexp l)))
-      (if (string= l "")
-	  r
-	  (if match
-	      (loop (++ r (%replace-convert (take-head-key l)))
-		    (drop-head-key l))
-	      (loop (++ r (string-take l 1))
-		    (string-drop l 1)))))))
+    (cond
+     ((string= l "") r)
+     ((replace-regexp l)
+      (loop (++ r (%replace-convert (take-head-key l)))
+	    (drop-head-key l)))
+     (#t
+      (loop (++ r (string-take l 1))
+	    (string-drop l 1))))))
 
 (define (drop-head-key line)
   (string-drop line
@@ -88,21 +88,21 @@
 
 (define (time-convert line)
   (let loop ((r "") (l line))
-    (let ((match (time-regexp l)))
-      (if (string= l "")
-	  r
-	  (if match
-	      (loop (++ r (%time-convert (string-take l 6)))
-		    (string-drop l 6))
-	      (loop (++ r (string-take l 1))
-		    (string-drop l 1)))))))
+    (cond
+     ((string= l "") r)
+     ((time-regexp l)
+      (loop (++ r (%time-convert (string-take l 6)))
+	    (string-drop l 6)))
+     (#t
+      (loop (++ r (string-take l 1))
+	    (string-drop l 1))))))
+
+(define main-translator (compose time-convert
+				 replace-convert
+				 line-convert))
 
 (define (main args)
   (map
-   (lambda (line)
-     (print ((compose time-convert
-		      replace-convert
-		      line-convert) line)))
+   (compose print main-translator)
    (string-split (port->string (standard-input-port))
 		 "\n")))
-
