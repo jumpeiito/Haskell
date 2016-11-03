@@ -27,6 +27,7 @@
     ("f"         . "伏見")))
 
 (define ++ string-append)
+(define +++ string-join)
 (define replace-regexp #/^,[a-z]+/)
 (define time-regexp    #/^<[0-9]{4}>/)
 
@@ -100,6 +101,32 @@
 (define main-translator (compose time-convert
 				 replace-convert
 				 line-convert))
+
+(define (group n l)
+  (let loop ((r '()) (ls l))
+    (cond
+     ((> n (length ls))
+      (reverse (cons ls r)))
+     (#t
+      (loop (cons (take ls n) r) (drop ls n))))))
+
+(define (colnum str)
+  (let ((slist (reverse (group 3 (reverse (string->list str))))))
+    (string-reverse
+     (fold (lambda (x y)
+	     (cond
+	      ((string= y "") (list->string x))
+	      ((null? x)      y)
+	      (#t             (string-join `(,(list->string x)
+					     ,y) ","))))
+	   ""
+	   slist))))
+
+(define (colnum-yen str)
+  (++ (colnum str) "円"))
+
+(define (colnum-by per num)
+  (+++ `("@" ,(colnum per) "×" ,(colnum num) "人") ""))
 
 (define (main args)
   (map
