@@ -1,8 +1,13 @@
 (use srfi-13)
 (use srfi-19)
+(use util.match)
 
-;; "** ,ks :<1104>・,mine" → "※関電スタンディングアピール:11/4(金)・峰"
+;; "** ,ks :<1104~05,09,11>・,mine" → "※関電スタンディングアピール:11/4(金)・峰"
 ;; "*** ,kokuho 理事会:<1129>・,mukai" → "　＊建築国保理事会:11/29(火)・向井"
+;; "[1201379183103810]" → "　1,201,379,183,103,810円
+;; "[zd120001]" → "　＊建築国保理事会:11/29(火)・向井"
+;; "*** ,kokuho 理事会:<1129>・,mukai" → "　＊建築国保理事会:11/29(火)・向井"
+;; "{1000,20,30}"
 (define translate-table
   '(
     ("mukai"	 . "向井")
@@ -28,12 +33,16 @@
     ("s"         . "三宝院")
     ("t"         . "点在")
     ("d"         . "醍醐支部")
-    ("f"         . "伏見支部")))
+    ("f"         . "伏見支部")
+    ("shimbun"   . "しんぶん赤旗(日刊紙3,497円、日曜版823円)、京都民報623円")
+    ("chik"      . "地区労分担金＠130×250円")))
 
 (define ++ string-append)
 (define +++ string-join)
 (define replace-regexp #/^,[a-z]+/)
-(define time-regexp    #/^<[0-9]{4}>/)
+(define time-regexp    #/^<[,~0-9]+>/)
+(define (both-strip str)
+  (string-drop-right (string-drop str 1) 1))
 
 (define-macro (aif cnd . clause)
   `(let ((it ,cnd))
@@ -47,64 +56,135 @@
    ((#/^\*\*\*\* / line) (++ "　　～" (string-drop line 5)))
    (#t                 line)))
 
+(define (chop str)
+  (if (#/ $/ str)
+      (string-drop-right str 1)
+      str))
+
 (define (%replace-convert key)
-  (cdr (assoc (string-drop key 1)
+  (cdr (assoc (chop (string-drop key 1))
 	      translate-table)))
 
 (define (replace-convert line)
-  (let loop ((r "") (l line))
+  (convert-format line
+		  (list :regexp replace-regexp
+			:end-token #\space
+			:converter %replace-convert)))
+
+(define (split-string-at str index)
+  (values (string-take str (+ 1 index))
+	  (string-drop str (+ 1 index))))
+
+(define (take-keywords line end-token)
+  (split-string-at line
+		   (aif (string-index line end-token)
+			it
+			(- (string-length line) 1))))
+
+(define (collect-keywords line)
+  (let loop ((r '()) (l line))
     (cond
-     ((string= l "") r)
-     ((replace-regexp l)
-      (loop (++ r (%replace-convert (take-head-key l)))
-	    (drop-head-key l)))
-     (#t
-      (loop (++ r (string-take l 1))
-	    (string-drop l 1))))))
+     ((#/[0-9]{4}/ l)
+      (loop (cons (string-take l 4) r)
+	    (string-drop l 4)))
+     ((#/[,~][0-9]{2}/ l)
+      (loop (cons (%time-convert-lambda (string-take l 3)) r)
+	    (string-drop l 3)))
+     (#t (reverse r)))))
 
-(define (drop-head-key line)
-  (string-drop line
-	       (+ 1 (aif (string-index line #\space)
-			 it
-			 (- (string-length line) 1)))))
+(define (%time-convert-lambda key)
+  (lambda (year month)
+    (let ((header (string-take key 1)))
+      (++ (cond
+	   ((string= header "~") "〜")
+	   ((string= header ",") "、")
+	   (else ""))
+	  (%%time-convert year month
+			  (string->number (string-drop key 1)))))))
 
-(define (take-head-key line)
-  (string-take line
-	       (aif (string-index line #\space)
-		    it
-		    (string-length line))))
+(define (%time-convert-fold l)
+  (define (detect-month key)
+    (string->number (string-take key 2)))
+  (define (detect-year month)
+    (+ (if (> (date-month (current-date)) month)
+	   1 0)
+       (date-year (current-date))))
+  (define (%time-convert4 key year)
+    (receive (month day)
+	(quotient&remainder (string->number key) 100)
+      (format "~d/~d(~A)" month day
+	      (date-day-week (make-date-literally year month day)))))
+  (let ((year 0)(month 0))
+    (fold (lambda (x y)
+	    (if (string? x)
+		(begin
+		  (set! month (detect-month x))
+		  (set! year  (detect-year month))
+		  (++ y (%time-convert4 x year)))
+		(++ y (x year month))))
+	  ""
+	  l)))
+
+(define (date-day-week date)
+  (case (date-week-day date)
+    ((0) "日") ((1) "月") ((2) "火")
+    ((3) "水") ((4) "木") ((5) "金")
+    ((6) "土")))
+
+(define (make-date-literally year month day)
+  (make-date 0 0 0 0 day month year 9))
 
 (define (%time-convert key)
-  (let ((year (date-year (current-date)))
-	(num4 (string->number
-	       (string-drop (string-drop-right key 1) 1))))
-    (receive (month day) (quotient&remainder num4 100)
-	     (let ((dw (date-week-day
-			(make-date 0 0 0 0 day month year 9))))
-	       (format "~d/~d(~A)" month day
-		       (case dw
-			 ((0) "日")
-			 ((1) "月")
-			 ((2) "火")
-			 ((3) "水")
-			 ((4) "木")
-			 ((5) "金")
-			 ((6) "土")))))))
+  (%time-convert-fold (collect-keywords (both-strip key))))
+
+(define (%%time-convert year month day . arg)
+  (let ((dw (date-day-week
+	     (make-date-literally year month day))))
+    (if (null? arg)
+	(format "~d(~A)" day dw)
+	(format "~d/~d(~A)" month day dw))))
 
 (define (time-convert line)
-  (let loop ((r "") (l line))
-    (cond
-     ((string= l "") r)
-     ((time-regexp l)
-      (loop (++ r (%time-convert (string-take l 6)))
-	    (string-drop l 6)))
-     (#t
-      (loop (++ r (string-take l 1))
-	    (string-drop l 1))))))
+  (convert-format line
+		  `(:regexp ,time-regexp :end-token #\> :converter ,%time-convert)))
+
+(define (yen-convert line)
+  (convert-format line
+		  `(:regexp #/^\[[0-9]+\]/ :end-token #\] :converter ,colnum-yen)))
+
+(define (kodohi-convert line)
+  (convert-format line
+		  `(:regexp #/^\[zd[0-9]+\]/ :end-token #\] :converter ,colnum-yen-kodohi)))
+
+(define (kotsuhi-convert line)
+  (convert-format line
+		  `(:regexp #/^\[zk[0-9]+\]/ :end-token #\] :converter ,colnum-yen-kotsuhi)))
+
+(define (kumiaihi-convert line)
+  (convert-format line
+		  `(:regexp #/^{[0-9,]+}/ :end-token #\} :converter ,colnum-kumiaihi)))
+
+(define (convert-format line plist)
+  (let ((regexp    (get-keyword :regexp plist))
+	(end-token (get-keyword :end-token plist))
+	(converter (get-keyword :converter plist)))
+    (let loop ((r "") (l line))
+      (cond
+       ((string= l "") r)
+       ((regexp l)
+	(receive (key rest) (take-keywords l end-token)
+	  (loop (++ r (converter key)) rest)))
+       (#t
+	(loop (++ r (string-take l 1))
+	      (string-drop l 1)))))))
 
 (define main-translator (compose time-convert
 				 replace-convert
-				 line-convert))
+				 line-convert
+				 yen-convert
+				 kumiaihi-convert
+				 kodohi-convert
+				 kotsuhi-convert))
 
 (define (group n l)
   (let loop ((r '()) (ls l))
@@ -120,17 +200,39 @@
      (fold (lambda (x y)
 	     (cond
 	      ((string= y "") (list->string x))
-	      ((null? x)      y)
-	      (#t             (string-join `(,(list->string x)
-					     ,y) ","))))
+	      ((null? x) y)
+	      (#t (string-join `(,(list->string x)
+				 ,y) ","))))
 	   ""
 	   slist))))
 
+(define (colnum2 str)
+  (colnum (string-drop-right (string-drop str 1) 1)))
+
 (define (colnum-yen str)
-  (++ (colnum str) "円"))
+  (++ (colnum (string-drop-right (string-drop str 1) 1))
+      "円"))
+
+(define (colnum-yen-kodohi str)
+  (++ "行動費"
+      (colnum (string-drop-right (string-drop str 3) 1))
+      "円"))
+
+(define (colnum-yen-kotsuhi str)
+  (++ "交通費"
+      (colnum (string-drop-right (string-drop str 3) 1))
+      "円"))
 
 (define (colnum-by per num)
   (+++ `("@" ,(colnum per) "×" ,(colnum num) "人") ""))
+
+(define (colnum-kumiaihi str)
+  (match (string-split (both-strip str) ",")
+    ((ip mi ro)
+     (++ (colnum-by "1342" ip) "、"
+	 (colnum-by "1332" mi) "、"
+	 (colnum-by "882" ro)))
+    (#t "")))
 
 (define (main args)
   (map
