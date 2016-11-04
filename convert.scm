@@ -41,6 +41,7 @@
 (define +++ string-join)
 (define replace-regexp #/^,[a-z]+/)
 (define time-regexp    #/^<[,~0-9]+>/)
+(define chapter-counter 0)
 (define (both-strip str)
   (string-drop-right (string-drop str 1) 1))
 
@@ -50,7 +51,10 @@
 
 (define (line-convert line)
   (cond
-   ((#/^\* / line)       (++ "@@" (string-drop line 2)))
+   ((#/^\* / line)       (++ (begin
+			       (set! chapter-counter (+ 1 chapter-counter))
+			       (format "~A　" chapter-counter))
+			     (string-drop line 2)))
    ((#/^\*\* / line)     (++ "※" (string-drop line 3)))
    ((#/^\*\*\* / line)   (++ "　＊" (string-drop line 4)))
    ((#/^\*\*\*\* / line) (++ "　　～" (string-drop line 5)))
@@ -64,12 +68,6 @@
 (define (%replace-convert key)
   (cdr (assoc (chop (string-drop key 1))
 	      translate-table)))
-
-(define (replace-convert line)
-  (convert-format line
-		  (list :regexp replace-regexp
-			:end-token #\space
-			:converter %replace-convert)))
 
 (define (split-string-at str index)
   (values (string-take str (+ 1 index))
@@ -144,30 +142,10 @@
 	(format "~d(~A)" day dw)
 	(format "~d/~d(~A)" month day dw))))
 
-(define (time-convert line)
-  (convert-format line
-		  `(:regexp ,time-regexp :end-token #\> :converter ,%time-convert)))
-
-(define (yen-convert line)
-  (convert-format line
-		  `(:regexp #/^\[[0-9]+\]/ :end-token #\] :converter ,colnum-yen)))
-
-(define (kodohi-convert line)
-  (convert-format line
-		  `(:regexp #/^\[zd[0-9]+\]/ :end-token #\] :converter ,colnum-yen-kodohi)))
-
-(define (kotsuhi-convert line)
-  (convert-format line
-		  `(:regexp #/^\[zk[0-9]+\]/ :end-token #\] :converter ,colnum-yen-kotsuhi)))
-
-(define (kumiaihi-convert line)
-  (convert-format line
-		  `(:regexp #/^{[0-9,]+}/ :end-token #\} :converter ,colnum-kumiaihi)))
-
-(define (convert-format line plist)
-  (let ((regexp    (get-keyword :regexp plist))
-	(end-token (get-keyword :end-token plist))
-	(converter (get-keyword :converter plist)))
+(define (convert-format2 line klass)
+  (let ((regexp    (slot-ref klass 'regexp))
+	(end-token (slot-ref klass 'end-token))
+	(converter (slot-ref klass 'function)))
     (let loop ((r "") (l line))
       (cond
        ((string= l "") r)
@@ -177,14 +155,6 @@
        (#t
 	(loop (++ r (string-take l 1))
 	      (string-drop l 1)))))))
-
-(define main-translator (compose time-convert
-				 replace-convert
-				 line-convert
-				 yen-convert
-				 kumiaihi-convert
-				 kodohi-convert
-				 kotsuhi-convert))
 
 (define (group n l)
   (let loop ((r '()) (ls l))
@@ -233,6 +203,39 @@
 	 (colnum-by "1332" mi) "、"
 	 (colnum-by "882" ro)))
     (#t "")))
+
+(define-class <Converter> ()
+  ((regexp    :accessor regexp    :init-keyword :regexp)
+   (end-token :accessor end-token :init-keyword :end-token)
+   (function  :accessor function  :init-keyword :function)))
+
+(define-macro (define-converter name . clause)
+  `(begin
+     (define ,name (make <Converter> ,@clause))
+     (define ,(string->symbol
+	       (string-drop-right (symbol->string name) 2))
+       (lambda (line) (convert-format2 line ,name)))))
+
+(define-converter replace-converter
+  :regexp replace-regexp	:end-token #\space :function %replace-convert)
+(define-converter time-converter
+  :regexp time-regexp		:end-token #\> :function %time-convert)
+(define-converter yen-converter
+  :regexp #/^\[[0-9]+\]/	:end-token #\] :function colnum-yen)
+(define-converter kodohi-converter
+  :regexp #/^\[zd[0-9]+\]/	:end-token #\] :function colnum-yen-kodohi)
+(define-converter kotsuhi-converter
+  :regexp #/^\[zk[0-9]+\]/	:end-token #\] :function colnum-yen-kotsuhi)
+(define-converter kumiaihi-converter
+  :regexp #/^{[0-9,]+}/		:end-token #\} :function colnum-kumiaihi)
+
+(define main-translator (compose time-convert
+				 replace-convert
+				 line-convert
+				 yen-convert
+				 kumiaihi-convert
+				 kodohi-convert
+				 kotsuhi-convert))
 
 (define (main args)
   (map
