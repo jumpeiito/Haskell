@@ -84,8 +84,4 @@ main = do
   putStrLn $ output
   
 
--- parseSpec :: Spec
--- parseSpec = do
---   describe "parse-test" $ do
---     it "01" $ splitParse "6醍01005丈六武次075-572-7972＊22000 220006醍01009田中道行075-571-1921＊21000 21000"
---       `shouldBe` []
+
