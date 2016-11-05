@@ -135,14 +135,7 @@
 (define (%time-convert key)
   (%time-convert-fold (collect-keywords (both-strip key))))
 
-(define (%%time-convert year month day . arg)
-  (let ((dw (date-day-week
-	     (make-date-literally year month day))))
-    (if (null? arg)
-	(format "~d(~A)" day dw)
-	(format "~d/~d(~A)" month day dw))))
-
-(define (convert-format2 line klass)
+(define (convert-format line klass)
   (let ((regexp    (slot-ref klass 'regexp))
 	(end-token (slot-ref klass 'end-token))
 	(converter (slot-ref klass 'function)))
@@ -214,7 +207,7 @@
      (define ,name (make <Converter> ,@clause))
      (define ,(string->symbol
 	       (string-drop-right (symbol->string name) 2))
-       (lambda (line) (convert-format2 line ,name)))))
+       (lambda (line) (convert-format line ,name)))))
 
 (define-converter replace-converter
   :regexp replace-regexp	:end-token #\space :function %replace-convert)
