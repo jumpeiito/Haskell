@@ -11,16 +11,19 @@ import Test.Hspec
 import qualified System.IO              as I
 
 data Config = Con { nkfwin :: FilePath
-                  , xdoc   :: FilePath }
+                  , xdoc   :: FilePath
+                  , secret :: FilePath}
 
 data Person = P { number  :: String
                 , name    :: String
                 , phone   :: String
                 , feeStr  :: String
-                , feeList :: [Integer] }
+                , feeSum  :: String
+                , feeList :: [Integer] } deriving Show
 
 config = Con { nkfwin = "f:/nkfwin.exe"
-             , xdoc   = "f:/xdoc2txt/command/xdoc2txt.exe" }
+             , xdoc   = "d:/home/xdoc2txt/command/xdoc2txt.exe"
+             , secret = "./.secret"}
 
 runCom command fp =
   runInteractiveProcess command ["-o=1", fp] Nothing Nothing
@@ -33,7 +36,9 @@ runXdoc fp = do
 
 telStringParse :: Parser String
 telStringParse = do
-  Tel.telString <$> Tel.telFuncCore
+  Tel.telString <$> Tel.telFuncPure
+  <|> try (string " ")
+  <|> string ""
 
 hokenParse :: Parser String
 hokenParse = do
@@ -43,34 +48,51 @@ hokenParse = do
   identy <- count 3 digit
   return $ year' ++ shibu ++ bunkai ++ identy
 
--- hokenFeeParse :: Parser String
--- hokenFeeParse = 
---   many1 digit  ++++
---   string "00 " ++++
---   many1 digit  ++++
---   string "00"
-
-eofS :: Parser String
-eofS = do
-  _ <- eof
-  return ""
-
 hokenFeeParse :: Parser String
 hokenFeeParse = do
-  try (string "00 ")
+  try (string "00000")
+  <|> try (string "0000")
+  <|> try (string "000")
+  <|> try (string "00")
   <|> try ((:) <$> digit <*> hokenFeeParse)
-  <|> try eofS
 
+hokenFeeMany :: Parser String
+hokenFeeMany = concat <$> many1 hokenFeeParse
+
+testcase = "6醍01001京建太郎075-572-4949＊22000 22000*****6醍50101京花子090-1901-0111＊4120041200 82400"
+testcase2 = "6醍50101京花子090-1901-0111＊4120041200 82400"
+testcase3 = "6醍01001京建次郎 ＊22000 220006醍50101京花子090-1901-0111＊4120041200 82400" 
 
 personParse :: Parser String
 personParse = 
   hokenParse ++++
-  many (noneOf "脱0123456789") ++++
+  many1 (noneOf "脱0123456789 ＊") ++++
   telStringParse ++++
   many (char '＊') ++++
-  hokenFeeParse ++++
+  hokenFeeMany ++++ (string " ") ++++
   hokenFeeParse
 
+pobjectParse :: Parser Person
+pobjectParse = do
+  num    <- hokenParse
+  name'  <- many1 (noneOf "脱0123456789 ＊")
+  tel    <- telStringParse
+  _      <- many (char '＊')
+  fee    <- hokenFeeMany <* string " "
+  sum'   <- hokenFeeParse
+  return $ P { number = num
+             , name   = name'
+             , phone  = tel
+             , feeStr = fee
+             , feeSum = sum'
+             , feeList = []}
+
+mainParse :: Parser [Person]
+mainParse = do
+  try ((:) <$> pobjectParse <*> mainParse)
+  <|> (eof >> return [])
+  <|> (anyChar >> mainParse)
+  
 personalSplit :: String -> String
 personalSplit "" = ""
 personalSplit s@(x:xs)
@@ -80,8 +102,8 @@ personalSplit s@(x:xs)
 main :: IO ()
 main = do
   output <- runXdoc "f:/21_20160920.pdf" `runReaderT` config
-  I.hSetEncoding I.stdout I.utf8
-  putStrLn $ output
-  
-
-
+  case parse mainParse "" output of
+    Right x -> do
+      I.hSetEncoding I.stdout I.utf8
+      mapM_ (putStrLn . feeSum) x
+    Left _  -> return ()
