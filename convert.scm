@@ -123,6 +123,13 @@
 	  ""
 	  l)))
 
+(define (%%time-convert year month day . arg)
+  (let ((dw (date-day-week
+	     (make-date-literally year month day))))
+    (if (null? arg)
+	(format "~d(~A)" day dw)
+	(format "~d/~d(~A)" month day dw))))
+
 (define (date-day-week date)
   (case (date-week-day date)
     ((0) "日") ((1) "月") ((2) "火")
