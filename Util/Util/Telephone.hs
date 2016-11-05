@@ -1,5 +1,6 @@
 module Util.Telephone (telParse
                       , telFuncCore
+                      , telFuncPure
                       , telString
                       , Telephone (..)
                       , fixFilter
@@ -63,6 +64,10 @@ telFuncCore = try mobileParse
           <|> try mobileParse2
           <|> try fixParse
           <|> (anyChar >> telFuncCore)
+
+telFuncPure = try mobileParse
+              <|> try mobileParse2
+              <|> try fixParse
 
 fixNumberParse :: Parser String
 fixNumberParse = try $ manyNoNum *> fixParseHeader ++++
