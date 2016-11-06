@@ -4,6 +4,7 @@ import Util                             ((++++))
 import Data.List (isPrefixOf)
 import qualified Util.Telephone         as Tel
 import Control.Monad.Reader
+import Control.Monad.State
 import System.Process
 import Text.Parsec                      hiding (Line, State)
 import Text.Parsec.String
@@ -72,6 +73,19 @@ personParse =
   hokenFeeMany ++++ (string " ") ++++
   hokenFeeParse
 
+_feeSplit :: String -> State (String, [String]) ()
+_feeSplit str = do
+  forM str $ \char -> do
+    (fee, returner) <- get
+    case (take 2 fee, char /= '0') of
+      ("00", True) -> put ([char], reverse fee : returner)
+      _            -> put (char:fee, returner)
+  (fee, returner) <- get
+  put ("", returner ++ [reverse fee])
+
+feeSplit :: String -> [Integer]
+feeSplit str = map read $ snd (_feeSplit str `execState` ("", []))
+
 pobjectParse :: Parser Person
 pobjectParse = do
   num    <- hokenParse
@@ -85,12 +99,12 @@ pobjectParse = do
              , phone  = tel
              , feeStr = fee
              , feeSum = sum'
-             , feeList = []}
+             , feeList = feeSplit fee}
 
 mainParse :: Parser [Person]
 mainParse = do
   try ((:) <$> pobjectParse <*> mainParse)
-  <|> (eof >> return [])
+  <|> (eof >> return [])        -- 終了条件
   <|> (anyChar >> mainParse)
   
 personalSplit :: String -> String
@@ -101,9 +115,9 @@ personalSplit s@(x:xs)
 
 main :: IO ()
 main = do
-  output <- runXdoc "f:/21_20160920.pdf" `runReaderT` config
+  output <- runXdoc "c:/Users/jumpei/Haskell/21_20160920.pdf" `runReaderT` config
   case parse mainParse "" output of
     Right x -> do
       I.hSetEncoding I.stdout I.utf8
-      mapM_ (putStrLn . feeSum) x
+      mapM_ (putStrLn . name) x
     Left _  -> return ()
