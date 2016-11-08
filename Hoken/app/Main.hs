@@ -115,11 +115,11 @@ pobjectParse = do
              , feeSum = sum feel
              , feeList = feel}
 
-mainParse :: Parser [Person]
-mainParse = do
-  try ((:) <$> pobjectParse <*> mainParse)
+scan :: Parser a -> Parser [a]
+scan f1 = do
+  try ((:) <$> f1 <*> scan f1)
   <|> (eof >> return [])        -- 終了条件
-  <|> (anyChar >> mainParse)
+  <|> (anyChar >> scan f1)
   
 toString :: Person -> String
 toString p = intercalate "," lists
@@ -138,7 +138,7 @@ main = do
   argv <- getArgs
 
   output <- runXdoc (argv!!0) `runReaderT` config
-  case parse mainParse "" output of
+  case parse (scan pobjectParse) "" output of
     Left _  -> return ()
     Right x -> do
       I.hSetEncoding I.stdout I.utf8
