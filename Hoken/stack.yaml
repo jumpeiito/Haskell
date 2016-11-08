@@ -21,6 +21,7 @@ resolver: lts-6.16
 packages:
 - '.'
 - "../Util/"
+- "../Meibo/"
 
 extra-deps: []
 

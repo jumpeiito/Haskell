@@ -1,14 +1,16 @@
 module Main where
 
-import Util                             ((++++))
-import Data.List (isPrefixOf)
+import           Util                   ((++++), locEncoding)
+import qualified Meibo.Base             as Meibo
+import           Data.List              (isPrefixOf, intercalate)
 import qualified Util.Telephone         as Tel
-import Control.Monad.Reader
-import Control.Monad.State
-import System.Process
-import Text.Parsec                      hiding (Line, State)
-import Text.Parsec.String
-import Test.Hspec
+import           Control.Monad.Reader
+import           Control.Monad.State
+import           Text.Parsec            hiding (Line, State)
+import           Text.Parsec.String
+import           Test.Hspec
+import           System.Process
+import           System.Environment
 import qualified System.IO              as I
 
 data Config = Con { nkfwin :: FilePath
@@ -16,11 +18,12 @@ data Config = Con { nkfwin :: FilePath
                   , secret :: FilePath}
 
 data Person = P { number  :: String
+                , bunkai  :: String
                 , name    :: String
                 , phone   :: String
                 , feeStr  :: String
-                , feeSum  :: String
-                , feeList :: [Integer] } deriving Show
+                , feeSum  :: Int
+                , feeList :: [Int] } deriving Show
 
 config = Con { nkfwin = "f:/nkfwin.exe"
              , xdoc   = "d:/home/xdoc2txt/command/xdoc2txt.exe"
@@ -81,10 +84,18 @@ _feeSplit str = do
       ("00", True) -> put ([char], reverse fee : returner)
       _            -> put (char:fee, returner)
   (fee, returner) <- get
-  put ("", returner ++ [reverse fee])
+  put ("", reverse $ reverse fee : returner)
 
-feeSplit :: String -> [Integer]
+feeSplit :: String -> [Int]
 feeSplit str = map read $ snd (_feeSplit str `execState` ("", []))
+
+numToBunkai :: String -> String
+numToBunkai "01" = "石田"
+numToBunkai "02" = "日野"
+numToBunkai "03" = "小栗栖"
+numToBunkai "04" = "一言寺"
+numToBunkai "05" = "三宝院"
+numToBunkai "50" = "点在"
 
 pobjectParse :: Parser Person
 pobjectParse = do
@@ -94,12 +105,15 @@ pobjectParse = do
   _      <- many (char '＊')
   fee    <- hokenFeeMany <* string " "
   sum'   <- hokenFeeParse
-  return $ P { number = num
+  let feel = feeSplit fee
+  let num' = drop 2 num
+  return $ P { number = num'
+             , bunkai = numToBunkai $ take 2 num'
              , name   = name'
              , phone  = tel
              , feeStr = fee
-             , feeSum = sum'
-             , feeList = feeSplit fee}
+             , feeSum = sum feel
+             , feeList = feel}
 
 mainParse :: Parser [Person]
 mainParse = do
@@ -107,17 +121,28 @@ mainParse = do
   <|> (eof >> return [])        -- 終了条件
   <|> (anyChar >> mainParse)
   
-personalSplit :: String -> String
-personalSplit "" = ""
-personalSplit s@(x:xs)
-  | s `isPrefixOf` "6醍" = "\n6醍" ++ personalSplit (drop 2 s)
-  | otherwise = s ++ personalSplit xs
+toString :: Person -> String
+toString p = intercalate "," lists
+  where lists = [ number p
+                , bunkai p
+                , name p
+                , show $ feeSum p
+                , show $ head $ feeList p
+                , show $ feeList p ]
 
 main :: IO ()
 main = do
-  output <- runXdoc "c:/Users/jumpei/Haskell/21_20160920.pdf" `runReaderT` config
+  sjis <- I.mkTextEncoding "cp932"
+  I.hSetEncoding I.stdout sjis
+
+  argv <- getArgs
+
+  output <- runXdoc (argv!!0) `runReaderT` config
   case parse mainParse "" output of
+    Left _  -> return ()
     Right x -> do
       I.hSetEncoding I.stdout I.utf8
-      mapM_ (putStrLn . name) x
-    Left _  -> return ()
+      forM_ x $ \person -> do
+        if length (feeList person) == 3
+          then putStrLn $ toString person
+          else return ()
