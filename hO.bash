@@ -1,6 +1,6 @@
 MEIBO=`which meibo.exe`
 
-cd f:/Haskell/Meibo/
+cd d:/home/Haskell/Meibo/
 echo "extract -----> tex file"
 ${MEIBO} hchp $1 $2 $3 _ _ > ./hancho.insert.tex
 echo "compiling ---> pdf file"
