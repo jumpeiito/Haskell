@@ -146,3 +146,25 @@ main = do
         if length (feeList person) == 3
           then putStrLn $ toString person
           else return ()
+
+telStringParseSpec :: Spec
+telStringParseSpec = do
+  describe "telStringParse" $ do
+    it "matches 0xx-xxx-xxxx (fixed) style." $
+      parse telStringParse "" "075-572-4949" `shouldBe` Right "075-572-4949"
+    it "matches 0xxx-xx-xxxx (fixed) style." $
+      parse telStringParse "" "0774-22-2222" `shouldBe` Right "0774-22-2222"
+    it "matches xxx-xxxx (fixed) style." $
+      parse telStringParse "" "572-4949" `shouldBe` Right "572-4949"
+    it "matches 090-xxxx-xxxx (mobile) style." $
+      parse telStringParse "" "090-0000-0000" `shouldBe` Right "090-0000-0000"
+    it "matches 080-xxxx-xxxx (mobile) style." $
+      parse telStringParse "" "080-9999-9999" `shouldBe` Right "080-9999-9999"
+    it "matches 090-xxxxxxxx (mobile) style." $
+      parse telStringParse "" "090-00000000" `shouldBe` Right "090-00000000"
+    it "matches a space character." $
+      parse telStringParse "" " " `shouldBe` Right " "
+    it "matches digit chars when surrounded with non-numeric chars." $
+      parse telStringParse "" "hoge080-9999-9999foo" `shouldBe` Right "080-9999-9999"
+    it "matches digit chars when surrounded with non-numeric chars." $
+      parse telStringParse "" "buz/080-9999-9999-soo" `shouldBe` Right "080-9999-9999"
