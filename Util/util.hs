@@ -3,6 +3,7 @@
 module Util where
 
 import Data.List
+import Data.Char                        (ord, chr)
 import Control.Exception                hiding (try)
 import Control.Exception                (evaluate)
 import Control.Monad
@@ -263,3 +264,28 @@ locEncoding = do
       sjis <- I.mkTextEncoding "CP932"
       I.hSetEncoding I.stdout sjis
     LocOther  -> I.hSetEncoding I.stdout I.utf8
+
+data ExcelCol = Column [Int] deriving Show
+
+stringToColumn :: String -> ExcelCol
+stringToColumn = Column . map (\char -> ord char - 64) . reverse
+
+-- columnToInt :: ExcelCol -> Int
+columnToInt col = sum $ map (uncurry (*)) $ zip exp col'
+  where Column col' = col
+        exp = [ truncate $ 26 ** x | x <- [0..] ]
+
+columnDivide :: Int -> (Int, Int)
+columnDivide i = case (i `mod` 26, i `div` 26) of
+                   (0, 0) -> (0, 0)
+                   (0, 1) -> (26, 0)
+                   (0, x) -> (26, x - 1)
+                   (y, d) -> (y, d)
+
+intToExp :: Int -> [Int]
+intToExp i = case columnDivide i of
+               (modulo, 0) -> [modulo]
+               (m, d) -> intToExp d ++ [m]
+           
+intToString :: Int -> String
+intToString i = map (\n -> chr $ n + 64) $ intToExp i
