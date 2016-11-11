@@ -1,6 +1,7 @@
 (use srfi-13)
 (use srfi-19)
 (use util.match)
+(load "./util.scm")
 
 (define translate-table
   '(
@@ -31,17 +32,13 @@
     ("shimbun"   . "しんぶん赤旗(日刊紙3,497円、日曜版823円)、京都民報623円")
     ("chik"      . "地区労分担金＠130×250円")))
 
-(define ++ string-append)
-(define +++ string-join)
 (define replace-regexp #/^,[a-z]+/)
 (define time-regexp    #/^<[,~0-9]+>/)
 (define chapter-counter 0)
 (define (both-strip str)
   (string-drop-right (string-drop str 1) 1))
 
-(define-macro (aif cnd . clause)
-  `(let ((it ,cnd))
-     (if it ,@clause)))
+
 
 (define (line-convert line)
   (cond
@@ -62,10 +59,6 @@
 (define (%replace-convert key)
   (cdr (assoc (chop (string-drop key 1))
 	      translate-table)))
-
-(define (split-string-at str index)
-  (values (string-take str (+ 1 index))
-	  (string-drop str (+ 1 index))))
 
 (define (take-keywords line end-token)
   (split-string-at line
@@ -124,15 +117,6 @@
 	(format "~d(~A)" day dw)
 	(format "~d/~d(~A)" month day dw))))
 
-(define (date-day-week date)
-  (case (date-week-day date)
-    ((0) "日") ((1) "月") ((2) "火")
-    ((3) "水") ((4) "木") ((5) "金")
-    ((6) "土")))
-
-(define (make-date-literally year month day)
-  (make-date 0 0 0 0 day month year 9))
-
 (define (%time-convert key)
   (%time-convert-fold (collect-keywords (both-strip key))))
 
@@ -149,14 +133,6 @@
        (#t
 	(loop (++ r (string-take l 1))
 	      (string-drop l 1)))))))
-
-(define (group n l)
-  (let loop ((r '()) (ls l))
-    (cond
-     ((> n (length ls))
-      (reverse (cons ls r)))
-     (#t
-      (loop (cons (take ls n) r) (drop ls n))))))
 
 (define (colnum str)
   (let ((slist (reverse (group 3 (reverse (string->list str))))))
@@ -230,6 +206,18 @@
 				 kumiaihi-convert
 				 kodohi-convert
 				 kotsuhi-convert))
+
+(define (yen-string->number str)
+  (string->number
+   (fold (lambda (x y)
+	   (regexp-replace-all x y ""))
+	 str
+	 (list #/,/ #/円/))))
+
+(define (read-calc str)
+  (fold + 0
+	(map yen-string->number
+	     (scan #/[0-9,]+円/ str))))
 
 (define (main args)
   (map
