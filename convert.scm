@@ -1,7 +1,9 @@
 (use srfi-13)
 (use srfi-19)
 (use util.match)
-(load "d:/home/Haskell/util.scm")
+(if (file-exists? "d:/home/Haskell/")
+    (load "d:/home/Haskell/util.scm")
+    (load "c:/Users/Jumpei/Haskell/util.scm"))
 
 (define translate-table
   '(
@@ -37,8 +39,6 @@
 (define chapter-counter 0)
 (define (both-strip str)
   (string-drop-right (string-drop str 1) 1))
-
-
 
 (define (line-convert line)
   (cond
@@ -243,7 +243,12 @@
 (define (main args)
   (if (and (equal? 2 (length args))
 	   (equal? "-e" (cadr args)))
-      (print (read-calc (port->string (standard-input-port))))
+      (print (+++ `(" --> "
+		    ,(colnum
+		      (number->string
+		       (read-calc (port->string (standard-input-port)))))
+		    "円")
+		  ""))
       (map
        (compose print main-translator)
        (string-split (port->string (standard-input-port))
