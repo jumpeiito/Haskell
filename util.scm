@@ -33,3 +33,9 @@
     (aif (reg s)
 	 (loop (rxmatch-after it) (cons (rxmatch-substring it) r))
 	 (reverse r))))
+
+(define (regexp-replace-multiple-all regexp-alist str)
+  (fold (lambda (x y)
+	  (regexp-replace-all (car x) y (cdr x)))
+	str
+	regexp-alist))
