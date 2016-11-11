@@ -1,7 +1,7 @@
 (use srfi-13)
 (use srfi-19)
 (use util.match)
-(load "./util.scm")
+(load "d:/home/Haskell/util.scm")
 
 (define translate-table
   '(
@@ -187,17 +187,29 @@
        (lambda (line) (convert-format line ,name)))))
 
 (define-converter replace-converter
-  :regexp replace-regexp	:end-token #\space :function %replace-convert)
+  :regexp replace-regexp
+  :end-token #\space
+  :function %replace-convert)
 (define-converter time-converter
-  :regexp time-regexp		:end-token #\> :function %time-convert)
+  :regexp time-regexp
+  :end-token #\>
+  :function %time-convert)
 (define-converter yen-converter
-  :regexp #/^\[[0-9]+\]/	:end-token #\] :function colnum-yen)
+  :regexp #/^\[[0-9]+\]/
+  :end-token #\]
+  :function colnum-yen)
 (define-converter kodohi-converter
-  :regexp #/^\[zd[0-9]+\]/	:end-token #\] :function colnum-yen-kodohi)
+  :regexp #/^\[zd[0-9]+\]/
+  :end-token #\]
+  :function colnum-yen-kodohi)
 (define-converter kotsuhi-converter
-  :regexp #/^\[zk[0-9]+\]/	:end-token #\] :function colnum-yen-kotsuhi)
+  :regexp #/^\[zk[0-9]+\]/
+  :end-token #\]
+  :function colnum-yen-kotsuhi)
 (define-converter kumiaihi-converter
-  :regexp #/^{[0-9,]+}/		:end-token #\} :function colnum-kumiaihi)
+  :regexp #/^{[0-9,]+}/
+  :end-token #\}
+  :function colnum-kumiaihi)
 
 (define main-translator (compose time-convert
 				 replace-convert
@@ -209,18 +221,32 @@
 
 (define (yen-string->number str)
   (string->number
-   (fold (lambda (x y)
-	   (regexp-replace-all x y ""))
+   (fold (lambda (x y) (regexp-replace-all x y ""))
 	 str
 	 (list #/,/ #/円/))))
 
+(define (multiple-yen-string->number str)
+  (aif (#/[@＠]([0-9,]+)円*×([0-9,]+)人*/ str)
+       (* (yen-string->number (it 1))
+	  (yen-string->number (it 2)))))
+
+(define (yen-string-translator str)
+  (if (#/^[@＠]/ str)
+      (multiple-yen-string->number str)
+      (yen-string-translator str)))
+
 (define (read-calc str)
   (fold + 0
-	(map yen-string->number
-	     (scan #/[0-9,]+円/ str))))
+	(map yen-string-translator
+	     (scan yen-scan-regexp str))))
 
 (define (main args)
-  (map
-   (compose print main-translator)
-   (string-split (port->string (standard-input-port))
-		 "\n")))
+  (if (and (equal? 2 (length args))
+	   (equal? "-e" (cadr args)))
+      (print (read-calc (port->string (standard-input-port))))
+      (map
+       (compose print main-translator)
+       (string-split (port->string (standard-input-port))
+		     "\n"))))
+
+(define yen-scan-regexp #/([0-9,]+円)|[@＠][0-9,]+円*×[0-9,]+人*/)
