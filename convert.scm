@@ -233,7 +233,7 @@
 (define (yen-string-translator str)
   (if (#/^[@＠]/ str)
       (multiple-yen-string->number str)
-      (yen-string-translator str)))
+      (yen-string->number str)))
 
 (define (read-calc str)
   (fold + 0
