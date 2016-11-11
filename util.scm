@@ -22,7 +22,9 @@
   (let loop ((r '()) (ls l))
     (cond
      ((> n (length ls))
-      (reverse (cons ls r)))
+      (if (null? ls)
+	  (reverse r)
+	  (reverse (cons ls r))))
      (#t
       (loop (cons (take ls n) r) (drop ls n))))))
 
