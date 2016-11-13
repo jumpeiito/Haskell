@@ -71,9 +71,11 @@ test2 :: Day -> [Text] -> Line
 test2 day tx = 
   let [bnk, hn, sym, hcho, nm, ad', tel', exp', exp2', fu', bir] =
         map unpack tx
-      adtel  = ad' ++ "・" ++ tel'
-      telp   = telParse adtel
-      birth' = strdt bir
+      adtel   = ad' ++ "・" ++ tel'
+      telp    = telParse adtel
+      birth'  = strdt bir
+      telstr  = map telString telp
+      remover = telstr ++ ["･", "・"]
   in Line { bunkai = bnk
           , bknum  = bunkaiNumber bnk
           , han    = hn
