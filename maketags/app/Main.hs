@@ -11,9 +11,9 @@ data Config = Con { haskellDir :: FilePath
                   }
 
 config :: Config
-config = Con { haskellDir = "f:/Haskell"
+config = Con { haskellDir = "C:/Users/jumpei/Haskell/"
              , direction  = FD (".stack-work" <!~>) ("hs" <^>)
-             , hasktags   = "f:/Haskell/hasktags.exe"
+             , hasktags   = "C:/Users/Jumpei/AppData/Roaming/local/bin/hasktags.exe"
              , options    = ["-o", "C:/Users/jumpei/Haskell/TAGS", "-e"]}
 
 collectFiles :: ReaderT Config IO [FilePath]
