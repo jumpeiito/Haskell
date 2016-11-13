@@ -289,3 +289,9 @@ intToExp i = case columnDivide i of
            
 intToString :: Int -> String
 intToString i = map (\n -> chr $ n + 64) $ intToExp i
+
+scan :: Parser a -> Parser [a]
+scan f1 = do
+  try ((:) <$> f1 <*> scan f1)
+  <|> (eof >> return [])        -- 終了条件
+  <|> (anyChar >> scan f1)

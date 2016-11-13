@@ -115,11 +115,6 @@ pobjectParse = do
              , feeSum = sum feel
              , feeList = feel}
 
-scan :: Parser a -> Parser [a]
-scan f1 = do
-  try ((:) <$> f1 <*> scan f1)
-  <|> (eof >> return [])        -- 終了条件
-  <|> (anyChar >> scan f1)
   
 toString :: Person -> String
 toString p = intercalate "," lists
