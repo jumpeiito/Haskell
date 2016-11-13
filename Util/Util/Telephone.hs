@@ -5,16 +5,38 @@ module Util.Telephone (telParse
                       , Telephone (..)
                       , fixFilter
                       , mobileFilter
+                      , telMap
                       ) where
 
-import Util                     ((++++))
+import Util                     ((++++), scan)
 import Text.Parsec
 import Text.Parsec.String
 
 data Telephone =
   Fix String
   | Mobile String
-  | Fax String deriving (Eq, Show)
+  | Fax String deriving Show
+
+instance Eq Telephone where
+  Fix tel1 == Fix tel2 = toRegular tel1 == toRegular tel2
+  Fax tel1 == Fax tel2 = toRegular tel1 == toRegular tel2
+  Mobile tel1 == Mobile tel2 = toRegular tel1 == toRegular tel2
+  _ == _ = False
+
+telMap :: (String -> String) -> Telephone -> Telephone
+telMap f (Fix s) = Fix $ f s
+telMap f (Fax s) = Fax $ f s
+telMap f (Mobile s) = Mobile $ f s
+
+toRegular :: String -> String
+toRegular s = case parse (scan digit) "" s of
+  Right x -> x
+  Left _  -> mempty
+
+regularize :: Telephone -> Telephone
+regularize (Fix s)    = Fix (toRegular s)
+regularize (Mobile s) = Mobile (toRegular s)
+regularize (Fax s)    = Fax (toRegular s)
 
 num :: String
 num = ['0'..'9']
