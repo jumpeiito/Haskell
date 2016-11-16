@@ -65,17 +65,8 @@ hokenFeeMany :: Parser String
 hokenFeeMany = concat <$> many1 hokenFeeParse
 
 testcase = "6醍01001京建太郎075-572-4949＊22000 22000*****6醍50101京花子090-1901-0111＊4120041200 82400"
-testcase2 = "6醍50101京花子090-1901-0111＊4120041200 82400"
+testcase2 = "6醍50101伊東090-1901-0111＊4120041200 82400"
 testcase3 = "6醍01001京建次郎 ＊22000 220006醍50101京花子090-1901-0111＊4120041200 82400" 
-
-personParse :: Parser String
-personParse = 
-  hokenParse ++++
-  many1 (noneOf "脱0123456789 ＊") ++++
-  telStringParse ++++
-  many (char '＊') ++++
-  hokenFeeMany ++++ (string " ") ++++
-  hokenFeeParse
 
 _feeSplit :: String -> State (String, [String]) ()
 _feeSplit str = do
@@ -121,11 +112,26 @@ hasTel telkey line = telkey `elem` Meibo.tel line
  
 -- tmd :: Person -> [Meibo.Line] -> State 
 
-toMeiboData2 :: Person -> Map.Map String [Meibo.Line] -> Maybe Meibo.Line
-toMeiboData2 p mp = undefined
-
 toMeiboData :: Person -> Map.Map String [Meibo.Line] -> Maybe Meibo.Line
-toMeiboData p mp =
+toMeiboData p mp = toMeiboData3 p mp `mplus` toMeiboData2 p mp
+
+toMeiboData2 :: Person -> Map.Map String [Meibo.Line] -> Maybe Meibo.Line
+toMeiboData2 p mp = case snd $ tmd p `runState` myMap of
+  [x] -> Just x
+  _   -> Nothing
+  where Just myMap = Map.lookup (bunkai p) mp
+
+tmd :: Person -> State [Meibo.Line] ()
+tmd p = do
+  let name' = name p
+  forM_ name' $ \char -> do
+    target <- get
+    case filter ((char `elem`) . Meibo.name) target of
+      []  -> put target
+      x   -> put x
+
+toMeiboData3 :: Person -> Map.Map String [Meibo.Line] -> Maybe Meibo.Line
+toMeiboData3 p mp =
   let Just targetList = Map.lookup (bunkai p) mp
   in case phone p of
     Nothing     -> Nothing
@@ -162,10 +168,10 @@ main = do
     Right x -> do
       I.hSetEncoding I.stdout I.utf8
       forM_ x $ \person -> do
-        putStrLn $ toString person mmap
-        -- if length (feeList person) == 3
-        --   then putStrLn $ toString person mmap
-        --   else return ()
+        -- putStrLn $ toString person mmap
+        if length (feeList person) == 3
+          then putStrLn $ toString person mmap
+          else return ()
 
 -- telStringParseSpec :: Spec
 -- telStringParseSpec = do

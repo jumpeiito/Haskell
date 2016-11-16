@@ -30,6 +30,7 @@ executable Hoken-exe
                      , parsec
                      , hspec
                      , Meibo
+                     , containers
   default-language:    Haskell2010
 
 -- test-suite Hoken-test
