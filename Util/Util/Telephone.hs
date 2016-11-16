@@ -34,9 +34,7 @@ toRegular s = case parse (scan digit) "" s of
   Left _  -> mempty
 
 regularize :: Telephone -> Telephone
-regularize (Fix s)    = Fix (toRegular s)
-regularize (Mobile s) = Mobile (toRegular s)
-regularize (Fax s)    = Fax (toRegular s)
+regularize = telMap toRegular
 
 num :: String
 num = ['0'..'9']
