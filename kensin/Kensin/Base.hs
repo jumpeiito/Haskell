@@ -20,8 +20,6 @@ module Kensin.Base ( Status (..)
                    , splitSundayOrNot
                    , hasAmount
                    , toTime
-                   , testKensinData
-                   , testData1
                    , toCsvData
                    , concatMapM
                    , translate

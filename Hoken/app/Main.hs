@@ -68,6 +68,14 @@ testcase = "6醍01001京建太郎075-572-4949＊22000 22000*****6醍50101京花�
 testcase2 = "6醍50101伊東090-1901-0111＊4120041200 82400"
 testcase3 = "6醍01001京建次郎 ＊22000 220006醍50101京花子090-1901-0111＊4120041200 82400" 
 
+makeObjectSpec :: Spec
+makeObjectSpec = do
+  describe "pobjectParse running test" $ do
+    let Right xs = parse pobjectParse "" testcase2
+    it "hoken" $ number xs `shouldBe` "50101"
+    it "name"  $ name  xs `shouldBe` "伊東"
+    it "tel"   $ phone xs `shouldBe` Just (Tel.Mobile "090-1901-0111")
+
 _feeSplit :: String -> State (String, [String]) ()
 _feeSplit str = do
   forM str $ \char -> do
