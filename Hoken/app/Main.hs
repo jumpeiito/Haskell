@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import           Util                   ((++++), locEncoding, makeMap, scan)
@@ -12,6 +14,9 @@ import           Text.Parsec.String
 import           Test.Hspec
 import           System.Process
 import           System.Environment
+import           Data.Text              (Text)
+import qualified Data.Text.IO           as T
+import           Data.Yaml              hiding (Parser, Array)
 import qualified System.IO              as I
 
 data Config = Con { nkfwin :: FilePath
@@ -208,3 +213,14 @@ test = do
   case parse pobjectParse "" testcase2 of
     Right x -> print $ toMeiboData x mmap
     Left _  -> return ()
+
+data Address = Ad { address :: [Text] }
+
+instance FromJSON Address where
+  parseJSON (Object v) = Ad <$> v .: "address"
+
+test2 :: IO ()
+test2 = do
+  Just rc <- decodeFile "d:/home/Haskell/Zipcode/address.yaml"
+  I.hSetEncoding I.stdout I.utf8
+  mapM_ T.putStrLn $ address rc
