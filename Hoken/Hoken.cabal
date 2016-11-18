@@ -31,6 +31,8 @@ executable Hoken-exe
                      , hspec
                      , Meibo
                      , containers
+                     , text
+                     , yaml
   default-language:    Haskell2010
 
 test-suite Hoken-test

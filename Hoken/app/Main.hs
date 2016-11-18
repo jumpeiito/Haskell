@@ -163,7 +163,7 @@ toString p mp = intercalate "," (lists ++ meiboList)
                 , show $ feeList p ]
         meiboData = toMeiboData p mp
         meiboList = case meiboData of
-          Just x  -> [ Meibo.ad x ]
+          Just x  -> [ Meibo.ad x, Meibo.postal x ]
           Nothing -> []
 
 main :: IO ()
@@ -218,6 +218,9 @@ data Address = Ad { address :: [Text] }
 
 instance FromJSON Address where
   parseJSON (Object v) = Ad <$> v .: "address"
+
+instance ToJSON Address where
+  toJSON (Ad x) = object ["address" .= x]
 
 test2 :: IO ()
 test2 = do

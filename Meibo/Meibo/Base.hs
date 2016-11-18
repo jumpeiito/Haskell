@@ -48,7 +48,8 @@ data Line = Line { bunkai :: String,
                    furi   :: String,
                    birthS :: String,
                    birth  :: Maybe Day,
-                   year   :: Maybe Integer
+                   year   :: Maybe Integer,
+                   postal :: String
                  } deriving (Show, Eq)
 
 data Key =
@@ -69,7 +70,7 @@ data Key =
 ----------------------------------------------------------------------------------------------------
 test2 :: Day -> [Text] -> Line
 test2 day tx = 
-  let [bnk, hn, sym, hcho, nm, ad', tel', exp', exp2', fu', bir] =
+  let [bnk, hn, sym, hcho, nm, ad', tel', exp', exp2', fu', bir, _, post] =
         map unpack tx
       adtel   = ad' ++ "・" ++ tel'
       telp    = telParse adtel
@@ -91,7 +92,8 @@ test2 day tx =
           , birthS = bir
           , birth  = birth'
           , year   = howOld <$> birth' <*> Just day
-          , Meibo.Base.exp = exp2' }
+          , Meibo.Base.exp = exp2'
+          , postal = post }
 
 removeSymbol :: String -> String
 removeSymbol = deleteStrMap ["◎", "○"]
@@ -234,7 +236,7 @@ getMeibo = do
 getMeiboSheet :: Xlsx -> Text -> IO [[Text]]
 getMeiboSheet xlsx idx = do
   let flatten idx = [ xlsx ^? ixSheet idx . ixCell x . cellValue . _Just
-                    | x <- (,) <$> [6..300] <*> [1..10]]
-  let initial = group 10 (map toString $ flatten idx)
+                    | x <- (,) <$> [6..300] <*> [1..12]]
+  let initial = group 12 (map toString $ flatten idx)
   return $ map (idx:) initial
 
