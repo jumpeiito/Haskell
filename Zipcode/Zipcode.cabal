@@ -13,7 +13,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 executable Zipcode
-  hs-source-dirs:      app, ../Util/, .
+  hs-source-dirs:      app, .
   main-is:             zipcode.hs
   ghc-options:         -O3 -threaded
   build-depends:       base

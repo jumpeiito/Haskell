@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import           Util                   (readUTF8line, uniq, include)
@@ -17,6 +19,7 @@ import           Control.Monad
 import           Control.Monad.State    (execState, put, get, State)
 import           Control.Parallel.Strategies
 import qualified Data.Map               as Map
+import           Data.Yaml              hiding (Parser, Array)
 import qualified System.IO              as I
 import qualified Data.Text              as Tx
 
@@ -66,8 +69,9 @@ cast :: StringLike a => StringLike b => a -> b
 cast = castString
 
 toString :: StringLike a => Answer (a, a) -> String
-toString (Absolute (a, b)) =      fmtFold a b "{ad} --> {pt}"
-toString (Probably ((a, b), i)) = fmtFold a b "[{ad} --> {pt}], Probably " ++ show i
+toString (Absolute (a, b)) =      fmtFold a b "{ad},{pt}"
+-- toString (Probably ((a, b), i)) = fmtFold a b "[{ad} --> {pt}], Probably " ++ show i
+toString (Probably ((a, b), i)) = fmtFold a b "{ad},{pt}, Probably " ++ show i
 ----------------------------------------------------------------------------------------------------
 makeDict :: IO Dictionary
 makeDict = map (listArray (0,1) . split ',')
@@ -110,7 +114,7 @@ searchClassify ord verse = case (ord, verse) of
 cutNumber :: StringLike a => a -> Text
 cutNumber = toText . cut . toStr
   where toText key = cast key :: Text
-        cut        = takeWhile (`notElem` "0123456789０１２３４５６７８９")
+        cut        = takeWhile (`notElem` ("0123456789０１２３４５６７８９" :: String))
         toStr key  = cast key :: String
 
 searchCore :: Text -> Dictionary -> Dictionary
@@ -204,6 +208,11 @@ casePair [] = mempty
 casePair (p:ps) = if bool then second else casePair ps
   where (bool, second) = p
 
+data Address = Ad { address :: [Text] }
+
+instance FromJSON Address where
+  parseJSON (Object v) = Ad <$> v .: "address"
+
 main :: IO ()
 main = do
   dict <- makeDict
@@ -213,7 +222,10 @@ main = do
   dic5 <- makeDistrictDict ujiDistrict
   dic6 <- makeDistrictDict yamashinaDistrict
   --------------------------------------------------
-  trgt <- readUTF8line "f:/Haskell/.test.address" :: IO [Text]
+  Just rc <- decodeFile "d:/home/Haskell/Zipcode/address.yaml"
+
+  -- trgt <- readUTF8line "f:/Haskell/.test.address" :: IO [Text]
+  let trgt = reverse $ address rc
   I.hSetEncoding I.stdout I.utf8
   forM_ trgt $ \ad -> do
     let ad' = Tx.unpack ad
