@@ -25,7 +25,7 @@ data OrgConfig = OC { topdir    :: FilePath
                     , basename  :: String
                     , condition :: FileDirect }
 
-config = OC { topdir    = "f:/Org/news/"
+config = OC { topdir    = "d:/home/Org/news/"
             , basename  = "%s%04d%02d.org"
             , condition = (FD (const True) ("org" <^>))}
 

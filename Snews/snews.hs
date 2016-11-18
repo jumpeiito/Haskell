@@ -47,7 +47,7 @@ fPrinter filename = printerCore $ filePrinter filename
 dayMaker :: Bool -> Day -> IO ()
 dayMaker bp td = do
   --(deciding output destination)-------------------------
-  let orgFile = "f:/Org/news/" ++ dayStr6 td ++ ".org"
+  let orgFile = "d:/home/Org/news/" ++ dayStr6 td ++ ".org"
   bool <- doesFileExist orgFile
   
   let (trueOutput, headOutput)
@@ -83,7 +83,7 @@ main = do
   --------------------------------------------------
   opt <- O.customExecParser (O.prefs O.showHelpOnError) myParserInfo
   --------------------------------------------------
-  sjis <- I.mkTextEncoding "CP932"
+  sjis <- I.mkTextEncoding "cp932"
   -- SJISで出力 (-s)
   when (sjis' opt)  $ I.hSetEncoding I.stdout sjis
   --------------------------------------------------
