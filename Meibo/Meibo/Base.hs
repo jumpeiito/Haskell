@@ -18,7 +18,7 @@ import Data.Maybe
 import Data.Text                        (unpack, pack, Text)
 import Data.Time.Calendar
 import GHC.Float
-import Util                             (runRubyString, readUTF8File, group)
+import Util                             (runRubyString, readUTF8File, group, runFile, File (..))
 import Util.Strdt
 import Util.Telephone
 import Util.StrEnum
@@ -222,7 +222,10 @@ toString (Just x) = _toString x
 
 getMeibo :: IO [[Text]]
 getMeibo = do
-  bs <- L.readFile "s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm"
+  Just file <- runFile $ File [ "s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm"
+                              , "c:/Users/Jumpei/Haskell/Meibo/組合員名簿.xlsm"]
+  
+  bs <- L.readFile file
   let book  = toXlsx bs
   ms <- mapM (getMeiboSheet book) [ "石田"
                                   , "日野"

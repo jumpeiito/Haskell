@@ -8,7 +8,7 @@ import Util.StrEnum
 import Data.Time
 import Data.List
 import Data.Maybe                       (isJust, fromJust, fromMaybe)
-import Meibo.Base                       (Line (..), Key (..), deleteStr, deleteStrMap, trans, getMeibo)
+import Meibo.Base                       (Line (..), Key (..), deleteStr, deleteStrMap, trans, getMeibo, meiboMain)
 import Text.Parsec                      hiding (Line, State)
 import Text.Parsec.String
 import Control.Arrow                    ((&&&))

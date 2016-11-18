@@ -2,7 +2,7 @@
 
 module Main where
 
-import           Util                   ((++++), locEncoding, makeMap, scan)
+import           Util                   ((++++), locEncoding, makeMap, scan, runFile, File (..))
 import qualified Meibo.Base             as Meibo
 import           Data.List              (isPrefixOf, intercalate, find)
 import qualified Util.Telephone         as Tel
@@ -224,6 +224,9 @@ instance ToJSON Address where
 
 test2 :: IO ()
 test2 = do
-  Just rc <- decodeFile "d:/home/Haskell/Zipcode/address.yaml"
+  Just file <- runFile $ File [ "d:/home/Haskell/Zipcode/address.yaml"
+                              , "c:/Users/Jumpei/Haskell/Zipcode/address.yaml"]
+
+  Just rc <- decodeFile file
   I.hSetEncoding I.stdout I.utf8
   mapM_ T.putStrLn $ address rc

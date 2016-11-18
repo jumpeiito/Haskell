@@ -295,3 +295,13 @@ scan f1 = do
   try ((:) <$> f1 <*> scan f1)
   <|> (eof >> return [])        -- 終了条件
   <|> (anyChar >> scan f1)
+
+data File = File [FilePath] deriving Show
+
+runFile :: File -> IO (Maybe FilePath)
+runFile (File []) = return Nothing
+runFile (File (x:xs)) = do
+  bool <- doesFileExist x
+  if bool
+    then return $ Just x
+    else runFile (File xs)
