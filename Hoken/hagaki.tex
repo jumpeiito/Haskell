@@ -1,0 +1,48 @@
+\documentclass[b5j,10pt]{jarticle}
+\usepackage{graphics,palatino,multirow}
+\pagestyle{empty}
+\setlength{\textheight}{120mm}
+\setlength{\textwidth}{78mm}
+\topmargin -15mm
+\headheight 0mm
+\headsep 0mm
+\oddsidemargin -15mm
+\newcommand{\todayd}{\the\year 年\the\month 月\the\day 日}
+\newcommand{\Joseki}[6]{\begin{center}
+  {\Huge \underline{保~~険~~料~~督~~促~~状}}
+\end{center}\par\vspace*{.6zw}
+
+\underline {\makebox[7zw]{#1}殿}\par
+貴殿は建築国保料を下記の通り滞納しています。
+
+\begin{center}
+  {\bf\large
+  #2 17時までに\par
+  醍醐支部事務所へ入金がないと、\par
+  保険資格を喪失(除籍)してしまいます。}
+\end{center}\par\vspace*{.6zw}
+
+17時までに支部事務所まで届けて下さい。振込や遅れる場合も、必ず支部事務
+所までご連絡下さい。\par
+
+連絡なき場合・入金が確認できない場合は、資格を喪失します。いったん除籍
+処分をうけると、再加入が困難になります。\par
+
+【なお、行き違いの場合はご容赦下さい。】\par\vspace*{.4zw}
+\noindent
+\begin{tabular}{|c|c|c|}\hline
+  \multirow{2}{*}{滞納月}&\multirow{2}{*}{滞納金額}&#6までに、少なくとも\\
+  &&1ヶ月分#5 円の\\\cline{1-2}
+  #3&#4 円&入金がないと除籍になります。\\\hline
+\end{tabular}\par\vspace*{.5zw}
+\todayd\par\vspace*{.3zw}
+\begin{flushright}
+  京都市伏見区醍醐上ノ山町18-13\par
+  全京都建築労働組合 醍醐支部\par
+  075-572-4949\par
+\end{flushright}}
+               
+\begin{document}
+\Joseki{西山}{11月30日(水)}{9〜11月}{60,000}{20,000}{11/30}
+\Joseki{武田}{11月30日(水)}{9〜11月}{105,000}{35,000}{11/30}
+\end{document}
