@@ -18,6 +18,7 @@ module Util.Strdt (strdt
                   , dayStrWithSep
                   , getWeekDate
                   , getWeekDateInt
+                  , getWeekDateString
                   , japaneseDateString) where 
 
 import Util           hiding ((&&&))
@@ -194,6 +195,9 @@ getWeekDate d = toEnum $ abs $ (1 -) $ getWeekDateInt d
 
 getWeekDateInt :: Day -> Int
 getWeekDateInt d = read [last $ showWeekDate d]
+
+getWeekDateString :: Day -> String
+getWeekDateString d = ["日", "月", "火", "水", "木", "金", "土"] !! getWeekDateInt d
 
 japaneseDateString :: Day -> String
 japaneseDateString d =
