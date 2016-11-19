@@ -296,12 +296,18 @@ scan f1 = do
   <|> (eof >> return [])        -- 終了条件
   <|> (anyChar >> scan f1)
 
-data File = File [FilePath] deriving Show
+data FileSystem = File [FilePath] | Directory [FilePath] deriving Show
 
-runFile :: File -> IO (Maybe FilePath)
+runFile :: FileSystem -> IO (Maybe FilePath)
 runFile (File []) = return Nothing
+runFile (Directory []) = return Nothing
 runFile (File (x:xs)) = do
   bool <- doesFileExist x
   if bool
     then return $ Just x
     else runFile (File xs)
+runFile (Directory (x:xs)) = do
+  bool <- doesDirectoryExist x
+  if bool
+    then return $ Just x
+    else runFile (Directory xs)
