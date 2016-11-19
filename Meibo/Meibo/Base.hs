@@ -18,7 +18,7 @@ import Data.Maybe
 import Data.Text                        (unpack, pack, Text)
 import Data.Time.Calendar
 import GHC.Float
-import Util                             (runRubyString, readUTF8File, group, runFile, File (..))
+import Util                             (runRubyString, readUTF8File, group, runFile, FileSystem (..))
 import Util.Strdt
 import Util.Telephone
 import Util.StrEnum

@@ -2,8 +2,10 @@
 
 module Main where
 
-import           Util                   ((++++), locEncoding, makeMap, scan, runFile, File (..))
+import           Util                   ((++++), locEncoding, makeMap, scan, runFile, ketaNum, FileSystem (..))
+import           Util.Strdt             (getWeekDateString, strdt, toDay)
 import qualified Meibo.Base             as Meibo
+import           Data.Time
 import           Data.List              (isPrefixOf, intercalate, find)
 import qualified Util.Telephone         as Tel
 import qualified Data.Map               as Map
@@ -153,6 +155,12 @@ toMeiboData3 p mp =
                   | otherwise = telnum
       in find (hasTel telnum') targetList
 
+toLatex :: Person -> String
+toLatex p = "\\Joseki{" ++ name' ++ "}{" ++ sum' ++ "}{" ++ head' ++ "}"
+  where name' = name p
+        sum'  = ketaNum $ show $ feeSum p
+        head' = ketaNum $ show $ head $ feeList p
+
 toString :: Person -> Map.Map String [Meibo.Line] -> String
 toString p mp = intercalate "," (lists ++ meiboList)
   where lists = [ number p
@@ -170,20 +178,23 @@ main :: IO ()
 main = do
   sjis <- I.mkTextEncoding "cp932"
   I.hSetEncoding I.stdout sjis
-
+  I.hSetEncoding I.stdout I.utf8
   argv  <- getArgs
   meibo <- Meibo.meiboMain "全" 
   let mmap = makeMap Meibo.bunkai id meibo
 
+  let Just myDate = strdt (argv!!1) :: Maybe Day
+  
+  putStrLn $ "\\renewcommand{\\tempDay}{" ++ show (toDay myDate) ++ "}"
+  putStrLn $ "\\renewcommand{\\tempDW}{" ++ getWeekDateString myDate ++ "}"
+  
   output <- runXdoc (argv!!0) `runReaderT` config
   case parse (scan pobjectParse) "" output of
     Left _  -> return ()
     Right x -> do
-      I.hSetEncoding I.stdout I.utf8
       forM_ x $ \person -> do
-        -- putStrLn $ toString person mmap
         if length (feeList person) == 3
-          then putStrLn $ toString person mmap
+          then putStrLn $ toLatex person
           else return ()
 
 -- telStringParseSpec :: Spec
