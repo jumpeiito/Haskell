@@ -17,12 +17,13 @@ module Util.Strdt (strdt
                   , dayStr6
                   , dayStrWithSep
                   , getWeekDate
-                  , getWeekDateInt) where 
+                  , getWeekDateInt
+                  , japaneseDateString) where 
 
 import Util           hiding ((&&&))
 import Control.Arrow
 import Data.List
-import Data.Map
+import Data.Map                         hiding (map)
 import Data.Maybe
 import Data.Time
 import Data.Time.Calendar.WeekDate
@@ -193,6 +194,15 @@ getWeekDate d = toEnum $ abs $ (1 -) $ getWeekDateInt d
 
 getWeekDateInt :: Day -> Int
 getWeekDateInt d = read [last $ showWeekDate d]
+
+japaneseDateString :: Day -> String
+japaneseDateString d =
+  y' ++ "年" ++ m' ++ "月" ++ d' ++ "日(" ++ dw ++ ")"
+  where [y', m', d'] = map (\f -> show $ f d) [ fromInteger . toYear
+                                              , toMonth
+                                              , toDay]
+        dw' = getWeekDateInt d
+        dw  = ["日", "月", "火", "水", "木", "金", "土"] !! dw'
 
 class DiffDate a b where
   differ :: a -> a -> b
