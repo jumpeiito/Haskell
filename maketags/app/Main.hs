@@ -2,31 +2,47 @@ module Main where
 
 import Util
 import Control.Monad.Reader
+import Data.Maybe
 import System.Process
 
-data Config = Con { haskellDir :: FilePath
+data Config = Con { topDir     :: FileSystem
                   , direction  :: FileDirect
-                  , hasktags   :: FilePath
-                  , options    :: [String]
                   }
 
-config :: Config
-config = Con { haskellDir = "C:/Users/jumpei/Haskell/"
-             , direction  = FD (".stack-work" <!~>) ("hs" <^>)
-             , hasktags   = "C:/Users/Jumpei/AppData/Roaming/local/bin/hasktags.exe"
-             , options    = ["-o", "C:/Users/jumpei/Haskell/TAGS", "-e"]}
+type CfgReaderT a = ReaderT Config IO a
 
-collectFiles :: ReaderT Config IO [FilePath]
+config :: Config
+config = Con { topDir     = Directory ["C:/Users/jumpei/", "D:/home/"]
+             , direction  = FD (".stack-work" <!~>) ("hs" <^>)
+             }
+
+topDirectory :: CfgReaderT FilePath
+topDirectory = do
+  maybeDir <- topDir <$> ask
+  Just directory <- liftIO . runFile $ maybeDir
+  return directory
+
+optionList :: CfgReaderT [String]
+optionList = do
+  dir <- topDirectory
+  return ["-o", dir ++ "TAGS", "-e"]
+
+hasktags2 :: CfgReaderT FilePath
+hasktags2 = do
+  dir <- topDirectory
+  return $ dir ++ "AppData/Roaming/local/bin/hasktags.exe"
+
+collectFiles :: CfgReaderT [FilePath]
 collectFiles = do
-  directory <- haskellDir <$> ask
+  directory <- topDirectory
   direct    <- direction  <$> ask
   files     <- liftIO $ allfd directory direct
   return files
 
-makeTags :: [FilePath] -> ReaderT Config IO ()
+makeTags :: [FilePath] -> CfgReaderT ()
 makeTags files = do
-  command <- hasktags <$> ask
-  option  <- options  <$> ask
+  command <- hasktags2
+  option  <- optionList
   liftIO $ runInteractiveProcess command (option ++ files) Nothing Nothing
   return ()
 
