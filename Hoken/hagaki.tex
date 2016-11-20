@@ -20,11 +20,17 @@
   \advance\oldmon by -\oldmontemp
   \the\oldmon 〜 \the\mon 月
 }
+\newcommand{\kintou}[2]{%
+\leavevmode
+\hbox to #1{%
+\kanjiskip=0pt plus 1fill minus 1fill
+\xkanjiskip=\kanjiskip
+#2}}
 \newcommand{\Joseki}[3]{\begin{center}
   {\Huge \underline{保~~険~~料~~督~~促~~状}}
 \end{center}\par\vspace*{.6zw}
 
-\underline {\makebox[7zw]{#1}殿}\par
+\underline {~~~\kintou{6zw}{#1}\hspace*{2zw}殿}\par
 貴殿は建築国保料を下記の通り滞納しています。
 
 \begin{center}
@@ -41,7 +47,7 @@
 処分をうけると、再加入が困難になります。\par
 
 【なお、行き違いの場合はご容赦下さい。】\par\vspace*{.4zw}
-\noindent
+\noindent\hspace*{-1.2zw}
 \begin{tabular}{|c|c|c|}\hline
   \multirow{2}{*}{滞納月}&\multirow{2}{*}{滞納金額}&\dayfigure までに、少なくとも\\
   &&1ヶ月分#3 円の\\\cline{1-2}
