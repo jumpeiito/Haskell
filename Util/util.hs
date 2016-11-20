@@ -311,3 +311,13 @@ runFile (Directory (x:xs)) = do
   if bool
     then return $ Just x
     else runFile (Directory xs)
+
+latexCom :: String -> [String] -> String
+latexCom comName args =
+  "\\" ++ comName ++ concatMap enclose args
+  where enclose s = "{" ++ s ++ "}"
+
+latexEnv :: String -> [String] -> String
+latexEnv envName args =
+  "\\begin{" ++ envName ++ "}" ++ concatMap enclose args ++ "\\end{" ++ envName ++ "}"
+  where enclose s = "{" ++ s ++ "}"

@@ -2,10 +2,19 @@
 
 module Main where
 
-import           Util                   ((++++), locEncoding, makeMap, scan, runFile, ketaNum, FileSystem (..))
+import           Util                   ((++++)
+                                        , locEncoding
+                                        , makeMap
+                                        , scan
+                                        , runFile
+                                        , ketaNum
+                                        , FileSystem (..)
+                                        , latexCom)
 import           Util.Strdt             (getWeekDateString, strdt, toDay)
 import qualified Meibo.Base             as Meibo
 import           Data.Time
+import           Data.Monoid
+import           Data.Maybe             (fromMaybe, isJust)
 import           Data.List              (isPrefixOf, intercalate, find)
 import qualified Util.Telephone         as Tel
 import qualified Data.Map               as Map
@@ -20,6 +29,7 @@ import           Data.Text              (Text)
 import qualified Data.Text.IO           as T
 import           Data.Yaml              hiding (Parser, Array)
 import qualified System.IO              as I
+import qualified Options.Applicative    as O
 
 data Config = Con { nkfwin :: FilePath
                   , xdoc   :: FilePath
@@ -162,17 +172,69 @@ toLatex p = "\\Joseki{" ++ name' ++ "}{" ++ sum' ++ "}{" ++ head' ++ "}"
         head' = ketaNum $ show $ head $ feeList p
 
 toString :: Person -> Map.Map String [Meibo.Line] -> String
-toString p mp = intercalate "," (lists ++ meiboList)
-  where lists = [ number p
-                , bunkai p
-                , name p
-                , show $ feeSum p
-                , show $ head $ feeList p
-                , show $ feeList p ]
+toString p mp = latexCom "personallabel" arguments
+  where arguments = [ pt, ad1, ad2, name p ]
         meiboData = toMeiboData p mp
-        meiboList = case meiboData of
-          Just x  -> [ Meibo.ad x, Meibo.postal x ]
-          Nothing -> []
+        ad = fromMaybe "" $ Meibo.ad <$> meiboData
+        pt = fromMaybe "" $ Meibo.postal <$> meiboData
+        (ad1, ad2) = splitAddress ad
+
+toDebug :: Person -> Map.Map String [Meibo.Line] -> String
+toDebug p mp = latexCom "debug" arguments
+  where arguments = [ pt
+                    , ad1
+                    , ad2
+                    , name p
+                    , number p
+                    , bunkai p
+                    , feeStr p
+                    , show $ feeSum p]
+        meiboData = toMeiboData p mp
+        ad = fromMaybe "" $ Meibo.ad <$> meiboData
+        pt = fromMaybe "" $ Meibo.postal <$> meiboData
+        (ad1, ad2) = splitAddress ad
+        
+
+takeWhileP f = do
+  (:) <$> f <*> takeWhileP f
+  <|> return []
+
+splitAddressParser :: Parser (String, String)
+splitAddressParser = do
+  let num = "0123456789-"
+  addr  <- takeWhileP (noneOf num)
+  numb  <- takeWhileP (oneOf num)
+  other <- try (many1 anyChar) <|> (eof >> return "")
+  return (addr ++ numb, other)
+
+splitAddress :: String -> (String, String)
+splitAddress ad = case parse splitAddressParser "" ad of
+                    Right x -> x
+                    Left _  -> (ad, "")
+
+secondPrint :: [Person] -> IO ()
+secondPrint persons = do
+  forM_ persons $ \person -> do
+    if length (feeList person) == 3
+      then putStrLn $ toLatex person
+      else return ()
+
+debugPrint :: [Person] -> Map.Map String [Meibo.Line] -> IO ()
+debugPrint persons mmap = do
+  forM_ persons $ \person -> do
+    if length (feeList person) == 3
+      then putStrLn $ toDebug person mmap
+      else return ()
+
+firstPrint :: Day -> [Person] -> Map.Map String [Meibo.Line] -> IO ()
+firstPrint d persons mmap = do
+  putStrLn $ "\\renewcommand{\\tempDay}{" ++ show (toDay d) ++ "}"
+  putStrLn $ "\\renewcommand{\\tempDW}{" ++ getWeekDateString d ++ "}"
+
+  forM_ persons $ \person -> do
+    if length (feeList person) == 3
+      then putStrLn $ toString person mmap
+      else return ()
 
 main :: IO ()
 main = do
@@ -181,21 +243,21 @@ main = do
   I.hSetEncoding I.stdout I.utf8
   argv  <- getArgs
   meibo <- Meibo.meiboMain "全" 
+
+  opt <- O.customExecParser (O.prefs O.showHelpOnError) myParserInfo
+
   let mmap = makeMap Meibo.bunkai id meibo
 
-  let Just myDate = strdt (argv!!1) :: Maybe Day
+  let Just myDate = strdt (date' opt) :: Maybe Day
   
-  putStrLn $ "\\renewcommand{\\tempDay}{" ++ show (toDay myDate) ++ "}"
-  putStrLn $ "\\renewcommand{\\tempDW}{" ++ getWeekDateString myDate ++ "}"
-  
-  output <- runXdoc (argv!!0) `runReaderT` config
+  output <- runXdoc (pdf opt) `runReaderT` config
   case parse (scan pobjectParse) "" output of
     Left _  -> return ()
     Right x -> do
-      forM_ x $ \person -> do
-        if length (feeList person) == 3
-          then putStrLn $ toLatex person
-          else return ()
+      case (first' opt, second' opt) of
+        (True, _) -> firstPrint myDate x mmap
+        (_, True) -> secondPrint x
+        (_, _)    -> debugPrint x mmap
 
 -- telStringParseSpec :: Spec
 -- telStringParseSpec = do
@@ -225,19 +287,68 @@ test = do
     Right x -> print $ toMeiboData x mmap
     Left _  -> return ()
 
+data Secrets = S { secrets :: [[Text]] }
+
 data Address = Ad { address :: [Text] }
 
 instance FromJSON Address where
   parseJSON (Object v) = Ad <$> v .: "address"
 
-instance ToJSON Address where
-  toJSON (Ad x) = object ["address" .= x]
+instance FromJSON Secrets where
+  parseJSON (Object v) = S <$> v .: "secrets"
 
+-- "c:/Users/Jumpei/Haskell/Zipcode/address.yaml"
 test2 :: IO ()
 test2 = do
-  Just file <- runFile $ File [ "d:/home/Haskell/Zipcode/address.yaml"
-                              , "c:/Users/Jumpei/Haskell/Zipcode/address.yaml"]
+  Just file <- runFile $ File [ "d:/home/Haskell/Hoken/app/secret.yaml"
+                              , "c:/Users/Jumpei/Haskell/Hoken/app/secret.yaml"]
 
-  Just rc <- decodeFile file
+  Just rc <- decodeFile file :: IO (Maybe Secrets)
   I.hSetEncoding I.stdout I.utf8
-  mapM_ T.putStrLn $ address rc
+  -- mapM_ T.putStrLn $ secrets rc
+  mapM_ print $ secrets rc
+
+data Options = Options { first'  :: Bool
+                       , second' :: Bool
+                       , pdf     :: String
+                       , date'   :: String
+                       } deriving (Show)
+
+firstP :: O.Parser Bool
+firstP = O.switch $ O.short 'f' <> O.long "first" <> O.help ""
+
+secondP :: O.Parser Bool
+secondP = O.switch $ O.short 's' <> O.long "second" <> O.help ""
+
+dateP :: O.Parser String
+dateP = O.strOption $ mconcat
+        [ O.short 'd', O.long "date"
+        , O.help ""
+        , O.metavar ""
+        , O.value ""
+        , O.showDefaultWith id]
+
+pdfP :: O.Parser String
+pdfP = O.strOption $ mconcat
+        [ O.short 'p', O.long "pdf"
+        , O.help ""
+        , O.metavar ""
+        , O.value ""
+        , O.showDefaultWith id]
+
+optionsP :: O.Parser Options
+optionsP = (<*>) O.helper
+           $ Options
+           <$> firstP
+           <*> secondP
+           <*> pdfP
+           <*> dateP
+
+myParserInfo :: O.ParserInfo Options
+myParserInfo = O.info optionsP $ mconcat 
+    [ O.fullDesc
+    , O.progDesc ""
+    , O.header "Hoken-exe.exe"
+    , O.footer ""
+    , O.progDesc ""
+    ]
