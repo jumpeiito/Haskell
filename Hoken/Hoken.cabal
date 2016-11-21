@@ -13,11 +13,20 @@ build-type:          Simple
 -- extra-source-files:
 cabal-version:       >=1.10
 
--- library
---   hs-source-dirs:      src
---   exposed-modules:     Lib
---   build-depends:       base >= 4.7 && < 5
---   default-language:    Haskell2010
+library
+  hs-source-dirs:      .
+  exposed-modules:     Hoken.Base
+                     , Hoken.Parser
+                     , Hoken.Meibo
+  build-depends:       base >= 4.7 && < 5
+                     , process
+                     , Util
+                     , mtl
+                     , parsec
+                     , hspec
+                     , containers
+                     , Meibo
+  default-language:    Haskell2010
 
 executable Hoken-exe
   hs-source-dirs:      app
@@ -35,6 +44,7 @@ executable Hoken-exe
                      , yaml
                      , time
                      , optparse-applicative
+                     , Hoken
   default-language:    Haskell2010
 
 test-suite Hoken-test
