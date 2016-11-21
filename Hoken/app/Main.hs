@@ -75,22 +75,6 @@ main = do
         (_, _)    -> debugPrint x mmap
 
 
-data Secrets = S { secrets :: [[Text]] }
-
-instance FromJSON Secrets where
-  parseJSON (Object v) = S <$> v .: "secrets"
-
--- "c:/Users/Jumpei/Haskell/Zipcode/address.yaml"
-test2 :: IO ()
-test2 = do
-  Just file <- runFile $ File [ "d:/home/Haskell/Hoken/app/secret.yaml"
-                              , "c:/Users/Jumpei/Haskell/Hoken/app/secret.yaml"]
-
-  Just rc <- decodeFile file :: IO (Maybe Secrets)
-  I.hSetEncoding I.stdout I.utf8
-  -- mapM_ T.putStrLn $ secrets rc
-  mapM_ print $ secrets rc
-
 data Options = Options { first'  :: Bool
                        , second' :: Bool
                        , pdf     :: String
