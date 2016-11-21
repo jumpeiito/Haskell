@@ -20,7 +20,8 @@ data Person = P { number  :: String
                 , phone   :: Maybe Telephone
                 , feeStr  :: String
                 , feeSum  :: Int
-                , feeList :: [Int] } deriving Show
+                , feeList :: [Int] }
+            | PersonError deriving Show
 
 type MeiboMap = Map.Map String [Meibo.Line]
 

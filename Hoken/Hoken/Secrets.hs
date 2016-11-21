@@ -2,7 +2,9 @@
 
 module Hoken.Secrets ( SecretPerson (..)
                      , secretMap
+                     , toSecretPerson
                      , SecretMap
+                     , Secrets (..)
                      , (<<|>>)) where
   
 import           Util                   (runFile, FileSystem (..), makeSingleMap)
@@ -46,3 +48,5 @@ secretMap = do
   Just rc <- decodeFile file :: IO (Maybe Secrets)
   let gen = map toSecretPerson $ secrets rc
   return $ makeSingleMap number id gen
+
+

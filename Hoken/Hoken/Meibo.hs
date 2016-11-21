@@ -4,8 +4,10 @@ module Hoken.Meibo  where
 
 import Util                     hiding ((&&&))
 import Hoken.Base               (Person (..), config, MeiboMap)
-import Hoken.Parser             (splitAddress)
-import Hoken.Secrets            ((<<|>>))
+import Hoken.Parser             (splitAddress, pobjectParse)
+import Hoken.Secrets            ((<<|>>), Secrets (..))
+-- import Meibo.Base               (Line (..))
+import qualified Meibo.Base     as MB
 import qualified Hoken.Secrets  as Sec
 import qualified Meibo.Base     as Meibo
 import qualified Data.Map       as Map
@@ -58,12 +60,12 @@ toMeiboData3 p mp =
                   | otherwise = telnum
       in find (hasTel telnum') targetList
 
-(<~~>) (p, func) (smp, func2) =
-  func p <<|>> fromMaybe "" (func2 <$> Map.lookup (number p) smp)
+(<~~) :: (a -> b) -> (Person, Map.Map String a) -> Maybe b
+(<~~) f (p, smp) = f <$> Map.lookup (number p) smp
 
 toLatex :: Person -> Sec.SecretMap -> String
 toLatex p smp = latexCom "Joseki" [name', sum', head']
-  where name' = (p, name) <~~> (smp, Sec.name)
+  where name' = fromMaybe "" $ Sec.name <~~ (p, smp) `mplus` Just (name p)
         sum'  = ketaNum $ show $ feeSum p
         head' = ketaNum $ show $ head $ feeList p
 
@@ -78,11 +80,15 @@ regularPostal postal = pre ++ "-" ++ post
 
 toString :: Person -> MeiboMap -> Sec.SecretMap -> String
 toString p mp smp = latexCom "personallabel" arguments
-  where arguments = [ regularPostal pt, ad1, ad2, name p ]
+  where arguments = [ regularPostal pt, ad1, ad2, name' ]
         meiboData = toMeiboData p mp
-        ad = (Meibo.ad <~ meiboData, id) <~~> (smp, Sec.ad1)
-        pt = (Meibo.postal <~ meiboData, id) <~~> (smp, Sec.ad2)
-        (ad1, ad2) = splitAddress ad
+        -- ad = fromMaybe "" $ Sec.ad1 <~~ (p, smp) `mplus` (Meibo.ad <$> meiboData)
+        name' = fromMaybe "" $ Sec.name <~~ (p, smp) `mplus` Just (name p)
+        ad = fromMaybe "" $ Meibo.ad <$> meiboData
+        pt = fromMaybe "" $ Sec.post <~~ (p, smp) `mplus` (Meibo.postal <$> meiboData)
+        (ad1', ad2') = splitAddress ad
+        Just ad1 = Sec.ad1 <~~ (p, smp) `mplus` Just ad1'
+        Just ad2 = Sec.ad2 <~~ (p, smp) `mplus` Just ad2'
 
 toDebug :: Person -> MeiboMap -> String
 toDebug p mp = latexCom "debug" arguments
@@ -98,3 +104,43 @@ toDebug p mp = latexCom "debug" arguments
         ad = Meibo.ad <~ meiboData
         pt = Meibo.postal <~ meiboData
         (ad1, ad2) = splitAddress ad
+
+testcase1 = "6醍50101伊東090-1901-0111＊4120041200 82400"
+testcase2 = "6醍50102伊東090-1901-0111＊4120041200 82400"
+testp1 = either (const PersonError) id $ parse pobjectParse "" testcase1
+testp2 = either (const PersonError) id $ parse pobjectParse "" testcase2
+
+testgen = map Sec.toSecretPerson [["50101", "Carlo", "5010000", "KyotoCity", "MinamiWard"]]
+testsmp = makeSingleMap Sec.number id testgen
+
+testLine = MB.Line { MB.bunkai = "点在"
+                   , MB.bknum  = "50"
+                   , MB.han    = ""
+                   , MB.kind   = ""
+                   , MB.hancho = Just ""
+                   , MB.gen    = ""
+                   , MB.name   = "7777"
+                   , MB.nameP  = ("", "")
+                   , MB.ad     = "カリフォルニア州ロサンゼルス3-2プリプリハウス302号"
+                   , MB.tel    = [Mobile "090-1901-0111"]
+                   , MB.work   = ""
+                   , MB.exp    = ""
+                   , MB.furi   = ""
+                   , MB.birthS = ""
+                   , MB.birth  = Nothing
+                   , MB.year   = Nothing
+                   , MB.postal = "6000000"}
+testmp = makeMap MB.bunkai id [testLine]           
+
+toLatexSpec :: Spec
+toLatexSpec = do
+  describe "toLatex" $ do
+    it "test1" $ testp1 `toLatex` testsmp `shouldBe` "\\Joseki{****}{82,400}{41,200}"
+    it "test2" $ testp2 `toLatex` testsmp `shouldBe` "\\Joseki{伊東}{82,400}{41,200}"
+
+toStringSpec :: Spec
+toStringSpec = do
+  describe "toString" $ do
+    -- post -> ad1 -> ad2 -> name
+    it "test1" $ toString testp1 testmp testsmp `shouldBe` "\\personallabel{501-0000}{KyotoCity}{MinamiWard}{Carlo}"
+    it "test2" $ toString testp2 testmp testsmp `shouldBe` "\\personallabel{600-0000}{----}{@@@@}{****}"
