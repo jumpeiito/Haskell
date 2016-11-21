@@ -1,8 +1,12 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Hoken.Meibo  where
 
 import Util                     hiding ((&&&))
 import Hoken.Base               (Person (..), config, MeiboMap)
 import Hoken.Parser             (splitAddress)
+import Hoken.Secrets            ((<<|>>))
+import qualified Hoken.Secrets  as Sec
 import qualified Meibo.Base     as Meibo
 import qualified Data.Map       as Map
 import Control.Arrow            ((&&&))
@@ -54,9 +58,12 @@ toMeiboData3 p mp =
                   | otherwise = telnum
       in find (hasTel telnum') targetList
 
-toLatex :: Person -> String
-toLatex p = latexCom "Joseki" [name', sum', head']
-  where name' = name p
+(<~~>) (p, func) (smp, func2) =
+  func p <<|>> fromMaybe "" (func2 <$> Map.lookup (number p) smp)
+
+toLatex :: Person -> Sec.SecretMap -> String
+toLatex p smp = latexCom "Joseki" [name', sum', head']
+  where name' = (p, name) <~~> (smp, Sec.name)
         sum'  = ketaNum $ show $ feeSum p
         head' = ketaNum $ show $ head $ feeList p
 
@@ -69,12 +76,12 @@ regularPostal postal = pre ++ "-" ++ post
 (<~) :: (a -> [Char]) -> Maybe a -> [Char]
 (<~) f mp = fromMaybe "" $ f <$> mp
 
-toString :: Person -> MeiboMap -> String
-toString p mp = latexCom "personallabel" arguments
+toString :: Person -> MeiboMap -> Sec.SecretMap -> String
+toString p mp smp = latexCom "personallabel" arguments
   where arguments = [ regularPostal pt, ad1, ad2, name p ]
         meiboData = toMeiboData p mp
-        ad = Meibo.ad <~ meiboData
-        pt = Meibo.postal <~ meiboData
+        ad = (Meibo.ad <~ meiboData, id) <~~> (smp, Sec.ad1)
+        pt = (Meibo.postal <~ meiboData, id) <~~> (smp, Sec.ad2)
         (ad1, ad2) = splitAddress ad
 
 toDebug :: Person -> MeiboMap -> String
