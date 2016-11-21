@@ -5,22 +5,18 @@
 \newcounter{height}
 \newcounter{tempw}
 \newcounter{temph}
+\newlength{\templength}
 \setcounter{width}{0}
 \setcounter{height}{0}
-\newcommand{\personallabel}[4]{%
-  \setcounter{temph}{\value{height}}
-  \setcounter{tempw}{\value{width}}
-  \addtocounter{temph}{33}
-  \addtocounter{tempw}{7}
-  \put(\thetempw,\thetemph){〒#1} % 郵便番号
-  \addtocounter{temph}{-9}
-  \put(\thetempw,\thetemph){#2} % 住所1
-  \addtocounter{tempw}{3}
-  \addtocounter{temph}{-7}
-  \put(\thetempw,\thetemph){#3} % 住所2
-  \addtocounter{tempw}{-7}
-  \addtocounter{temph}{-9}
-  \put(\thetempw,\thetemph){\makebox[70mm][c]{\bf #4~様}} % 氏名
+\def\resizeString#1#2{
+  \settowidth{\templength}{#2}
+  \ifdim\templength > #1
+  \resizebox{#1}{10pt}{#2}
+  \else
+  #2
+  \fi
+}
+\def\resetcounter{
   \ifnum\thewidth=140
   \setcounter{width}{0}
   \addtocounter{height}{42}
@@ -28,32 +24,27 @@
   \addtocounter{width}{70}
   \fi
 }
+\newcommand{\personallabel}[4]{%
+  \setcounter{temph}{\value{height}}
+  \setcounter{tempw}{\value{width}}
+  \addtocounter{temph}{33}
+  \addtocounter{tempw}{7}
+  \put(\thetempw,\thetemph){〒#1} % 郵便番号
+  \addtocounter{temph}{-9}
+  \put(\thetempw,\thetemph){\resizeString{57mm}{#2}} % 住所1
+  \addtocounter{tempw}{3}
+  \addtocounter{temph}{-7}
+  \put(\thetempw,\thetemph){\resizeString{52mm}{#3}} % 住所2
+  \addtocounter{tempw}{-7}
+  \addtocounter{temph}{-9}
+  \put(\thetempw,\thetemph){\makebox[70mm][c]{\bf #4~様}} % 氏名
+  \resetcounter
+}
 \begin{document}
 \setlength\unitlength{1truemm}
 \begin{picture}(0,0)(36,255)
   \put(0,0){\framebox(210,296){}}
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-  \personallabel{600-0000}{京都府宇治市六地蔵町並1-1}{プリプリハウス302号}{剛田たけし}%
-%%   \put(0,0){\framebox(70,42){}}
+  \input{Atena.insert}
 \end{picture}
 
 \end{document}
