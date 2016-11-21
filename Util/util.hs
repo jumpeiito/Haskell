@@ -91,6 +91,10 @@ makeMap _ _ [] = Map.empty
 makeMap kF vF (x:xs) =
   Map.insertWith' (++) (kF x) [vF x] $ makeMap kF vF xs
 
+makeSingleMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k a
+makeSingleMap kF vF (x:xs) =
+  Map.insert (kF x) (vF x) $ makeSingleMap kF vF xs
+
 makeCountMap :: (Num a, Ord k) => (t -> k) -> [t] -> Map.Map k a
 makeCountMap _ [] = Map.empty
 makeCountMap kF (x:xs) =
