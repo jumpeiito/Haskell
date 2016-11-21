@@ -92,6 +92,7 @@ makeMap kF vF (x:xs) =
   Map.insertWith' (++) (kF x) [vF x] $ makeMap kF vF xs
 
 makeSingleMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k a
+makeSingleMap _ _ [] = Map.empty
 makeSingleMap kF vF (x:xs) =
   Map.insert (kF x) (vF x) $ makeSingleMap kF vF xs
 
