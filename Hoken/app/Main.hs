@@ -10,23 +10,23 @@ import           Util                   ((++++)
                                         , ketaNum
                                         , FileSystem (..)
                                         , latexCom)
+import           Util.Strdt             (getWeekDateString, strdt, toDay)
+import qualified Util.Telephone         as Tel
 import           Hoken.Base             (runXdoc, Person (..), config, MeiboMap)
 import           Hoken.Parser           (pobjectParse, splitAddress)
 import           Hoken.Meibo            (toLatex, toString, toDebug)
-import           Util.Strdt             (getWeekDateString, strdt, toDay)
 import qualified Meibo.Base             as Meibo
 import           Data.Time
 import           Data.Monoid
 import           Data.Maybe             (fromMaybe, isJust)
 import           Data.List              (isPrefixOf, intercalate, find)
-import qualified Util.Telephone         as Tel
 import qualified Data.Map               as Map
-import           Control.Monad.Reader
-import           Text.Parsec            hiding (Line, State)
-import           Test.Hspec
 import           Data.Text              (Text)
 import qualified Data.Text.IO           as T
 import           Data.Yaml              hiding (Parser, Array)
+import           Control.Monad.Reader
+import           Text.Parsec            hiding (Line, State)
+import           Test.Hspec
 import qualified System.IO              as I
 import qualified Options.Applicative    as O
 
@@ -38,7 +38,6 @@ secondPrint persons d = do
   forM_ persons $ \person -> 
     when (length (feeList person) == 3) $ 
       putStrLn $ toLatex person
-
 
 debugPrint :: [Person] -> MeiboMap -> IO ()
 debugPrint persons mmap = 
@@ -77,11 +76,6 @@ main = do
 
 
 data Secrets = S { secrets :: [[Text]] }
-
-data Address = Ad { address :: [Text] }
-
-instance FromJSON Address where
-  parseJSON (Object v) = Ad <$> v .: "address"
 
 instance FromJSON Secrets where
   parseJSON (Object v) = S <$> v .: "secrets"
