@@ -29,17 +29,11 @@ toSecretPerson [num', name', post', ad1', ad2'] =
   SP num' name' post' ad1' ad2'
 toSecretPerson _ = SPError  
 
-secretMap :: [SecretPerson] -> Map.Map Text [SecretPerson]
-secretMap = makeMap number id
-
-test2 :: IO ()
-test2 = do
+secretMap :: IO (Map.Map Text [SecretPerson])
+secretMap = do
   Just file <- runFile $ File [ "d:/home/Haskell/Hoken/app/secret.yaml"
                               , "c:/Users/Jumpei/Haskell/Hoken/app/secret.yaml"]
 
   Just rc <- decodeFile file :: IO (Maybe Secrets)
-  I.hSetEncoding I.stdout I.utf8
-  -- mapM_ T.putStrLn $ secrets rc
-  -- mapM_ print $ map (toSecretPerson) $ secrets rc
-  print $ secretMap $ map toSecretPerson $ secrets rc
-
+  let gen = map toSecretPerson $ secrets rc
+  return $ makeMap number id gen
