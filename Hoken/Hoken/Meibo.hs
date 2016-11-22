@@ -105,11 +105,14 @@ toDebug p mp = latexCom "debug" arguments
         (ad1, ad2) = splitAddress ad
 
 testcase1 = "6醍50101伊東090-1901-0111＊4120041200 82400"
-testcase2 = "6醍50102伊東090-1901-0111＊4120041200 82400"
+testcase2 = "6醍50102伊東090-1901-0111＊2000020000 82400"
+testcase3 = "6醍50103伊東090-1901-0111＊2000020000 82400"
 testp1 = either (const PersonError) id $ parse pobjectParse "" testcase1
 testp2 = either (const PersonError) id $ parse pobjectParse "" testcase2
+testp3 = either (const PersonError) id $ parse pobjectParse "" testcase3
 
-testgen = map Sec.toSecretPerson [["50101", "Carlo", "5010000", "KyotoCity", "MinamiWard"]]
+testgen = map Sec.toSecretPerson [ ["50101", "Carlo", "5010000", "KyotoCity", "MinamiWard"]
+                                 , ["50103", "", "5010000", "KyotoCity", "MinamiWard"]]
 testsmp = makeSingleMap Sec.number id testgen
 
 testLine = MB.Line { MB.bunkai = "点在"
@@ -120,7 +123,7 @@ testLine = MB.Line { MB.bunkai = "点在"
                    , MB.gen    = ""
                    , MB.name   = "7777"
                    , MB.nameP  = ("", "")
-                   , MB.ad     = "カリフォルニア州ロサンゼルス3-2プリプリハウス302号"
+                   , MB.ad     = "OsakaCity3-2MinamiOsaka"
                    , MB.tel    = [Mobile "090-1901-0111"]
                    , MB.work   = ""
                    , MB.exp    = ""
@@ -134,12 +137,13 @@ testmp = makeMap MB.bunkai id [testLine]
 toLatexSpec :: Spec
 toLatexSpec = do
   describe "toLatex" $ do
-    it "test1" $ testp1 `toLatex` testsmp `shouldBe` "\\Joseki{****}{82,400}{41,200}"
-    it "test2" $ testp2 `toLatex` testsmp `shouldBe` "\\Joseki{伊東}{82,400}{41,200}"
+    it "test1" $ testp1 `toLatex` testsmp `shouldBe` "\\Joseki{Carlo}{82,400}{41,200}"
+    it "test2" $ testp2 `toLatex` testsmp `shouldBe` "\\Joseki{伊東}{40,000}{20,000}"
+    it "test3" $ testp3 `toLatex` testsmp `shouldBe` "\\Joseki{伊東}{40,000}{20,000}"
 
 toStringSpec :: Spec
 toStringSpec = do
   describe "toString" $ do
     -- post -> ad1 -> ad2 -> name
     it "test1" $ toString testp1 testmp testsmp `shouldBe` "\\personallabel{501-0000}{KyotoCity}{MinamiWard}{Carlo}"
-    it "test2" $ toString testp2 testmp testsmp `shouldBe` "\\personallabel{600-0000}{----}{@@@@}{****}"
+    it "test2" $ toString testp2 testmp testsmp `shouldBe` "\\personallabel{600-0000}{OsakaCity3-2}{MinamiOsaka}{伊東}"
