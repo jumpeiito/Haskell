@@ -10,7 +10,7 @@
 \newcommand{\todayd}{\the\year 年\the\month 月\the\day 日}
 \newcommand{\dayfigure}{\the\month/\tempDay}
 \newcommand{\dayfigureW}{\the\month 月\tempDay 日(\tempDW)}
-\newcommand{\rangeMonth}{\newcount\mon \newcount\oldmon \newcount\oldmontemp
+\newcommand{\calcRangeMonth}{\newcount\mon \newcount\oldmon \newcount\oldmontemp
   \mon = \the\month
   \oldmon = \the\month
   \advance\oldmon by 10
@@ -18,8 +18,8 @@
   \divide\oldmontemp by 12
   \multiply\oldmontemp by 12
   \advance\oldmon by -\oldmontemp
-  \the\oldmon 〜 \the\mon 月
 }
+\newcommand{\rangeMonth}{\the\oldmon 〜 \the\mon 月}
 \newcommand{\kintou}[2]{%
 \leavevmode
 \hbox to #1{%
@@ -62,5 +62,6 @@
 \newcommand{\tempDay}{}
 \newcommand{\tempDW}{}
 \begin{document}
+\calcRangeMonth
 \input{hagaki.insert}
 \end{document}
