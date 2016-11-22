@@ -8,8 +8,10 @@ module Hoken.Secrets ( SecretPerson (..)
                      , (<<|>>)) where
   
 import           Util                   (runFile, FileSystem (..), makeSingleMap)
+import           Control.Monad  
 import           Data.Yaml              hiding (Parser, Array)
 import           Data.Text              (Text)
+import           Data.Maybe             (fromMaybe)
 import qualified Data.Map               as Map
 import qualified Data.Text.IO           as T
 import           Text.StringLike        (castString)
@@ -35,10 +37,11 @@ toSecretPerson x@[_, _, _, _, _] =
   in SP num' name' post' ad1' ad2'
 toSecretPerson _ = SPError  
 
-(<<|>>) :: String -> String -> String
-(<<|>>) "" x = x
-(<<|>>) x "" = x
-(<<|>>) x y  = x
+(<<|>>) :: Maybe String -> Maybe String -> String
+Just "" <<|>> Just x = x
+Just x  <<|>> _ = x
+Nothing <<|>> Just x = x
+Nothing <<|>> _ = ""
 
 secretMap :: IO SecretMap
 secretMap = do

@@ -65,7 +65,7 @@ toMeiboData3 p mp =
 
 toLatex :: Person -> Sec.SecretMap -> String
 toLatex p smp = latexCom "Joseki" [name', sum', head']
-  where name' = fromMaybe "" $ Sec.name <~~ (p, smp) `mplus` Just (name p)
+  where name' = Sec.name <~~ (p, smp) <<|>> Just (name p)
         sum'  = ketaNum $ show $ feeSum p
         head' = ketaNum $ show $ head $ feeList p
 
@@ -82,13 +82,12 @@ toString :: Person -> MeiboMap -> Sec.SecretMap -> String
 toString p mp smp = latexCom "personallabel" arguments
   where arguments = [ regularPostal pt, ad1, ad2, name' ]
         meiboData = toMeiboData p mp
-        -- ad = fromMaybe "" $ Sec.ad1 <~~ (p, smp) `mplus` (Meibo.ad <$> meiboData)
-        name' = fromMaybe "" $ Sec.name <~~ (p, smp) `mplus` Just (name p)
-        ad = fromMaybe "" $ Meibo.ad <$> meiboData
-        pt = fromMaybe "" $ Sec.post <~~ (p, smp) `mplus` (Meibo.postal <$> meiboData)
+        ad           = fromMaybe "" $ Meibo.ad <$> meiboData
         (ad1', ad2') = splitAddress ad
-        Just ad1 = Sec.ad1 <~~ (p, smp) `mplus` Just ad1'
-        Just ad2 = Sec.ad2 <~~ (p, smp) `mplus` Just ad2'
+        name'        = Sec.name <~~ (p, smp) <<|>> Just (name p)
+        pt           = Sec.post <~~ (p, smp) <<|>> (Meibo.postal <$> meiboData)
+        ad1          = Sec.ad1  <~~ (p, smp) <<|>> Just ad1'
+        ad2          = Sec.ad2  <~~ (p, smp) <<|>> Just ad2'
 
 toDebug :: Person -> MeiboMap -> String
 toDebug p mp = latexCom "debug" arguments
