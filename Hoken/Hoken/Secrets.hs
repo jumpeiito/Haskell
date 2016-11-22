@@ -51,5 +51,3 @@ secretMap = do
   Just rc <- decodeFile file :: IO (Maybe Secrets)
   let gen = map toSecretPerson $ secrets rc
   return $ makeSingleMap number id gen
-
-
