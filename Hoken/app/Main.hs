@@ -15,6 +15,7 @@ import qualified Util.Telephone         as Tel
 import           Hoken.Base             (runXdoc, Person (..), config, MeiboMap)
 import           Hoken.Parser           (pobjectParse, splitAddress)
 import           Hoken.Meibo            (toLatex, toString, toDebug)
+import qualified Hoken.Secrets          as Sec
 import qualified Meibo.Base             as Meibo
 import           Data.Time
 import           Data.Monoid
@@ -30,14 +31,14 @@ import           Test.Hspec
 import qualified System.IO              as I
 import qualified Options.Applicative    as O
 
-secondPrint :: [Person] -> Day -> IO ()
-secondPrint persons d = do
+secondPrint :: [Person] -> Day -> Sec.SecretMap -> IO ()
+secondPrint persons d smap = do
   putStrLn $ "\\renewcommand{\\tempDay}{" ++ show (toDay d) ++ "}"
   putStrLn $ "\\renewcommand{\\tempDW}{" ++ getWeekDateString d ++ "}"
 
-  forM_ persons $ \person -> 
-    when (length (feeList person) == 3) $ 
-      putStrLn $ toLatex person
+  forM_ persons $ \person -> do
+    when (length (feeList person) == 3) $ do
+      putStrLn $ toLatex person smap
 
 debugPrint :: [Person] -> MeiboMap -> IO ()
 debugPrint persons mmap = 
@@ -45,11 +46,11 @@ debugPrint persons mmap =
     when (length (feeList person) == 3) $
       putStrLn $ toDebug person mmap
 
-firstPrint :: [Person] -> MeiboMap -> IO ()
-firstPrint persons mmap = 
-  forM_ persons $ \person -> 
+firstPrint :: [Person] -> MeiboMap -> Sec.SecretMap -> IO ()
+firstPrint persons mmap smap = 
+  forM_ persons $ \person -> do
     when (length (feeList person) == 3) $
-      putStrLn $ toString person mmap
+      putStrLn $ toString person mmap smap
 
 main :: IO ()
 main = do
@@ -61,6 +62,8 @@ main = do
 
   opt <- O.customExecParser (O.prefs O.showHelpOnError) myParserInfo
 
+  smap <- Sec.secretMap
+
   let mmap = makeMap Meibo.bunkai id meibo
 
   let Just myDate = strdt (date' opt) :: Maybe Day
@@ -70,8 +73,8 @@ main = do
     Left _  -> return ()
     Right x -> 
       case (first' opt, second' opt) of
-        (True, _) -> firstPrint x mmap
-        (_, True) -> secondPrint x myDate
+        (True, _) -> firstPrint x mmap smap
+        (_, True) -> secondPrint x myDate smap
         (_, _)    -> debugPrint x mmap
 
 
