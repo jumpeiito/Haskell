@@ -95,6 +95,7 @@ module Personal
     end
     def value
       type = @type == "〆切後" ? "〆切後" : ""
+      # 最初から2つ目と3つ目は、結合セルの入力をスキップするためのダミー。
       return [@name, "", "", @bunkai, @han, @reason, @motivation, type]
     end
   end
@@ -169,7 +170,7 @@ module Excel
     end
   end
   module Init
-    FILE = "s:/馬場フォルダ/新加入/2016年度加入手続状況一覧.xlsx"
+    FILE = "s:/馬場フォルダ/新加入/2016年度加入手続状況一覧.xlsm"
     # FILE = "f:/2016年度加入手続状況一覧.xlsx"
     class Enter < Excel::Sheet
       def initialize()
@@ -177,7 +178,7 @@ module Excel
         @file = Excel::Init::FILE
         @data = {:sheet => "加入", :range => ["B3:AE138"] }
         @output_range = "G13:N"
-        @column = [0, 2, 3, 4, 7, 9, 11, 12, 17]
+        @column = [0, 2, 3, 4, 7, 9, 11, 12, 18]
       end
       def filter(list)
         list
@@ -240,8 +241,8 @@ module Excel
   class GenseiFile < Excel::Sheet
     def initialize
       super
-      # @file       = "s:/原田フォルダ/2016年度/年間資料/2016年度　現勢報告書.xlsx"
-      @file       = "f:/2016年度　現勢報告書.xlsx"
+      @file       = "s:/原田フォルダ/2016年度/年間資料/2016年度　現勢報告書.xlsx"
+      # @file       = "f:/2016年度　現勢報告書.xlsx"
       @range      = ["A8", "AB6:AB9"]
       @sheetName  = @this_month.toSheetIndex
     end
@@ -263,12 +264,11 @@ begin
   app.Visible       = Visible
   app.DisplayAlerts = true
   ie                = Excel::Init::Enter.new()
-  # il                = Excel::Init::Leave.new()
-  # id                = Excel::Init::Danketsu.new()
-  # g                 = Excel::GenseiFile.new()
-  # [ie, il, id].each {|sheet| g.output(app, sheet)}
-  # pp ie.work_output(app)
-  pp ie.work_rank(app)
+  il                = Excel::Init::Leave.new()
+  id                = Excel::Init::Danketsu.new()
+  g                 = Excel::GenseiFile.new()
+  [ie, il, id].each {|sheet| g.output(app, sheet)}
+  # pp ie.work_rank(app)
 ensure
   app.Quit()
 end
