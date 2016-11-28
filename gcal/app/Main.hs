@@ -26,6 +26,7 @@ import Network.HTTP.Base              (urlEncode, Request (..))
 import Network.HTTP.Headers
 import qualified System.IO as I
 import System.Process (runInteractiveProcess)
+import System.Directory (doesFileExist)
 
 firefox = "c:/Program Files (x86)/Mozilla Firefox/firefox.exe"
 
@@ -38,14 +39,19 @@ data Keys = K { client_id :: String
               , client_secret :: String
               , redirect_uris :: [String] } deriving (Show, Generic)
 
-data RefreshToekn = RToken { access_token :: String
-                           , token_type   :: String
-                           , expires_in   :: Int } deriving (Show, Generic)
+data Token = Token { access_token :: String
+                   , token_type   :: String
+                   , expires_in   :: Int
+                   , refresh_token :: String }
+           | RefreshToken { access_token :: String
+                          , token_type :: String
+                          , expires_in :: Int}
+           deriving (Show, Generic)
 
 
 instance FromJSON ClientJSON
 instance FromJSON Keys
-instance FromJSON RefreshToekn
+instance FromJSON Token
 
 clientID', clientSecret', authURI, tokenURI :: ClientJSON -> String
 clientID'     = client_id     . installed
@@ -56,7 +62,7 @@ tokenURI      = token_uri     . installed
 clientPair :: ClientJSON -> (ByteString, ByteString)
 clientPair = (B.pack . clientID') &&& (B.pack . clientSecret')
 
-loadJSON :: FilePath -> IO (Maybe ClientJSON)
+loadJSON :: FromJSON a => FilePath -> IO (Maybe a)
 loadJSON filepath = decode <$> BL.readFile filepath
 
 makeParameter :: [(ByteString, ByteString)] -> ByteString
@@ -114,6 +120,36 @@ requestToken cj = runResourceT $ do
   let postRequest = urlEncodedBody [("status", "")] request
   response <- http postRequest manager
   responseBody response $$+- CB.sinkFile "test3.json"
+
+gcalEvent :: ClientJSON -> IO ()
+gcalEvent cj = runResourceT $ do
+  manager <- liftIO $ newManager tlsManagerSettings
+  
+  para <- liftIO $ parseRequest "https://www.googleapis.com/calendar/v3/calendars/junnpit@gmail.com/events"
+
+  let (id, sec) = clientPair cj
+
+  let request = para { queryString = makeParameter [ ("access_token", "ya29.Ci-kA4_mNShsGHtrmD7n147V7xUAaxM7rfNSgn_Q8lY2L3peMqauscQ3J0ttNQcb-A")
+                                                   , ("key", sec)
+                                                   , ("singleEvents", "True")
+                                                   , ("orderBy", "startTime")
+                                                   , ("timeMin", "2016-10-29T15:36:23Z")
+                                                   , ("timeMax", "2017-01-27T15:36:23Z")
+                                                   , ("grant_type", "authorization_code")]}
+
+  response <- http request manager
+  responseBody response $$+- CB.sinkHandle I.stdout
+
+
+ensureToken :: ClientJSON -> IO (Maybe Token)
+ensureToken clj = do
+  let jsonFile = "test3.json"
+  bool <- doesFileExist jsonFile
+  if bool
+    then loadJSON jsonFile
+    else do { requestToken clj; loadJSON jsonFile }
+
+-- "https://www.googleapis.com/calendar/v3/calendars/%s/events"
 
 -- main :: IO ()
 -- main = runResourceT $ do
