@@ -43,10 +43,27 @@ data Token = Token { access_token :: String
                    , token_type   :: String
                    , expires_in   :: Int
                    , refresh_token :: String }
-           | RefreshToken { access_token :: String
-                          , token_type :: String
-                          , expires_in :: Int}
+           | RefToken { access_token :: String
+                      , token_type :: String
+                      , expires_in :: Int}
            deriving (Show, Generic)
+
+
+data Parameter a =
+  ClientID a
+  | ClientSecret a
+  | RefreshToken a
+  | GrantType a
+  | ResponseType a
+  | RedirectURI a
+  | Scope a
+  | Code a
+  | AccessToken a
+  | Key a
+  | SingleEvents a
+  | OrderBy a
+  | TimeMin a
+  | TimeMax a deriving (Show, Eq)
 
 
 instance FromJSON ClientJSON
