@@ -14,9 +14,19 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  hs-source-dirs:      src
+  hs-source-dirs:      src, .
   exposed-modules:     Lib
+                     , Gcal.Parameter
+                     , Gcal.Request
+                     , Gcal.Event
   build-depends:       base >= 4.7 && < 5
+                     , bytestring
+                     , conduit
+                     , transformers
+                     , resourcet
+                     , HTTP
+                     , http-conduit
+                     , aeson
   default-language:    Haskell2010
 
 executable gcal-exe
@@ -38,6 +48,7 @@ executable gcal-exe
                      , aeson
                      , Util
                      , process
+                     , directory
   default-language:    Haskell2010
 
 test-suite gcal-test

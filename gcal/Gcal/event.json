@@ -1,0 +1,1054 @@
+{
+ "kind": "calendar#events",
+ "etag": "\"p32oelss9hj8d00g\"",
+ "summary": "junnpit@gmail.com",
+ "updated": "2016-11-30T08:47:28.798Z",
+ "timeZone": "Asia/Tokyo",
+ "accessRole": "owner",
+ "defaultReminders": [
+  {
+   "method": "email",
+   "minutes": 10
+  },
+  {
+   "method": "popup",
+   "minutes": 30
+  }
+ ],
+ "items": [
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959905759546000\"",
+   "id": "_ah9j2b9hclij2cj26lhiqoj6c4piqd1h6gq2qoj66ph2qp9j64qj4phk68r6ao9p",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjloY2xpajJjajI2bGhpcW9qNmM0cGlxZDFoNmdxMnFvajY2cGgycXA5ajY0cWo0cGhrNjhyNmFvOXAganVubnBpdEBt",
+   "created": "2016-11-24T02:00:42.000Z",
+   "updated": "2016-11-24T02:01:19.773Z",
+   "summary": "申請〆切 [0/3]",
+   "description": "\u003c2016-11-24 木\u003e \u003c2016-12-05 月\u003e\n• ☐ 国保給付\n• ☐ 総合共済\n• ☐ 名簿関係",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "date": "2016-11-24"
+   },
+   "end": {
+    "date": "2016-11-25"
+   },
+   "iCalUID": "TS1-1ee12b5c-bfa3-4144-bf6b-e3152f426ea9",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": false
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960053644063000\"",
+   "id": "85e2hl588upo2qni53oo6frqbc",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=ODVlMmhsNTg4dXBvMnFuaTUzb282ZnJxYmMganVubnBpdEBt",
+   "created": "2016-11-24T10:45:56.000Z",
+   "updated": "2016-11-25T10:21:27.322Z",
+   "summary": "中得の限度額証を持って帰る",
+   "description": "   :PROPERTIES:\n   :LOCATION: 建築国保組合\n   :END:\n   SCHEDULED: \u003c2016-11-25 Fri\u003e\n",
+   "location": "建築国保組合",
+   "colorId": "3",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "date": "2016-11-25"
+   },
+   "end": {
+    "date": "2016-11-26"
+   },
+   "iCalUID": "85e2hl588upo2qni53oo6frqbc@google.com",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": false,
+    "overrides": [
+     {
+      "method": "email",
+      "minutes": 10
+     },
+     {
+      "method": "popup",
+      "minutes": 30
+     }
+    ]
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960144770623000\"",
+   "id": "_ah9j2bb374p3gopkckp2qpj4c5hiqd3171j2qoj468s2qcj4c8o6cdb470pj4d9l",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYmIzNzRwM2dvcGtja3AycXBqNGM1aGlxZDMxNzFqMnFvajQ2OHMycWNqNGM4bzZjZGI0NzBwajRkOWwganVubnBpdEBt",
+   "created": "2016-11-24T02:00:40.000Z",
+   "updated": "2016-11-25T11:13:05.350Z",
+   "summary": "現勢報告書",
+   "description": "\u003c2016-11-25 金\u003e",
+   "colorId": "3",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "date": "2016-11-25"
+   },
+   "end": {
+    "date": "2016-11-26"
+   },
+   "iCalUID": "TS1-c928c4e2-fdac-4a8f-bd28-2db0f5d83255",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": false
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960056748243000\"",
+   "id": "l6lgo91cbfkqgpisnc68g163ao",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=bDZsZ285MWNiZmtxZ3Bpc25jNjhnMTYzYW8ganVubnBpdEBt",
+   "created": "2016-11-24T10:46:20.000Z",
+   "updated": "2016-11-25T11:12:47.723Z",
+   "summary": "加入用紙を持参する",
+   "description": "   :PROPERTIES:\n   :LOCATION: 建築国保組合\n   :END:\n   SCHEDULED: \u003c2016-11-25 Fri\u003e\n",
+   "location": "建築国保組合",
+   "colorId": "3",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "date": "2016-11-25"
+   },
+   "end": {
+    "date": "2016-11-26"
+   },
+   "iCalUID": "l6lgo91cbfkqgpisnc68g163ao@google.com",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": false,
+    "overrides": [
+     {
+      "method": "email",
+      "minutes": 10
+     },
+     {
+      "method": "popup",
+      "minutes": 30
+     }
+    ]
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2b9n6dh6ac9hcli2qpho6sriqd3665giqohl6ko2qo9kc8pjep9g6oqj2e31",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjluNmRoNmFjOWhjbGkycXBobzZzcmlxZDM2NjVnaXFvaGw2a28ycW85a2M4cGplcDlnNm9xajJlMzEganVubnBpdEBt",
+   "created": "2016-11-24T07:06:03.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "府市民総行動",
+   "description": "\u003c2016-11-25 金 12:00\u003e",
+   "location": "府庁東門前",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-11-25T12:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-11-25T14:00:00+09:00"
+   },
+   "iCalUID": "TS1-73be11ed-f877-4f1a-b550-a4b37e06518a",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960109955942000\"",
+   "id": "umjam5flrtbe0kj1ji4i431sq8",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=dW1qYW01ZmxydGJlMGtqMWppNGk0MzFzcTgganVubnBpdEBt",
+   "created": "2016-11-25T06:22:57.000Z",
+   "updated": "2016-11-25T06:22:57.971Z",
+   "summary": "通夜",
+   "description": "     :PROPERTIES:\n     :LOCATION: シティホール南 玉泉院\n     :END:\n     \u003c2016-11-26 Sat 19:00\u003e\n",
+   "location": "シティホール南 玉泉院",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-11-26T19:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-11-26T19:00:00+09:00"
+   },
+   "iCalUID": "umjam5flrtbe0kj1ji4i431sq8@google.com",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959814903830000\"",
+   "id": "_ah9j2bb3cpi6ad1m75iiqdhic8oiqd1m6th2qe9i64qiqp1ichi3gd1j75hjceb5",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYmIzY3BpNmFkMW03NWlpcWRoaWM4b2lxZDFtNnRoMnFlOWk2NHFpcXAxaWNoaTNnZDFqNzVoamNlYjUganVubnBpdEBt",
+   "created": "2016-11-23T13:20:27.000Z",
+   "updated": "2016-11-23T13:24:11.915Z",
+   "summary": "宇治市長選支援行動",
+   "description": "\u003c2016-11-27 日 10:00\u003e",
+   "location": "京建労宇治支部",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-11-27T10:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-11-27T12:00:00+09:00"
+   },
+   "iCalUID": "TS1-cfde469e-62b1-467b-9215-d2dd8439c69e",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960076152030000\"",
+   "id": "flm3r4vkqvu8mseu6jnabjjshk",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=ZmxtM3I0dmtxdnU4bXNldTZqbmFiampzaGsganVubnBpdEBt",
+   "created": "2016-11-25T01:41:16.000Z",
+   "updated": "2016-11-25T01:41:16.015Z",
+   "summary": "工事のクレーム対応と民法改正の動向",
+   "description": "     :PROPERTIES:\n     :LOCATION: 京建労本部\n     :END:\n     \u003c2016-11-27 Sun 13:00\u003e\n",
+   "location": "京建労本部",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-11-27T13:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-11-27T13:00:00+09:00"
+   },
+   "iCalUID": "flm3r4vkqvu8mseu6jnabjjshk@google.com",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960109888514000\"",
+   "id": "2fiftrq2nklve7gtshncqe8i0k",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=MmZpZnRycTJua2x2ZTdndHNobmNxZThpMGsganVubnBpdEBt",
+   "created": "2016-11-25T06:22:24.000Z",
+   "updated": "2016-11-25T06:22:24.257Z",
+   "summary": "告別式",
+   "description": "     :PROPERTIES:\n     :LOCATION: シティホール南 玉泉院\n     :END:\n     \u003c2016-11-27 Sun 14:00\u003e\n",
+   "location": "シティホール南 玉泉院",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-11-27T14:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-11-27T14:00:00+09:00"
+   },
+   "iCalUID": "2fiftrq2nklve7gtshncqe8i0k@google.com",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2b9i60qm6oj568r2qchgccriqd1pc4riqo9h61j2qchjccs62db275j62or2",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjlpNjBxbTZvajU2OHIycWNoZ2NjcmlxZDFwYzRyaXFvOWg2MWoycWNoamNjczYyZGIyNzVqNjJvcjIganVubnBpdEBt",
+   "created": "2016-11-24T07:06:03.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "常任執行委員会 [0/3]",
+   "description": "\u003c2016-11-28 月 19:30\u003e",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-11-28T19:30:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-11-28T21:30:00+09:00"
+   },
+   "iCalUID": "TS1-205cbe26-20c7-49a7-a10f-23c8a5b9facb",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942795414000\"",
+   "id": "n5mjtuv1q8ohr6k57630k7ggis",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=bjVtanR1djFxOG9ocjZrNTc2MzBrN2dnaXMganVubnBpdEBt",
+   "created": "2016-11-24T07:09:57.000Z",
+   "updated": "2016-11-24T07:09:57.707Z",
+   "summary": "健康診断",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "date": "2016-11-29"
+   },
+   "end": {
+    "date": "2016-11-30"
+   },
+   "transparency": "transparent",
+   "iCalUID": "n5mjtuv1q8ohr6k57630k7ggis@google.com",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": false
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959814903830000\"",
+   "id": "_ah9j2b9ic8smcohi61iiqp1l68qiqd1j60s2qeb2c4riqdb5ccrm6db26hgj4e32",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjlpYzhzbWNvaGk2MWlpcXAxbDY4cWlxZDFqNjBzMnFlYjJjNHJpcWRiNWNjcm02ZGIyNmhnajRlMzIganVubnBpdEBt",
+   "created": "2016-11-23T13:20:27.000Z",
+   "updated": "2016-11-23T13:24:11.915Z",
+   "summary": "国保理事会",
+   "description": "\u003c2016-11-29 火 10:00\u003e",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-11-29T10:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-11-29T12:00:00+09:00"
+   },
+   "iCalUID": "TS1-2b9fb20e-d525-4308-9ba7-5ec7c5b4a28b",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960076873692000\"",
+   "id": "_ah9j2bb6c9i3iphh60riqopk70riqd1ncdj2qe1jc5giqdhncdj66oph6di6cohi",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYmI2YzlpM2lwaGg2MHJpcW9wazcwcmlxZDFuY2RqMnFlMWpjNWdpcWRobmNkajY2b3BoNmRpNmNvaGkganVubnBpdEBt",
+   "created": "2016-11-24T07:06:03.000Z",
+   "updated": "2016-11-25T01:47:16.846Z",
+   "summary": "国会議員要請",
+   "description": "\u003c2016-11-29 火 16:00\u003e",
+   "location": "京建労伏見支部",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-11-29T16:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-11-29T16:30:00+09:00"
+   },
+   "iCalUID": "TS1-fbd9f107-c487-47cf-83aa-67cfcc13dfb2",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960076889234000\"",
+   "id": "_ah9j2bb1chh3ad34cgqiqohl6sr2qd33cph2qohpccsiqohl60r6adj6c8o3ecr4",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYmIxY2hoM2FkMzRjZ3FpcW9obDZzcjJxZDMzY3BoMnFvaHBjY3NpcW9obDYwcjZhZGo2YzhvM2VjcjQganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-25T01:47:24.617Z",
+   "summary": "新加入の会",
+   "description": "\u003c2016-11-29 火 20:00\u003e",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-11-29T20:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-11-29T21:00:00+09:00"
+   },
+   "iCalUID": "TS1-adb54dd5-b576-4cfb-b9c9-b506e6fb073d",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2bb26krjedj46kqiqdb3c8r2qd326gp2qe1pc9hiqc366kp3gp1p6or34dhk",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYmIyNmtyamVkajQ2a3FpcWRiM2M4cjJxZDMyNmdwMnFlMXBjOWhpcWMzNjZrcDNncDFwNm9yMzRkaGsganVubnBpdEBt",
+   "created": "2016-11-24T07:06:03.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "支部総会",
+   "description": "\u003c2016-11-30 水 19:30\u003e",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-11-30T19:30:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-11-30T21:30:00+09:00"
+   },
+   "iCalUID": "TS1-b5776d55-5cb6-4b42-89bc-0f528d966264",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960076838188000\"",
+   "id": "_ah9j2bb3c5i3ed9l64siqdr4cdiiqd1g61iiqeb36griqohh70q62e9ichhmcd1p",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYmIzYzVpM2VkOWw2NHNpcWRyNGNkaWlxZDFnNjFpaXFlYjM2Z3JpcW9oaDcwcTYyZTlpY2hobWNkMXAganVubnBpdEBt",
+   "created": "2016-11-24T07:06:03.000Z",
+   "updated": "2016-11-25T01:46:59.094Z",
+   "summary": "本部執行委員会",
+   "description": "\u003c2016-12-01 木 10:00\u003e",
+   "location": "京建労本部",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-12-01T10:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-12-01T17:00:00+09:00"
+   },
+   "iCalUID": "TS1-cad75519-7dce-400e-9c47-b184a92dcf49",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2b9ncor34phg64o2qcr36sr2qd3269iiqe9n6tgiqp31cpj68o9h6gs64cb1",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjluY29yMzRwaGc2NG8ycWNyMzZzcjJxZDMyNjlpaXFlOW42dGdpcXAzMWNwajY4bzloNmdzNjRjYjEganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "法定福利費学習会",
+   "description": "\u003c2016-12-03 土 14:00\u003e",
+   "location": "京都テルサ",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-12-03T14:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-12-03T16:00:00+09:00"
+   },
+   "iCalUID": "TS1-7f62f010-3c76-4b2e-977a-daffda148b1a",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959814903830000\"",
+   "id": "_ah9j2b9pcko38dr26kr2qpb1c4oiqd1kccriqo9k74oiqdpjc8rj2or174q62e1i",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjlwY2tvMzhkcjI2a3IycXBiMWM0b2lxZDFrY2NyaXFvOWs3NG9pcWRwamM4cmoyb3IxNzRxNjJlMWkganVubnBpdEBt",
+   "created": "2016-11-23T13:20:27.000Z",
+   "updated": "2016-11-23T13:24:11.915Z",
+   "summary": "五役会議",
+   "description": "\u003c2016-12-03 土 19:30\u003e",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-12-03T19:30:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-12-03T21:30:00+09:00"
+   },
+   "iCalUID": "TS1-9e047b56-eaa1-44c7-a491-73b71ca94a82",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2bb56os6aphocpi2qd1mcdj2qd32cgpiqo9h6ko2qcb669j36eb571i3gob6",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYmI1Nm9zNmFwaG9jcGkycWQxbWNkajJxZDMyY2dwaXFvOWg2a28ycWNiNjY5ajM2ZWI1NzFpM2dvYjYganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "原発を考える伏見フォーラム",
+   "description": "\u003c2016-12-04 日 13:30\u003e",
+   "location": "龍谷大学深草キャンパス",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-12-04T13:30:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-12-04T15:30:00+09:00"
+   },
+   "iCalUID": "TS1-e68ef8fd-46cf-4bd3-a150-1f2f39e8d8af",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959905759546000\"",
+   "id": "_ah9j4b9hclij2cj26lhiqoj6c4piqd1h6gq2qoj66ph2qp9j64qj4phk68r6ao9p",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWo0YjloY2xpajJjajI2bGhpcW9qNmM0cGlxZDFoNmdxMnFvajY2cGgycXA5ajY0cWo0cGhrNjhyNmFvOXAganVubnBpdEBt",
+   "created": "2016-11-24T02:00:42.000Z",
+   "updated": "2016-11-24T02:01:19.773Z",
+   "summary": "申請〆切 [0/3]",
+   "description": "\u003c2016-11-24 木\u003e \u003c2016-12-05 月\u003e\n• ☐ 国保給付\n• ☐ 総合共済\n• ☐ 名簿関係",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "date": "2016-12-05"
+   },
+   "end": {
+    "date": "2016-12-06"
+   },
+   "iCalUID": "TS2-1ee12b5c-bfa3-4144-bf6b-e3152f426ea9",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": false
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2bb464rj4p9k6piiqoj56gqiqd1o60piqo9m6ks2qchj6hgjee1j6cpjac1i",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYmI0NjRyajRwOWs2cGlpcW9qNTZncWlxZDFvNjBwaXFvOW02a3MycWNoajZoZ2plZTFqNmNwamFjMWkganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "執行委員会",
+   "description": "\u003c2016-12-05 月 19:30\u003e",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-12-05T19:30:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-12-05T21:30:00+09:00"
+   },
+   "iCalUID": "TS1-d172e46e-be45-4803-a658-234a78333502",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2bb5c4rm4p9ickq2qcj36gpiqd1lc4riqe1lcooiqc9nckqjgpj5c9h3gdpk",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYmI1YzRybTRwOWlja3EycWNqMzZncGlxZDFsYzRyaXFlMWxjb29pcWM5bmNrcWpncGo1YzloM2dkcGsganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "労働安全衛生活動者会議",
+   "description": "\u003c2016-12-11 日 13:00\u003e",
+   "location": "京建労本部",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-12-11T13:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-12-11T15:00:00+09:00"
+   },
+   "iCalUID": "TS1-ea7be2e4-2c43-45a7-85f1-17e58febb874",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2b9nccsj2dhg60oiqd9i64o2qd1g6kq2qohm6gs2qcj2c4qjgo9p6dj68d9j",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjluY2NzajJkaGc2MG9pcWQ5aTY0bzJxZDFnNmtxMnFvaG02Z3MycWNqMmM0cWpnbzlwNmRqNjhkOWoganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "生活資金貸付立ち会い",
+   "description": "\u003c2016-12-13 火 13:15\u003e",
+   "location": "醍醐総合庁舎",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-12-13T13:15:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-12-13T15:15:00+09:00"
+   },
+   "iCalUID": "TS1-7c916001-5210-4054-b648-2ba58a93fd53",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2b9pcph3icb5coqiqchmc5hiqd1n6co2qe1g70siqopo6oom8eb6c5h3ge9p",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjlwY3BoM2ljYjVjb3FpcWNobWM1aGlxZDFuNmNvMnFlMWc3MHNpcW9wbzZvb204ZWI2YzVoM2dlOXAganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "税金対策活動者会議",
+   "description": "\u003c2016-12-18 日 13:00\u003e",
+   "location": "京建労本部",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2016-12-18T13:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2016-12-18T15:00:00+09:00"
+   },
+   "iCalUID": "TS1-9fb91ef5-26ac-4730-8089-c861d9fab899",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2b9o6kr3idpj6ko2qp31c9h2qd1h6oqiqoj66ks2qcj2cpi62cpkccsj2dhp",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjlvNmtyM2lkcGo2a28ycXAzMWM5aDJxZDFoNm9xaXFvajY2a3MycWNqMmNwaTYyY3BrY2NzajJkaHAganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "主婦の会ガーデニング教室",
+   "description": "\u003c2016-12-23 金\u003e \u003c2016-12-24 土\u003e",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "date": "2016-12-23"
+   },
+   "end": {
+    "date": "2016-12-24"
+   },
+   "iCalUID": "TS1-85697350-dabb-4165-bf58-2bfda34c9169",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": false
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j4b9o6kr3idpj6ko2qp31c9h2qd1h6oqiqoj66ks2qcj2cpi62cpkccsj2dhp",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWo0YjlvNmtyM2lkcGo2a28ycXAzMWM5aDJxZDFoNm9xaXFvajY2a3MycWNqMmNwaTYyY3BrY2NzajJkaHAganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "主婦の会ガーデニング教室",
+   "description": "\u003c2016-12-23 金\u003e \u003c2016-12-24 土\u003e",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "date": "2016-12-24"
+   },
+   "end": {
+    "date": "2016-12-25"
+   },
+   "iCalUID": "TS2-85697350-dabb-4165-bf58-2bfda34c9169",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": false
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2bb16pi68phl70oiqd1gckqiqd1n75hiqoho71h2qe1mcdgm4e1i61i34phl",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYmIxNnBpNjhwaGw3MG9pcWQxZ2NrcWlxZDFuNzVoaXFvaG83MWgycWUxbWNkZ200ZTFpNjFpMzRwaGwganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "前進座観劇",
+   "description": "\u003c2017-01-15 日\u003e森下・小玉・伊東2",
+   "location": "歌舞練場",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "date": "2017-01-15"
+   },
+   "end": {
+    "date": "2017-01-16"
+   },
+   "iCalUID": "TS1-a6ddf581-40e5-479c-b88b-86cab820d2f5",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": false
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960075448570000\"",
+   "id": "lki2rk7j26rjdq4abphm044bfk",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=bGtpMnJrN2oyNnJqZHE0YWJwaG0wNDRiZmsganVubnBpdEBt",
+   "created": "2016-11-25T01:35:24.000Z",
+   "updated": "2016-11-25T01:35:24.285Z",
+   "summary": "小栗栖ボウリング大会",
+   "description": "     :PROPERTIES:\n     :LOCATION: 山科グランドボウル\n     :END:\n     \u003c2017-01-15 Sun 15:00\u003e\n",
+   "location": "山科グランドボウル",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2017-01-15T15:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2017-01-15T15:00:00+09:00"
+   },
+   "iCalUID": "lki2rk7j26rjdq4abphm044bfk@google.com",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959942669328000\"",
+   "id": "_ah9j2b9nchhm4p9j6th2qp9i6hi2qd346sr2qeb269hiqopm64q62e3564s6ce1o",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjluY2hobTRwOWo2dGgycXA5aTZoaTJxZDM0NnNyMnFlYjI2OWhpcW9wbTY0cTYyZTM1NjRzNmNlMW8ganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:08:54.664Z",
+   "summary": "組織機構改革意見交換会",
+   "description": "\u003c2017-01-22 日 09:30\u003e",
+   "location": "ウエスティン都ホテル",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2017-01-22T09:30:00+09:00"
+   },
+   "end": {
+    "dateTime": "2017-01-22T11:30:00+09:00"
+   },
+   "iCalUID": "TS1-7dcbe37b-e24d-4d76-9b2c-c614a8e18f88",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2959944982790000\"",
+   "id": "_ah9j2b9hclhm8dpn6gr2qc1n61j2qd36c9giqohm6gs2qpb4chj32ob56gsjid9n",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=X2FoOWoyYjloY2xobThkcG42Z3IycWMxbjYxajJxZDM2YzlnaXFvaG02Z3MycXBiNGNoajMyb2I1NmdzamlkOW4ganVubnBpdEBt",
+   "created": "2016-11-24T07:06:04.000Z",
+   "updated": "2016-11-24T07:28:11.395Z",
+   "summary": "春の活動者会議・旗開き",
+   "description": "\u003c2017-01-22 日 13:00\u003e\n",
+   "location": "ウエスティン都ホテル",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2017-01-22T13:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2017-01-22T15:00:00+09:00"
+   },
+   "iCalUID": "TS1-1ecd7746-070f-4fba-b648-eddf1ae49957",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  },
+  {
+   "kind": "calendar#event",
+   "etag": "\"2960076452316000\"",
+   "id": "7lm0kvm4sl0oavc5pddgaug80c",
+   "status": "confirmed",
+   "htmlLink": "https://www.google.com/calendar/event?eid=N2xtMGt2bTRzbDBvYXZjNXBkZGdhdWc4MGMganVubnBpdEBt",
+   "created": "2016-11-25T01:43:46.000Z",
+   "updated": "2016-11-25T01:43:46.158Z",
+   "summary": "支部ボウリング大会",
+   "description": "     :PROPERTIES:\n     :LOCATION: 山科グランドボウル\n     :END:\n     \u003c2017-01-29 Sun 13:00\u003e\n",
+   "location": "山科グランドボウル",
+   "creator": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "organizer": {
+    "email": "junnpit@gmail.com",
+    "displayName": "Jumpei Itou",
+    "self": true
+   },
+   "start": {
+    "dateTime": "2017-01-29T13:00:00+09:00"
+   },
+   "end": {
+    "dateTime": "2017-01-29T13:00:00+09:00"
+   },
+   "iCalUID": "7lm0kvm4sl0oavc5pddgaug80c@google.com",
+   "sequence": 0,
+   "reminders": {
+    "useDefault": true
+   }
+  }
+ ]
+}
