@@ -1,0 +1,6 @@
+* hoge
+** foo
+   :PROPERTIES:
+   :LOCATION: buz
+   :END:
+   <2016-12-12 Mon>

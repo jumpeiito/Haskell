@@ -19,16 +19,14 @@ import qualified Data.Conduit.Binary as CB
 import Control.Arrow ((&&&))
 import Util (withOutFile)
 import Util.Strdt
-import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Resource
 import Network.HTTP.Conduit
--- import Web.Authenticate.OAuth
 import Data.Maybe                     (fromMaybe)
 import Network.URI
 import Network.HTTP                   (simpleHTTP, getResponseBody, RequestMethod (..))
 import Network.HTTP.Base              (urlEncode, Request (..))
-import Network.HTTP.Headers
+import           Text.Parsec            hiding (Line, State)
 import qualified System.IO as I
 import System.Process (runInteractiveProcess)
 import System.Directory (doesFileExist)
