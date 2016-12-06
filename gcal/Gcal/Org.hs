@@ -2,6 +2,7 @@
 
 module Gcal.Org where
 
+import Util
 import Data.Time
 import Control.Monad.State
 import qualified Data.Text as Tx
@@ -119,8 +120,8 @@ locationParse = do
 discardParse :: Parser Tx.Text
 discardParse = do
   let text s = Tx.pack <$> string s
-  choice [ try $ many (oneOf " \t") *> text ":PROPERTIES:"
-         , try $ many (oneOf " \t") *> text ":END:"]
+  let tryS s = try $ many (oneOf " \t") *> text s
+  choice [ tryS ":PROPERTIES:", tryS ":END:", tryS ":LINK:"]
 ----------------------------------------------------------------------------------------------------
 orgTranslateState :: [Tx.Text] -> State [Org] ()
 orgTranslateState texts = do
