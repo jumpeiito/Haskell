@@ -35,24 +35,22 @@ instance FromJSON GcalEvent where
                              <*> v .: "items"
 
 instance FromJSON EventItem where
-  parseJSON (Object v) =  Item <$> v .: "kind"
-                               <*> v .: "etag"
-                               <*> v .: "id"
-                               <*> v .: "status"
-                               <*> v .: "htmlLink"
-                               <*> v .: "created"
-                               <*> v .: "updated"
-                               <*> v .: "summary"
+  parseJSON (Object v) =  Item <$> v .:  "kind"
+                               <*> v .:  "etag"
+                               <*> v .:  "id"
+                               <*> v .:  "status"
+                               <*> v .:  "htmlLink"
+                               <*> v .:  "created"
+                               <*> v .:  "updated"
+                               <*> v .:  "summary"
                                <*> v .:? "description"
-                               -- <*> v .: "location"
-                               -- <*> v .: "colorId"
-                               <*> v .: "creator"
-                               <*> v .: "organizer"
-                               <*> v .: "start"
-                               <*> v .: "end"
-                               <*> v .: "iCalUID"
-                               <*> v .: "sequence"
-                               <*> v .: "reminders"
+                               <*> v .:  "creator"
+                               <*> v .:  "organizer"
+                               <*> v .:  "start"
+                               <*> v .:  "end"
+                               <*> v .:  "iCalUID"
+                               <*> v .:  "sequence"
+                               <*> v .:  "reminders"
                                <*> v .:? "location"
                                <*> v .:? "colorId"
                                <*> v .:? "transparency"
@@ -90,7 +88,7 @@ data Person = P { email       :: String
                 , self        :: Bool} deriving (Show, Eq, Generic)
 
 data EventDay = ED { date     :: Maybe String
-                   , dateTime :: Maybe String}
+                   , dateTime :: Maybe String }
   deriving (Show, Eq)
 
 data Default = D { useDefault :: Bool

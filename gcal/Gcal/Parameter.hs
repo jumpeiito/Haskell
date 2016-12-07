@@ -23,20 +23,20 @@ data Parameter a =
   | TimeMax a deriving (Show, Eq)
 
 toString :: (Monoid a, IsString a) => Parameter a -> a
-toString (ClientID a)     = "client_id=" <> a
+toString (ClientID a)     = "client_id="     <> a
 toString (ClientSecret a) = "client_secret=" <> a
 toString (RefreshToken a) = "refresh_token=" <> a
-toString (GrantType a)    = "grant_type=" <> a
+toString (GrantType a)    = "grant_type="    <> a
 toString (ResponseType a) = "response_type=" <> a
-toString (RedirectURI a)  = "redirect_uri=" <> a
-toString (Scope a)        = "scope=" <> a
-toString (Code a)         = "code=" <> a
-toString (AccessToken a)  = "access_token=" <> a
-toString (Key a)          = "key=" <> a
-toString (SingleEvents a) = "singleEvents=" <> a
-toString (OrderBy a)      = "orderBy=" <> a
-toString (TimeMin a)      = "timeMin=" <> a
-toString (TimeMax a)      = "timeMax=" <> a
+toString (RedirectURI a)  = "redirect_uri="  <> a
+toString (Scope a)        = "scope="         <> a
+toString (Code a)         = "code="          <> a
+toString (AccessToken a)  = "access_token="  <> a
+toString (Key a)          = "key="           <> a
+toString (SingleEvents a) = "singleEvents="  <> a
+toString (OrderBy a)      = "orderBy="       <> a
+toString (TimeMin a)      = "timeMin="       <> a
+toString (TimeMax a)      = "timeMax="       <> a
 
 makeParameter :: (Monoid a, IsString a, Eq a) => [Parameter a] -> a
 makeParameter = foldl' conc mempty

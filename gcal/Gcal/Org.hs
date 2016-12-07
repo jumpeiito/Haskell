@@ -4,6 +4,7 @@ module Gcal.Org where
 
 import Util
 import Data.Time
+import Data.Either (isRight)
 import Control.Monad.State
 import qualified Data.Text as Tx
 import qualified Data.Text.IO as Txio
@@ -24,12 +25,12 @@ data OrgTime = Normal DateTime
              | Deadline DateTime
              | Scheduled DateTime deriving (Show, Eq)
 
-data Org = Org { level    :: OrgLevel
-               , title    :: Tx.Text
-               , datetime :: Maybe OrgTime
-               , location :: Tx.Text
+data Org = Org { level       :: OrgLevel
+               , title       :: Tx.Text
+               , datetime    :: Maybe OrgTime
+               , location    :: Tx.Text
                , description :: [Tx.Text]
-               , children :: [Org] }
+               , children    :: [Org] }
            | OrgError ParseError deriving (Show, Eq)
 
 data OrgSymbolLine = OrgSymbolHeader (OrgLevel, Tx.Text)
@@ -49,7 +50,7 @@ classifyParse = do
 headerParse :: Parser (OrgLevel, Tx.Text)
 headerParse = do
   stars <- many1 (char '*') <* char ' '
-  title <- many (noneOf "*\n")
+  title <- many (noneOf "*\n:")
   return (length stars, Tx.pack title)
 
 initOrg :: Tx.Text -> Org
@@ -62,7 +63,7 @@ initOrg s = case parse headerParse "" s of
                           , description = []
                           , children = [] }
 
-makeOrg :: Int -> Tx.Text -> Org
+makeOrg :: OrgLevel -> Tx.Text -> Org
 makeOrg lev tit = Org { level = lev
                       , title = tit
                       , datetime = Nothing
@@ -131,8 +132,8 @@ orgTranslateState texts = do
       Right (OrgSymbolHeader (lev, tit)) -> put (makeOrg lev tit:current)
       Right (OrgSymbolTime otime)        -> put (pushTime otime current)
       Right (OrgLocation loc)            -> put (pushLocation loc current)
-      Right (OrgDiscard)                 -> put current
       Right (OrgOther txt)               -> put (pushOther txt current)
+      Right (OrgDiscard)                 -> return ()
       
 orgTranslate :: [Tx.Text] -> [Org]
 orgTranslate texts = reverse . snd $ orgTranslateState texts `runState` []
@@ -140,30 +141,56 @@ orgTranslate texts = reverse . snd $ orgTranslateState texts `runState` []
 ----------------------------------------------------------------------------------------------------
 orgSpec :: Spec
 orgSpec = do
+  let p' f = parse f ""
+  --------------------------------------------------
   describe "headerParse" $ do
     it "matches Org-file headers" $
-      parse headerParse "" "* hoge\n" `shouldBe` Right (1, "hoge")
+      p' headerParse "* hoge\n" `shouldBe` Right (1, "hoge")
     it "also matches more than 2-stars-header" $
-      parse headerParse "" "** hoge\n" `shouldBe` Right (2, "hoge")
+      p' headerParse "** hoge\n" `shouldBe` Right (2, "hoge")
     it "also matches title which has some spaces and tabs" $
-      parse headerParse "" "*** hoge foo\tbuz\n" `shouldBe` Right (3, "hoge foo\tbuz")
+      p' headerParse "*** hoge foo\tbuz\n" `shouldBe` Right (3, "hoge foo\tbuz")
+  --------------------------------------------------
   describe "timeParse" $ do
-    it "" $ parse timeParse "" "DEADLINE: <2015-03-24 Tue>" `shouldBe`
-      Right (Deadline (Fix ((fromGregorian 2015 3 24), 0, 0)))
-    it "" $ parse timeParse "" "SCHEDULED: <2016-12-15 Thu>" `shouldBe`
-      Right (Scheduled (Fix ((fromGregorian 2016 12 15), 0, 0)))
-    it "" $ parse timeParse "" "[2016-12-03 Sat 17:53]" `shouldBe`
-      Right (Normal (Fix ((fromGregorian 2016 12 3), 17, 53)))
-    it "" $ parse timeParse "" "<2016-11-25 Fri>" `shouldBe`
-      Right (Normal (Fix ((fromGregorian 2016 11 25), 0, 0)))
-    it "" $ parse timeParse "" "   DEADLINE: <2015-03-24 Tue>--<2015-03-25 Wed>" `shouldBe`
-      Right (Deadline (Range ((fromGregorian 2015 3 24), 0, 0) ((fromGregorian 2015 3 25), 0, 0)))
-    it "" $ parse timeParse "" " SCHEDULED: <2016-12-15 Thu>--<2016-12-16 Fri>" `shouldBe`
-      Right (Scheduled (Range ((fromGregorian 2016 12 15), 0, 0) ((fromGregorian 2016 12 16), 0, 0)))
-    it "" $ parse timeParse "" "  [2016-12-03 Sat 17:53]--[2016-12-03 Sat 20:00]" `shouldBe`
-      Right (Normal (Range ((fromGregorian 2016 12 3), 17, 53) ((fromGregorian 2016 12 3), 20, 0)))
-    it "" $ parse timeParse "" "    <2016-11-25 Fri>--<2016-11-27 Sun>" `shouldBe`
-      Right (Normal (Range ((fromGregorian 2016 11 25), 0, 0) ((fromGregorian 2016 11 27), 0, 0)))
+    let maked y m d h mi = ((fromGregorian y m d), h, mi)
+    it "matches deadline-time" $
+      p' timeParse "DEADLINE: <2015-03-24 Tue>" `shouldBe`
+      Right (Deadline (Fix (maked 2015 3 24 0 0)))
+    it "matches scheduled-time" $
+      p' timeParse "SCHEDULED: <2016-12-15 Thu>" `shouldBe`
+      Right (Scheduled (Fix (maked 2016 12 15 0 0)))
+    it "matches [normal-formed-time]" $
+      p' timeParse "[2016-12-03 Sat 17:53]" `shouldBe`
+      Right (Normal (Fix (maked 2016 12 3 17 53)))
+    it "matches <normal-formed-time>" $
+      p' timeParse "<2016-11-25 Fri>" `shouldBe`
+      Right (Normal (Fix (maked 2016 11 25 0 0)))
+    it "matches deadline-range-time" $
+      p' timeParse "   DEADLINE: <2015-03-24 Tue>--<2015-03-25 Wed>" `shouldBe`
+      Right (Deadline (Range (maked 2015 3 24 0 0) (maked 2015 3 25 0 0)))
+    it "matches scheduled-range-time" $
+      p' timeParse " SCHEDULED: <2016-12-15 Thu>--<2016-12-16 Fri>" `shouldBe`
+      Right (Scheduled (Range (maked 2016 12 15 0 0) (maked 2016 12 16 0 0)))
+    it "matches [normal-formed-range-time]" $
+      p' timeParse "  [2016-12-03 Sat 17:53]--[2016-12-03 Sat 20:00]" `shouldBe`
+      Right (Normal (Range (maked 2016 12 3 17 53) (maked 2016 12 3 20 0)))
+    it "matches <normal-formed-range-time>" $
+      p' timeParse "    <2016-11-25 Fri>--<2016-11-27 Sun>" `shouldBe`
+      Right (Normal (Range (maked 2016 11 25 0 0) (maked 2016 11 27 0 0)))
+  --------------------------------------------------
+  describe "classifyParse" $ do
+    it "" $
+      p' classifyParse "** hoge foo, buz" `shouldBe` Right (OrgSymbolHeader (2, "hoge foo, buz"))
+    it "" $
+      p' classifyParse "*** buz-buz-buz buz:" `shouldBe` Right (OrgSymbolHeader (3, "buz-buz-buz buz"))
+    it "" $
+      p' classifyParse " ** hoge foo, buz" `shouldBe` Right (OrgOther " ** hoge foo, buz")
+    it "" $
+      p' classifyParse ":PROPERTIES:" `shouldBe` Right OrgDiscard
+    it "" $
+      p' classifyParse " :END:" `shouldBe` Right OrgDiscard
+    it "" $
+      p' classifyParse "  \t:LINK:" `shouldBe` Right OrgDiscard
   
 test = do
   lines' <- Tx.lines <$> Txio.readFile "c:/Users/Jumpei/Haskell/gcal/Gcal/test.org"
