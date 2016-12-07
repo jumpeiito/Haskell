@@ -40,12 +40,12 @@ data OrgSymbolLine = OrgSymbolHeader (OrgLevel, Tx.Text)
                    | OrgOther Tx.Text deriving (Show, Eq)
 -- testParse :: 
 classifyParse :: Parser OrgSymbolLine
-classifyParse = do
+classifyParse = 
   try (OrgSymbolHeader <$> headerParse)
   <|> try (OrgSymbolTime <$> timeParse)
   <|> try (OrgLocation <$> locationParse)
   <|> try (discardParse >> return OrgDiscard)
-  <|> OrgOther <$> (Tx.pack <$> (many anyChar))
+  <|> OrgOther <$> (Tx.pack <$> many anyChar)
 
 headerParse :: Parser (OrgLevel, Tx.Text)
 headerParse = do
@@ -106,16 +106,16 @@ timeParse = do
   type' <- try (choice [string "SCHEDULED:", string "DEADLINE:"]) <|> return "NORMAL"
   _     <- many (noneOf "0123456789[<")
   st'   <- timeBaseParse
-  time' <- try $ do en <- (string "--" *> timeBaseParse)
+  time' <- try $ do en <- string "--" *> timeBaseParse
                     return $ Range st' en
-           <|> (return $ Fix st')
+           <|> return (Fix st')
   case type' of
     "NORMAL"      -> return $ Normal time'
     "SCHEDULED:"  -> return $ Scheduled time'
     "DEADLINE:"   -> return $ Deadline time'
 ----------------------------------------------------------------------------------------------------
 locationParse :: Parser Tx.Text
-locationParse = do
+locationParse = 
   many (oneOf " \t") *> string ":LOCATION: " *> (Tx.pack <$> many (noneOf "\n"))
 ----------------------------------------------------------------------------------------------------
 discardParse :: Parser Tx.Text
@@ -125,7 +125,7 @@ discardParse = do
   choice [ tryS ":PROPERTIES:", tryS ":END:", tryS ":LINK:"]
 ----------------------------------------------------------------------------------------------------
 orgTranslateState :: [Tx.Text] -> State [Org] ()
-orgTranslateState texts = do
+orgTranslateState texts = 
   forM_ texts $ \tex -> do
     current <- get
     case parse classifyParse "" tex of
@@ -133,7 +133,7 @@ orgTranslateState texts = do
       Right (OrgSymbolTime otime)        -> put (pushTime otime current)
       Right (OrgLocation loc)            -> put (pushLocation loc current)
       Right (OrgOther txt)               -> put (pushOther txt current)
-      Right (OrgDiscard)                 -> return ()
+      Right OrgDiscard                   -> return ()
       
 orgTranslate :: [Tx.Text] -> [Org]
 orgTranslate texts = reverse . snd $ orgTranslateState texts `runState` []
@@ -152,7 +152,7 @@ orgSpec = do
       p' headerParse "*** hoge foo\tbuz\n" `shouldBe` Right (3, "hoge foo\tbuz")
   --------------------------------------------------
   describe "timeParse" $ do
-    let maked y m d h mi = ((fromGregorian y m d), h, mi)
+    let maked y m d h mi = (fromGregorian y m d, h, mi)
     it "matches deadline-time" $
       p' timeParse "DEADLINE: <2015-03-24 Tue>" `shouldBe`
       Right (Deadline (Fix (maked 2015 3 24 0 0)))
