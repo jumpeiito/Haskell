@@ -1,5 +1,5 @@
 * hoge
-** foo
+** foo                                                                  :goo:
    :PROPERTIES:
    :LOCATION: buz
    :END:

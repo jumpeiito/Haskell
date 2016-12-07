@@ -2,16 +2,15 @@
 
 module Gcal.Org where
 
-import Util
-import Data.Time
-import Data.Either (isRight)
-import Control.Monad.State
-import qualified Data.Text as Tx
-import qualified Data.Text.IO as Txio
-import Text.Parsec hiding (State)
--- import Text.Parsec.String
-import Text.Parsec.Text
-import Test.Hspec
+import           Util
+import           Data.Time
+import           Data.Either            (isRight)
+import           Control.Monad.State
+import qualified Data.Text              as Tx
+import qualified Data.Text.IO           as Txio
+import           Text.Parsec            hiding (State)
+import           Text.Parsec.Text
+import           Test.Hspec
 
 type OrgLevel = Int
 type Hour     = Int
@@ -27,7 +26,9 @@ data OrgTime = Normal DateTime
 
 data Org = Org { level       :: OrgLevel
                , title       :: Tx.Text
+               , status      :: Maybe OrgStatus
                , datetime    :: Maybe OrgTime
+               , tags        :: [Tx.Text]
                , location    :: Tx.Text
                , description :: [Tx.Text]
                , children    :: [Org] }
@@ -38,7 +39,9 @@ data OrgSymbolLine = OrgSymbolHeader (OrgLevel, Tx.Text)
                    | OrgLocation Tx.Text
                    | OrgDiscard
                    | OrgOther Tx.Text deriving (Show, Eq)
--- testParse :: 
+
+data OrgStatus = Todo | Wait | Done | Someday deriving (Show, Eq, Enum)
+
 classifyParse :: Parser OrgSymbolLine
 classifyParse = 
   try (OrgSymbolHeader <$> headerParse)
@@ -53,23 +56,15 @@ headerParse = do
   title <- many (noneOf "*\n:")
   return (length stars, Tx.pack title)
 
-initOrg :: Tx.Text -> Org
-initOrg s = case parse headerParse "" s of
-  Left s -> OrgError s
-  Right (lev, tit) -> Org { level = lev
-                          , title = tit
-                          , datetime = Nothing
-                          , location = ""
-                          , description = []
-                          , children = [] }
-
 makeOrg :: OrgLevel -> Tx.Text -> Org
-makeOrg lev tit = Org { level = lev
-                      , title = tit
-                      , datetime = Nothing
-                      , location = ""
+makeOrg lev tit = Org { level       = lev
+                      , title       = tit
+                      , status      = Nothing
+                      , datetime    = Nothing
+                      , location    = ""
+                      , tags        = []
                       , description = []
-                      , children = [] }
+                      , children    = [] }
 
 pushTime :: OrgTime -> [Org] -> [Org]
 pushTime time (o:os) = o { datetime = Just time } : os
@@ -191,6 +186,14 @@ orgSpec = do
       p' classifyParse " :END:" `shouldBe` Right OrgDiscard
     it "" $
       p' classifyParse "  \t:LINK:" `shouldBe` Right OrgDiscard
+    it "" $
+      p' classifyParse ":LOCATION: hoge" `shouldBe` Right (OrgLocation "hoge")
+    it "" $
+      p' classifyParse " :LOCATION: hoge" `shouldBe` Right (OrgLocation "hoge")
+    it "" $
+      p' classifyParse " \t:LOCATION: hoge" `shouldBe` Right (OrgLocation "hoge")
+    it "" $
+      p' classifyParse "  \t:LOCATION:hoge" `shouldBe` Right (OrgOther "  \t:LOCATION:hoge")
   
 test = do
   lines' <- Tx.lines <$> Txio.readFile "c:/Users/Jumpei/Haskell/gcal/Gcal/test.org"
