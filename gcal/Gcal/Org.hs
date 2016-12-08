@@ -1,21 +1,26 @@
 {-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
+-- I.hSetEncoding I.stdout I.utf8
 
 module Gcal.Org where
 
 import           Util
+import           Util.StrEnum           (split)
 import           Data.Time
 import           Data.Either            (isRight)
 import           Control.Monad.State
-import qualified Data.Text              as Tx
-import qualified Data.Text.IO           as Txio
+import qualified Data.ByteString        as B
+import qualified Data.ByteString.Char8  as BC
 import           Text.Parsec            hiding (State)
-import           Text.Parsec.Text
+import           Text.Parsec.ByteString
+import           Text.Read              (readMaybe)
 import           Test.Hspec
 
-type OrgLevel = Int
-type Hour     = Int
-type Minute   = Int
-type Time     = (Day, Hour, Minute)
+type OrgLevel   = Int
+type HeaderInfo = (OrgLevel, Maybe OrgStatus, OrgString, Tags)
+type Hour       = Int
+type Minute     = Int
+type Time       = (Day, Hour, Minute)
+type Tags       = [OrgString]
 
 data DateTime = Fix Time | Range Time Time
   deriving (Show, Eq)
@@ -25,54 +30,92 @@ data OrgTime = Normal DateTime
              | Scheduled DateTime deriving (Show, Eq)
 
 data Org = Org { level       :: OrgLevel
-               , title       :: Tx.Text
+               , title       :: OrgString
                , status      :: Maybe OrgStatus
                , datetime    :: Maybe OrgTime
-               , tags        :: [Tx.Text]
-               , location    :: Tx.Text
-               , description :: [Tx.Text]
+               , tags        :: [OrgString]
+               , location    :: OrgString
+               , description :: [OrgString]
                , children    :: [Org] }
            | OrgError ParseError deriving (Show, Eq)
 
-data OrgSymbolLine = OrgSymbolHeader (OrgLevel, Tx.Text)
+data OrgSymbolLine = OrgSymbolHeader HeaderInfo
                    | OrgSymbolTime OrgTime
-                   | OrgLocation Tx.Text
+                   | OrgLocation OrgString
                    | OrgDiscard
-                   | OrgOther Tx.Text deriving (Show, Eq)
+                   | OrgOther OrgString deriving (Show, Eq)
 
-data OrgStatus = Todo | Wait | Done | Someday deriving (Show, Eq, Enum)
+data OrgStatus = TODO | WAIT | DONE | SOMEDAY deriving (Show, Eq, Enum, Read)
 
+----------------------------------------------------------------------------------------------------
+type OrgString  = BC.ByteString
+pack       = BC.pack
+unpack     = BC.unpack
+strReverse = BC.reverse
+----------------------------------------------------------------------------------------------------
 classifyParse :: Parser OrgSymbolLine
 classifyParse = 
-  try (OrgSymbolHeader <$> headerParse)
+  try (OrgSymbolHeader <$> hP2)
   <|> try (OrgSymbolTime <$> timeParse)
   <|> try (OrgLocation <$> locationParse)
   <|> try (discardParse >> return OrgDiscard)
-  <|> OrgOther <$> (Tx.pack <$> many anyChar)
+  <|> OrgOther <$> (pack <$> many anyChar)
 
-headerParse :: Parser (OrgLevel, Tx.Text)
+headerParse :: Parser (OrgLevel, OrgString)
 headerParse = do
   stars <- many1 (char '*') <* char ' '
   title <- many (noneOf "*\n:")
-  return (length stars, Tx.pack title)
+  return (length stars, pack title)
 
-makeOrg :: OrgLevel -> Tx.Text -> Org
-makeOrg lev tit = Org { level       = lev
-                      , title       = tit
-                      , status      = Nothing
-                      , datetime    = Nothing
-                      , location    = ""
-                      , tags        = []
-                      , description = []
-                      , children    = [] }
+readStatus :: String -> Maybe OrgStatus
+readStatus = readMaybe
+
+hP2 :: Parser HeaderInfo
+hP2 = do
+  stars  <- many1 (char '*') <* char ' '
+  status <- try (choice $ map string ["TODO", "WAIT", "DONE", "SOMEDAY"]) <* char ' '
+            <|> return ""
+  rest   <- many (noneOf "*\n")
+  let (title, tags) = splitHeader (pack rest)
+  return ( length stars
+         , readStatus status
+         , title
+         , tags)
+
+splitSkipBlank :: OrgString -> Tags
+splitSkipBlank = filter (/= "") . split ':'
+
+splitHeaderParse :: Parser (OrgString, Tags)
+splitHeaderParse = do
+  tagstr <- try (char ':' >> many (noneOf "\n \t"))
+            <|> return ""
+  current <- getInput
+  let cur  = strReverse current
+  let tags = map strReverse $ splitSkipBlank (pack tagstr)
+  return (cur, tags)
+
+splitHeader :: OrgString -> (OrgString, Tags)
+splitHeader str = either (const (str, [])) id $
+                  parse splitHeaderParse "" (strReverse str)
+
+makeOrg :: HeaderInfo -> Org
+makeOrg (lev, stat, tit, tag) =
+  Org { level       = lev
+      , title       = tit
+      , status      = stat
+      , datetime    = Nothing
+      , location    = ""
+      , tags        = tag
+      , description = []
+      , children    = [] }
 
 pushTime :: OrgTime -> [Org] -> [Org]
 pushTime time (o:os) = o { datetime = Just time } : os
 
-pushLocation :: Tx.Text -> [Org] -> [Org]
+pushLocation :: OrgString -> [Org] -> [Org]
 pushLocation loc (o:os) = o { location = loc } : os
 
-pushOther :: Tx.Text -> [Org] -> [Org]
+pushOther :: OrgString -> [Org] -> [Org]
 pushOther txt (o:os) = o { description = description o ++ [txt] } : os
 
 ----------------------------------------------------------------------------------------------------
@@ -109,28 +152,28 @@ timeParse = do
     "SCHEDULED:"  -> return $ Scheduled time'
     "DEADLINE:"   -> return $ Deadline time'
 ----------------------------------------------------------------------------------------------------
-locationParse :: Parser Tx.Text
+locationParse :: Parser OrgString
 locationParse = 
-  many (oneOf " \t") *> string ":LOCATION: " *> (Tx.pack <$> many (noneOf "\n"))
+  many (oneOf " \t") *> string ":LOCATION: " *> (pack <$> many (noneOf "\n"))
 ----------------------------------------------------------------------------------------------------
-discardParse :: Parser Tx.Text
+discardParse :: Parser OrgString
 discardParse = do
-  let text s = Tx.pack <$> string s
+  let text s = pack <$> string s
   let tryS s = try $ many (oneOf " \t") *> text s
   choice [ tryS ":PROPERTIES:", tryS ":END:", tryS ":LINK:"]
 ----------------------------------------------------------------------------------------------------
-orgTranslateState :: [Tx.Text] -> State [Org] ()
+orgTranslateState :: [OrgString] -> State [Org] ()
 orgTranslateState texts = 
   forM_ texts $ \tex -> do
     current <- get
     case parse classifyParse "" tex of
-      Right (OrgSymbolHeader (lev, tit)) -> put (makeOrg lev tit:current)
-      Right (OrgSymbolTime otime)        -> put (pushTime otime current)
-      Right (OrgLocation loc)            -> put (pushLocation loc current)
-      Right (OrgOther txt)               -> put (pushOther txt current)
-      Right OrgDiscard                   -> return ()
+      Right (OrgSymbolHeader info) -> put (makeOrg info:current)
+      Right (OrgSymbolTime otime)  -> put (pushTime otime current)
+      Right (OrgLocation loc)      -> put (pushLocation loc current)
+      Right (OrgOther txt)         -> put (pushOther txt current)
+      Right OrgDiscard             -> return ()
       
-orgTranslate :: [Tx.Text] -> [Org]
+orgTranslate :: [OrgString] -> [Org]
 orgTranslate texts = reverse . snd $ orgTranslateState texts `runState` []
 
 ----------------------------------------------------------------------------------------------------
@@ -138,14 +181,25 @@ orgSpec :: Spec
 orgSpec = do
   let p' f = parse f ""
   --------------------------------------------------
-  describe "headerParse" $ do
-    it "matches Org-file headers" $
-      p' headerParse "* hoge\n" `shouldBe` Right (1, "hoge")
-    it "also matches more than 2-stars-header" $
-      p' headerParse "** hoge\n" `shouldBe` Right (2, "hoge")
-    it "also matches title which has some spaces and tabs" $
-      p' headerParse "*** hoge foo\tbuz\n" `shouldBe` Right (3, "hoge foo\tbuz")
+  -- describe "headerParse" $ do
+  --   it "matches Org-file headers" $
+  --     p' headerParse "* hoge\n" `shouldBe` Right (1, "hoge")
+  --   it "also matches more than 2-stars-header" $
+  --     p' headerParse "** hoge\n" `shouldBe` Right (2, "hoge")
+  --   it "also matches title which has some spaces and tabs" $
+  --     p' headerParse "*** hoge foo\tbuz\n" `shouldBe` Right (3, "hoge foo\tbuz")
   --------------------------------------------------
+  describe "readStatus" $ do
+    it "" $ readStatus "TODO" `shouldBe` Just TODO
+    it "" $ readStatus "WAIT" `shouldBe` Just WAIT
+    it "" $ readStatus "DONE" `shouldBe` Just DONE
+    it "" $ readStatus "SOMEDAY" `shouldBe` Just SOMEDAY
+    it "" $ readStatus "" `shouldBe` Nothing
+  describe "splitHeader" $ do
+    it "" $ splitHeader "foobuz   :foo:buz:" `shouldBe`
+      ("foobuz   ", ["buz", "foo"])
+    it "" $ splitHeader "foobuz" `shouldBe`
+      ("foobuz", [])
   describe "timeParse" $ do
     let maked y m d h mi = (fromGregorian y m d, h, mi)
     it "matches deadline-time" $
@@ -175,9 +229,10 @@ orgSpec = do
   --------------------------------------------------
   describe "classifyParse" $ do
     it "" $
-      p' classifyParse "** hoge foo, buz" `shouldBe` Right (OrgSymbolHeader (2, "hoge foo, buz"))
+      p' classifyParse "** TODO hoge foo, buz   :tiger:lion:" `shouldBe`
+      Right (OrgSymbolHeader (2, Just TODO, "hoge foo, buz   ", ["lion", "tiger"]))
     it "" $
-      p' classifyParse "*** buz-buz-buz buz:" `shouldBe` Right (OrgSymbolHeader (3, "buz-buz-buz buz"))
+      p' classifyParse "*** buz-buz-buz buz" `shouldBe` Right (OrgSymbolHeader (3, Nothing, "buz-buz-buz buz", []))
     it "" $
       p' classifyParse " ** hoge foo, buz" `shouldBe` Right (OrgOther " ** hoge foo, buz")
     it "" $
@@ -195,6 +250,6 @@ orgSpec = do
     it "" $
       p' classifyParse "  \t:LOCATION:hoge" `shouldBe` Right (OrgOther "  \t:LOCATION:hoge")
   
-test = do
-  lines' <- Tx.lines <$> Txio.readFile "c:/Users/Jumpei/Haskell/gcal/Gcal/test.org"
-  mapM_ Txio.putStrLn lines'
+-- test = do
+--   lines' <- Tx.lines <$> Txio.readFile "c:/Users/Jumpei/Haskell/gcal/Gcal/test.org"
+--   mapM_ Txio.putStrLn lines'
