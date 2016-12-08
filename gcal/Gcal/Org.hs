@@ -7,9 +7,12 @@ import           Util
 import           Util.StrEnum           (split)
 import           Data.Time
 import           Data.Either            (isRight)
+import           Data.Maybe             (fromJust)
 import           Control.Monad.State
 import qualified Data.ByteString        as B
 import qualified Data.ByteString.Char8  as BC
+import           Network.HTTP
+import           Network.URI
 import           Text.Parsec            hiding (State)
 import           Text.Parsec.ByteString
 import           Text.Read              (readMaybe)
@@ -179,6 +182,14 @@ orgTranslateState texts =
 orgTranslate :: [OrgString] -> [Org]
 orgTranslate texts = reverse . snd $ orgTranslateState texts `runState` []
 
+orgRequest :: String -> String -> Org -> Request OrgString
+orgRequest atoken key org =
+  Request { rqURI = fromJust $ parseURI "https://www.googleapis.com/calendar/v3/calendars/junnpit@gmail.com/events"
+          , rqMethod = POST -- or Custom "PATCH"
+          , rqHeaders = [ mkHeader (HdrCustom "access_token") atoken
+                        , mkHeader (HdrCustom "key") key
+                        , mkHeader (HdrCustom "grant_type") "authorization_code"]
+          , rqBody = "" }
 ----------------------------------------------------------------------------------------------------
 orgSpec :: Spec
 orgSpec = do
