@@ -53,6 +53,9 @@ pack       = BC.pack
 unpack     = BC.unpack
 strReverse = BC.reverse
 ----------------------------------------------------------------------------------------------------
+choice2 :: Stream s m Char => [String] -> ParsecT s u m String
+choice2 = choice . map string
+----------------------------------------------------------------------------------------------------
 classifyParse :: Parser OrgSymbolLine
 classifyParse = 
   try (OrgSymbolHeader <$> hP2)
@@ -73,7 +76,7 @@ readStatus = readMaybe
 hP2 :: Parser HeaderInfo
 hP2 = do
   stars  <- many1 (char '*') <* char ' '
-  status <- try (choice $ map string ["TODO", "WAIT", "DONE", "SOMEDAY"]) <* char ' '
+  status <- try (choice2 ["TODO", "WAIT", "DONE", "SOMEDAY"]) <* char ' '
             <|> return ""
   rest   <- many (noneOf "*\n")
   let (title, tags) = splitHeader (pack rest)
@@ -141,7 +144,7 @@ timeBaseParse = do
 timeParse :: Parser OrgTime
 timeParse = do
   _     <- many (oneOf " \t")
-  type' <- try (choice [string "SCHEDULED:", string "DEADLINE:"]) <|> return "NORMAL"
+  type' <- try (choice2 ["SCHEDULED:", "DEADLINE:"]) <|> return "NORMAL"
   _     <- many (noneOf "0123456789[<")
   st'   <- timeBaseParse
   time' <- try $ do en <- string "--" *> timeBaseParse
