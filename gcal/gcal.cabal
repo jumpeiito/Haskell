@@ -34,6 +34,7 @@ library
                      , hspec
                      , mtl
                      , Util
+                     , network-uri
   default-language:    Haskell2010
 
 executable gcal-exe

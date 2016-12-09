@@ -3,12 +3,13 @@
 
 module Gcal.Org where
 
-import           Util
+import           Util                   (readUTF8)
 import           Util.StrEnum           (split)
 import           Data.Time
 import           Data.Either            (isRight)
 import           Data.Maybe             (fromJust)
 import           Control.Monad.State
+import           Gcal.Parameter         (makeParameter, Parameter (..))
 import qualified Data.ByteString        as B
 import qualified Data.ByteString.Char8  as BC
 import           Network.HTTP
@@ -160,7 +161,9 @@ timeParse = do
 ----------------------------------------------------------------------------------------------------
 locationParse :: Parser OrgString
 locationParse = 
-  many (oneOf " \t") *> string ":LOCATION: " *> (pack <$> many (noneOf "\n"))
+  many (oneOf " \t") *>
+  string ":LOCATION: " *>
+  (pack <$> many (noneOf "\n"))
 ----------------------------------------------------------------------------------------------------
 discardParse :: Parser OrgString
 discardParse = do
@@ -184,12 +187,15 @@ orgTranslate texts = reverse . snd $ orgTranslateState texts `runState` []
 
 orgRequest :: String -> String -> Org -> Request OrgString
 orgRequest atoken key org =
-  Request { rqURI = fromJust $ parseURI "https://www.googleapis.com/calendar/v3/calendars/junnpit@gmail.com/events"
+  Request { rqURI = puri
           , rqMethod = POST -- or Custom "PATCH"
-          , rqHeaders = [ mkHeader (HdrCustom "access_token") atoken
-                        , mkHeader (HdrCustom "key") key
-                        , mkHeader (HdrCustom "grant_type") "authorization_code"]
+          , rqHeaders = [ mkHeader HdrContentType "application/json"]
           , rqBody = "" }
+  where uri = fromJust $ parseURI "https://www.googleapis.com/calendar/v3/calendars/junnpit@gmail.com/events"
+        parameter = makeParameter [ AccessToken atoken
+                                  , Key key
+                                  , GrantType "authorization_code" ]
+        puri = uri { uriQuery = parameter }
 ----------------------------------------------------------------------------------------------------
 orgSpec :: Spec
 orgSpec = do
