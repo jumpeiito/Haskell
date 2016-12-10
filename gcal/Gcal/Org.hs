@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts, TypeSynonymInstances #-}
 -- I.hSetEncoding I.stdout I.utf8
 
 module Gcal.Org where
@@ -12,6 +12,9 @@ import           Control.Monad.State
 import           Gcal.Parameter         (makeParameter, Parameter (..))
 import qualified Data.ByteString        as B
 import qualified Data.ByteString.Char8  as BC
+import qualified Data.ByteString.Lazy.Char8 as BL
+import qualified Data.ByteString.Lazy   as BLX
+import           Data.Aeson
 import           Network.HTTP
 import           Network.URI
 import           Text.Parsec            hiding (State)
@@ -43,6 +46,17 @@ data Org = Org { level       :: OrgLevel
                , children    :: [Org] }
            | OrgError ParseError deriving (Show, Eq)
 
+-- "{\"start\":{\"date\":\"2016-12-01\",\"dateTime\":null},\"end\":{\"date\":\"2016-12-02\",\"dateTime\":null},\"summary\":\"hoge\",\"location\":\"Kyoto City\",\"description\":\"buz\"}"
+
+-- instance ToJSON BC.ByteString where
+--   toJSON (BI.PS a _ _) = String a
+
+instance ToJSON Org where
+  toJSON (Org _ title status datetime _ location description _) =
+    object [ "summary" .= unpack title
+           , "location" .= unpack location
+           , "description" .= (unpack $ BC.unlines description) ]
+
 data OrgSymbolLine = OrgSymbolHeader HeaderInfo
                    | OrgSymbolTime OrgTime
                    | OrgLocation OrgString
@@ -62,23 +76,17 @@ choice2 = choice . map string
 ----------------------------------------------------------------------------------------------------
 classifyParse :: Parser OrgSymbolLine
 classifyParse = 
-  try (OrgSymbolHeader <$> hP2)
+  try (OrgSymbolHeader <$> headerParse)
   <|> try (OrgSymbolTime <$> timeParse)
   <|> try (OrgLocation <$> locationParse)
   <|> try (discardParse >> return OrgDiscard)
   <|> OrgOther <$> (pack <$> many anyChar)
 
-headerParse :: Parser (OrgLevel, OrgString)
-headerParse = do
-  stars <- many1 (char '*') <* char ' '
-  title <- many (noneOf "*\n:")
-  return (length stars, pack title)
-
 readStatus :: String -> Maybe OrgStatus
 readStatus = readMaybe
 
-hP2 :: Parser HeaderInfo
-hP2 = do
+headerParse :: Parser HeaderInfo
+headerParse = do
   stars  <- many1 (char '*') <* char ' '
   status <- try (choice2 ["TODO", "WAIT", "DONE", "SOMEDAY"]) <* char ' '
             <|> return ""
@@ -192,10 +200,9 @@ orgRequest atoken key org =
           , rqHeaders = [ mkHeader HdrContentType "application/json"]
           , rqBody = "" }
   where uri = fromJust $ parseURI "https://www.googleapis.com/calendar/v3/calendars/junnpit@gmail.com/events"
-        parameter = makeParameter [ AccessToken atoken
-                                  , Key key
-                                  , GrantType "authorization_code" ]
-        puri = uri { uriQuery = parameter }
+        puri = uri { uriQuery = makeParameter [ AccessToken atoken
+                                              , Key key
+                                              , GrantType "authorization_code" ]}
 ----------------------------------------------------------------------------------------------------
 orgSpec :: Spec
 orgSpec = do

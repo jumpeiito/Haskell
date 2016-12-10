@@ -132,6 +132,7 @@ gcalEvent cj = runResourceT $ do
                , TimeMax (B.pack maxT)
                , GrantType "authorization_code"]
   response <- getRequest "https://www.googleapis.com/calendar/v3/calendars/junnpit@gmail.com/events" params
+  -- 401が返ってきた場合、requestTokenを実行
   responseBody response $$+- CB.sinkHandle I.stdout
 
 ensureToken :: ClientJSON -> IO (Maybe Token)
