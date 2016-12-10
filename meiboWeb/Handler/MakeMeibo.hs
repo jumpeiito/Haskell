@@ -23,13 +23,17 @@ buttonMakeCSV bunkai allList = do
   toWidget [whamlet|
                    <script type="text/javascript">
                       function getCheckbox () {
-                         // var ret = "";
-                         // for (var i = 0; i < #{length allList}; i++) {
-                         //    if (document.forms.CheckBox[i].checked == true) {
-                         //       ret = ret + String(i) + ",";
-                         //    }
-                         // }
-                         window.open("/csv/全", '_blank');
+                         var tbl = document.getElementsByTagName("table").item(0);
+                         var ret = "";
+                         for (var i = 0; i < #{length allList}; i++) {
+                            if (document.forms.CheckBox[i].checked == true) {
+                               name = tbl.rows[i].cells[2].firstChild.innerText;
+                               tel  = tbl.rows[i].cells[4].firstChild.innerText;
+                               ret = ret + "{" + name + " " + tel + "}"
+                            }
+                         }
+                         // window.open("/csv/全", '_blank');
+                         alert(ret);
                       }
                    |]
 
@@ -47,13 +51,13 @@ getMakeMeiboR hoge = do
     [whamlet|
             <input type="button" onClick="getCheckbox();" value="CSV作成">
             <form name="CheckBox">
-               <table border=1>
+               <table border=1 id="MainTable">
                   $forall (n, i) <- persons
                      <tr id="#{n}">
                         <td><input type="checkbox" id="check#{n}">
-                        <td id="num#{n}">#{n}
-                        <td>#{name i}
+                        <td>#{n}
+                        <td id="NameID#{n}">#{name i}
                         <td>
                            <a href="https://maps.google.co.jp/maps?q=#{addressStr i}">#{addressStr i}
-                        <td>#{telephoneStr i}
+                        <td id="TelID#{n}">#{telephoneStr i}
             |]
