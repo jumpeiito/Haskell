@@ -8,6 +8,10 @@ import           Util.StrEnum           (split)
 import           Data.Time
 import           Data.Either            (isRight)
 import           Data.Maybe             (fromJust)
+import           Control.Monad.Trans.Resource
+import           Data.Conduit
+import qualified Data.Conduit.List      as CL
+import qualified Data.Conduit.Binary    as CB
 import           Control.Monad.State
 import           Gcal.Parameter         (makeParameter, Parameter (..))
 import qualified Data.ByteString        as B
@@ -21,6 +25,24 @@ import           Text.Parsec            hiding (State)
 import           Text.Parsec.ByteString
 import           Text.Read              (readMaybe)
 import           Test.Hspec
+import qualified System.IO              as I
+
+orgFileSource :: MonadResource m => ConduitM i BC.ByteString m ()
+orgFileSource =
+  CB.sourceFile "c:/Users/sibuc526.NEWNET/Dropbox/public/schedule.org" `mappend`
+  CB.sourceFile "c:/Users/sibuc526.NEWNET/Dropbox/public/notes.org"
+
+orgTranslateConduit :: Monad m => Consumer BC.ByteString (ResourceT m) [Org]
+orgTranslateConduit = CB.lines
+                      =$= CL.fold orgTranslateFold []
+-- conduitTest = 
+--   -- schedule.orgとnotes.orgのファイルの内容を連結し、出力する.
+--   runResourceT $ orgFileSource $$ sink
+
+conduitTest2 = do
+  -- schedule.orgとnotes.orgのファイルの内容を連結した上で、Org型に変換し、print出力する。
+  m <- runResourceT $ (orgFileSource $$ orgTranslateConduit)
+  mapM_ (print . datetime) m
 
 type OrgLevel   = Int
 type HeaderInfo = (OrgLevel, Maybe OrgStatus, OrgString, Tags)
@@ -69,6 +91,7 @@ data OrgStatus = TODO | WAIT | DONE | SOMEDAY deriving (Show, Eq, Enum, Read)
 type OrgString  = BC.ByteString
 pack       = BC.pack
 unpack     = BC.unpack
+strLines   = BC.lines
 strReverse = BC.reverse
 ----------------------------------------------------------------------------------------------------
 choice2 :: Stream s m Char => [String] -> ParsecT s u m String
@@ -190,6 +213,15 @@ orgTranslateState texts =
       Right (OrgOther txt)         -> put (pushOther txt current)
       Right OrgDiscard             -> return ()
       
+orgTranslateFold :: [Org] -> OrgString -> [Org]
+orgTranslateFold xs line =
+  case parse classifyParse "" line of
+    Right (OrgSymbolHeader info) -> makeOrg info:xs
+    Right (OrgSymbolTime otime)  -> pushTime otime xs
+    Right (OrgLocation loc)      -> pushLocation loc xs
+    Right (OrgOther txt)         -> pushOther txt xs
+    Right OrgDiscard             -> xs
+  
 orgTranslate :: [OrgString] -> [Org]
 orgTranslate texts = reverse . snd $ orgTranslateState texts `runState` []
 
