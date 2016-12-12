@@ -3,10 +3,9 @@
 
 module Gcal.Org where
 
-import           Util                   (readUTF8)
+import           Util                   (runFile, FileSystem (..))
 import           Util.StrEnum           (split)
 import           Data.Time
-import           Data.Either            (isRight)
 import           Data.Maybe             (fromJust)
 import           Control.Monad.Trans.Resource
 import           Data.Conduit
@@ -14,10 +13,7 @@ import qualified Data.Conduit.List      as CL
 import qualified Data.Conduit.Binary    as CB
 import           Control.Monad.State
 import           Gcal.Parameter         (makeParameter, Parameter (..))
-import qualified Data.ByteString        as B
 import qualified Data.ByteString.Char8  as BC
-import qualified Data.ByteString.Lazy.Char8 as BL
-import qualified Data.ByteString.Lazy   as BLX
 import           Data.Aeson
 import           Network.HTTP
 import           Network.URI
@@ -27,18 +23,28 @@ import           Text.Read              (readMaybe)
 import           Test.Hspec
 import qualified System.IO              as I
 
-orgFileSource :: MonadResource m => ConduitM i BC.ByteString m ()
-orgFileSource =
-  CB.sourceFile "c:/Users/sibuc526.NEWNET/Dropbox/public/schedule.org" `mappend`
-  CB.sourceFile "c:/Users/sibuc526.NEWNET/Dropbox/public/notes.org"
+orgDir :: FileSystem
+orgDir = Directory [ "c:/Users/sibuc526.NEWNET/Dropbox/public/"
+                   , "c:/Users/Jumpei/Dropbox/public/"]
+
+orgFileSource :: MonadResource m => ConduitM () BC.ByteString m ()
+orgFileSource = do
+  Just directory <- liftIO $ runFile orgDir
+  mconcat $ map (CB.sourceFile . (directory++)) ["schedule.org", "notes.org"]
 
 orgTranslateConduit :: Monad m => Consumer BC.ByteString (ResourceT m) [Org]
 orgTranslateConduit = CB.lines
-                      =$= CL.fold orgTranslateFold []
+                      $= CL.fold orgTranslateFold []
 -- conduitTest = 
 --   -- schedule.orgとnotes.orgのファイルの内容を連結し、出力する.
 --   runResourceT $ orgFileSource $$ sink
 
+hoge2 :: MonadIO m => Show a => Consumer a (ResourceT m) ()
+hoge2 = do
+  x <- CL.consume
+  mapM_ (liftIO . print) x
+
+conduitTest2 :: IO ()
 conduitTest2 = do
   -- schedule.orgとnotes.orgのファイルの内容を連結した上で、Org型に変換し、print出力する。
   m <- runResourceT $ (orgFileSource $$ orgTranslateConduit)
@@ -65,8 +71,7 @@ data Org = Org { level       :: OrgLevel
                , tags        :: [OrgString]
                , location    :: OrgString
                , description :: [OrgString]
-               , children    :: [Org] }
-           | OrgError ParseError deriving (Show, Eq)
+               , children    :: [Org] } deriving (Show, Eq)
 
 -- "{\"start\":{\"date\":\"2016-12-01\",\"dateTime\":null},\"end\":{\"date\":\"2016-12-02\",\"dateTime\":null},\"summary\":\"hoge\",\"location\":\"Kyoto City\",\"description\":\"buz\"}"
 
@@ -147,15 +152,20 @@ makeOrg (lev, stat, tit, tag) =
       , description = []
       , children    = [] }
 
+initOrg :: Org
+initOrg = makeOrg (1, Nothing, mempty, mempty)
+
 pushTime :: OrgTime -> [Org] -> [Org]
 pushTime time (o:os) = o { datetime = Just time } : os
+pushTime time [] = [ initOrg { datetime = Just time } ]
 
 pushLocation :: OrgString -> [Org] -> [Org]
 pushLocation loc (o:os) = o { location = loc } : os
+pushLocation loc [] = [ initOrg { location = loc } ]
 
 pushOther :: OrgString -> [Org] -> [Org]
 pushOther txt (o:os) = o { description = description o ++ [txt] } : os
-
+pushOther txt [] = [ initOrg { description = [txt] } ]
 ----------------------------------------------------------------------------------------------------
 dayFromString :: String -> String -> String -> Day
 dayFromString y m d = fromGregorian y' m' d'
@@ -189,6 +199,7 @@ timeParse = do
     "NORMAL"      -> return $ Normal time'
     "SCHEDULED:"  -> return $ Scheduled time'
     "DEADLINE:"   -> return $ Deadline time'
+    _ -> error "must not happen"
 ----------------------------------------------------------------------------------------------------
 locationParse :: Parser OrgString
 locationParse = 
@@ -212,6 +223,7 @@ orgTranslateState texts =
       Right (OrgLocation loc)      -> put (pushLocation loc current)
       Right (OrgOther txt)         -> put (pushOther txt current)
       Right OrgDiscard             -> return ()
+      Left _ -> return ()
       
 orgTranslateFold :: [Org] -> OrgString -> [Org]
 orgTranslateFold xs line =
@@ -221,12 +233,13 @@ orgTranslateFold xs line =
     Right (OrgLocation loc)      -> pushLocation loc xs
     Right (OrgOther txt)         -> pushOther txt xs
     Right OrgDiscard             -> xs
-  
+    Left _ -> xs
+
 orgTranslate :: [OrgString] -> [Org]
 orgTranslate texts = reverse . snd $ orgTranslateState texts `runState` []
 
 orgRequest :: String -> String -> Org -> Request OrgString
-orgRequest atoken key org =
+orgRequest atoken key _ =
   Request { rqURI = puri
           , rqMethod = POST -- or Custom "PATCH"
           , rqHeaders = [ mkHeader HdrContentType "application/json"]

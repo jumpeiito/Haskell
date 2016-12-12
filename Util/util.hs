@@ -5,14 +5,12 @@ module Util where
 import Data.List
 import Data.Char                        (ord, chr)
 import Control.Exception                hiding (try)
-import Control.Exception                (evaluate)
 import Control.Monad
-import Control.Monad.Trans              (liftIO)
 import Control.Monad.Writer
 import Control.Monad.State
 import System.Directory
 import System.Process
-import Text.StringLike                  (StringLike, castString)
+import Text.StringLike                  (StringLike)
 import qualified Data.Map               as Map
 import qualified System.IO              as I
 import qualified Data.Text              as Tx
@@ -66,7 +64,7 @@ _all_base :: FilePath ->
              FileDirect ->
              (FilePath -> Bool -> WriterT [FilePath] IO b) ->
              WriterT [FilePath] IO ()
-_all_base fp fd f = do
+_all_base fp _ f = do
   let filtering = filter (`notElem` [".", ".."])
   let makePath  = map (\n -> fp ++ "/" ++ n)
   let cut       = makePath . filtering
@@ -233,8 +231,8 @@ runRubyString opt = do
   (_, sout, _, _) <- runRuby opt
   lines <$> I.hGetContents sout
 
-group :: Num n => Eq n => n -> [a] -> [[a]]
-group n [] = []
+group :: Int -> [a] -> [[a]]
+group _ [] = []
 group n l =
   let answer (_, (_, _, x)) = reverse x in
   answer . (`runState` (0, [], [])) $ do
@@ -243,7 +241,7 @@ group n l =
       if n == counter
         then put (1, [el], small : big)
         else put (counter + 1, small ++ [el], big)
-    (counter, small, big) <- get
+    (_, small, big) <- get
     put (0, [], small : big)
 
 ketaNum :: String -> String
@@ -273,12 +271,12 @@ locEncoding = do
 data ExcelCol = Column [Int] deriving Show
 
 stringToColumn :: String -> ExcelCol
-stringToColumn = Column . map (\char -> ord char - 64) . reverse
+stringToColumn = Column . map (\ch -> ord ch - 64) . reverse
 
--- columnToInt :: ExcelCol -> Int
-columnToInt col = sum $ map (uncurry (*)) $ zip exp col'
+columnToInt :: ExcelCol -> Int
+columnToInt col = sum $ map (uncurry (*)) $ zip exp' col'
   where Column col' = col
-        exp = [ truncate $ 26 ** x | x <- [0..] ]
+        exp' = [ truncate $ 26 ** x | x <- [0..] ]
 
 columnDivide :: Int -> (Int, Int)
 columnDivide i = case (i `mod` 26, i `div` 26) of
