@@ -5,6 +5,7 @@ module Handler.MakeMeibo where
 -- import Util.Telephone (telString)
 -- import Data.List  (intercalate)
 import Meibo.Base (meiboMain, telephoneStr, addressStr, Line (..))
+import qualified Meibo.Base as MB
 import Import
 -- import qualified System.IO              as I
 
@@ -19,23 +20,51 @@ bunkaiHrefWidget = do
                    <br>
                    |]
 
-buttonMakeCSV bunkai allList = do
+buttonMakeCSV bunkai = do
   toWidget [whamlet|
                    <script type="text/javascript">
                       function getCheckbox () {
-                         var tbl = document.getElementsByTagName("table").item(0);
-                         var ret = "";
-                         for (var i = 0; i < #{length allList}; i++) {
+                         var ret = "#{bunkai}&";
+                         var table = document.getElementById("MainTable")
+                         for (var i = 0; i < table.rows.length; i++) {
                             if (document.forms.CheckBox[i].checked == true) {
-                               name = tbl.rows[i].cells[2].firstChild.innerText;
-                               tel  = tbl.rows[i].cells[4].firstChild.innerText;
-                               ret = ret + "{" + name + " " + tel + "}"
+                               ret = ret + String(i) + "&";
                             }
                          }
-                         // window.open("/csv/全", '_blank');
-                         alert(ret);
+                         window.open("/csv/" + ret, '_blank');
                       }
                    |]
+
+checkFunc = do
+  toWidget [whamlet|
+                   <script type="text/javascript">
+                      function checkFunc (obj, row) {
+                        var table = document.getElementById("MainTable")
+                        for (var i = 0; i < table.rows.length; i++) {
+                          var row = table.rows[i];
+                          if (document.forms.CheckBox[i].checked == true) {
+                            row.style.backgroundColor = "pink";
+                          } else {
+                            row.style.backgroundColor = "white";
+                          }
+                        }
+                      }
+                   |]
+
+releaseFunc = do
+  toWidget [whamlet|
+                   <script type="text/javascript">
+                      function release () {
+                        var table = document.getElementById("MainTable")
+                        for (var i = 0; i < table.rows.length; i++) {
+                          document.forms.CheckBox[i].checked = false;
+                          table.rows[i].style.backgroundColor = "white";
+                        }
+                      }
+                   |]
+
+concernP :: Line -> Bool
+concernP = ("付" `isInfixOf`) . MB.exp
 
 getMakeMeiboR :: String -> HandlerT App IO Html
 getMakeMeiboR hoge = do
@@ -46,18 +75,21 @@ getMakeMeiboR hoge = do
   foo <- liftIO $ meiboMain hoge
   let persons = zip [0..] foo :: [(Int, Line)]
   defaultLayout $ do
+    buttonMakeCSV hoge
     bunkaiHrefWidget
-    buttonMakeCSV hoge foo
+    checkFunc
+    releaseFunc
     [whamlet|
             <input type="button" onClick="getCheckbox();" value="CSV作成">
-            <form name="CheckBox">
-               <table border=1 id="MainTable">
-                  $forall (n, i) <- persons
-                     <tr id="#{n}">
-                        <td><input type="checkbox" id="check#{n}">
-                        <td>#{n}
-                        <td id="NameID#{n}">#{name i}
-                        <td>
-                           <a href="https://maps.google.co.jp/maps?q=#{addressStr i}">#{addressStr i}
-                        <td id="TelID#{n}">#{telephoneStr i}
+            <input type="button" onClick="release();" value="全選択解除">
+            <form #CheckBox>
+              <table border=1 #MainTable>
+                $forall (n, i) <- persons
+                  <tr #tr#{n}>
+                    <td class="group#{n}"><input type="checkbox" id="check#{n}" onclick="checkFunc(this, #{n})">
+                    <td class="group#{n}">#{n}
+                    <td id="NameID#{n}" class="group#{n}">#{name i}
+                    <td class="group#{n}">
+                      <a href="https://maps.google.co.jp/maps?q=#{addressStr i}">#{addressStr i}
+                    <td id="TelID#{n}" class="group#{n}">#{telephoneStr i}
             |]

@@ -173,7 +173,7 @@ meiboMain bunkaiString = do
   let allList = trans currentDay output
   let filterF | bunkaiString == "全" = const True
               | otherwise = (\n -> bunkaiString == bunkai n)
-  return $ filter filterF allList
+  return $ reverse $ filter filterF allList
 
 telephoneStr :: Line -> String
 telephoneStr l =
