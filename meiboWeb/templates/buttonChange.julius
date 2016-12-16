@@ -1,0 +1,7 @@
+$(function (obj) {
+   if (obj.style.background){
+     obj.style.background = null;
+   } else {
+     obj.style.background = 'pink';
+   }
+})

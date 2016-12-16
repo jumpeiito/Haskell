@@ -1,0 +1,15 @@
+#{show param}
+<form action=@{PostCSVR} method="post">
+  <input type="submit" value="送信">
+  <table border=1 #kumiai>
+    $forall (n, p) <- persons
+      <tr .linear#{n}>
+        <td width=20pt .linear#{n}>#{han p}
+        <td width=120pt .linear#{n}>#{name p}
+        <td .linear#{n}><input name="count#{n}" type="number" maxlength=2 max=40 min=1 value=1 style="width:40px;" .numbers onchange="change(#{mother});">
+        $forall t <- telOnly p
+          $if (length $ telOnly p) > 2
+            <td .linear#{n}><input name="button#{n}" type="button" style="width:150px; border:thin" value=#{telString t} onclick="buttonChange(this);">
+          $else
+            <td .linear#{n}><input name="button#{n}" type="button" style="background:pink; width:150px; border:thin" value=#{telString t}>
+  
