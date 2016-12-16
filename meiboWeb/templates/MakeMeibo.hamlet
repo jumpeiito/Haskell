@@ -1,0 +1,12 @@
+<form #CheckBox>
+  <input type="button" onClick="getCheckbox('#{bunkai}');" value="CSV作成">
+  <input type="button" onClick="release();" value="全選択解除">
+  <table border=1 #MainTable>
+    $forall (n, i) <- persons
+      <tr #tr#{n}>
+        <td #group#{n}><input type="checkbox" name="check#{n}" id="check#{n}" onclick="checkFunc(this)">
+        <td #group#{n}>#{n}
+        <td .NameID#{n} #group#{n}>#{name i}
+        <td #group#{n}>
+          <a href="https://maps.google.co.jp/maps?q=#{addressStr i}">#{addressStr i}
+        <td .TelID#{n} #group#{n}>#{telephoneStr i}

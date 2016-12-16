@@ -1,4 +1,0 @@
-$(function(id) {
-	       doc = document.getElementById(id);
-	       doc.style.backgroundColor = "gray";
-});
