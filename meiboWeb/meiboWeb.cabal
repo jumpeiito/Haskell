@@ -24,6 +24,7 @@ library
                      Handler.Comment
                      Handler.MakeMeibo
                      Handler.CSV
+                     Handler.PostCSV
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -105,7 +106,7 @@ executable         meiboWeb
                      , meiboWeb
                      , tagsoup
 
-    ghc-options:       -threaded -rtsopts -with-rtsopts=-N
+    ghc-options:       -threaded -rtsopts -with-rtsopts=-N -O3
 
 test-suite test
     type:              exitcode-stdio-1.0

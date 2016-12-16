@@ -8,3 +8,4 @@
 /comments CommentR POST
 /makeMeibo/#String MakeMeiboR GET
 /csv/#String CSVR GET
+/postcsv PostCSVR POST
