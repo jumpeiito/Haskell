@@ -54,7 +54,6 @@ mainString =
                     , kind
                     , name
                     , furi
-                    , blank
                     , ad'
                     , lineMobile
                     , lineFix
@@ -267,7 +266,7 @@ main = do
   (y', m', d')    <- today
   -- _               <- runRubyString ["f:/Haskell/Meibo/meibo.rb"]
   -- commandOutput   <- lines <$> readUTF8File "f:/Haskell/Meibo/.meibo"
-  commandOutput <- getMeibo
+  commandOutput <- reverse <$> getMeibo
   let currentDay = fromGregorian y' m' d'
   let mainList = trans currentDay commandOutput
   args            <- getArgs
