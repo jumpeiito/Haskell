@@ -1,2 +1,3 @@
 <p>#{numVal}
-<p>#{test}
+$forall h <- hoge
+  <p>#{h}
