@@ -9,7 +9,6 @@
         <td .linear#{n}><input name="count#{n}" type="number" maxlength=2 max=40 min=1 value=1 style="width:40px;" .numbers onchange="change(#{mother});">
         $forall (small, t) <- telOnlyWithNum p
           $if (length $ telOnly p) > 2
-            <td .linear#{n}><input name="button#{n}-#{small}" type="button" style="width:150px; border:thin" value=#{telString t} onclick="buttonChange(this);">
+            <td .linear#{n}><input name="button#{n}-#{small}" type="checkbox" value=#{telString t}>#{telString t}
           $else
-            <td .linear#{n}><input name="button#{n}-#{small}" type="button" style="background:pink; width:150px; border:thin" value=#{telString t}>
-  
+            <td .linear#{n}><input name="button#{n}-#{small}" type="checkbox" value=#{telString t}>#{telString t}

@@ -1,3 +1,13 @@
-<p>#{numVal}
-$forall h <- hoge
-  <p>#{h}
+<!-- <p>#{numVal} -->
+<!-- <p>#{numVal2} -->
+<!-- $forall h <- hoge -->
+<!-- $forall b <- hoge -->
+<!--   <p>#{fromMaybe "Nothing" b} -->
+
+<table border=1>
+  $forall (line, (ch, but)) <- hoge
+    <tr>
+      <td>#{Meibo.Base.name line}
+      <td>#{ch}
+      <td>#{but}
+      
