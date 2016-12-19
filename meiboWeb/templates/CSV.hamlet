@@ -11,4 +11,4 @@
           $if (length $ telOnly p) > 2
             <td .linear#{n}><input name="button#{n}-#{small}" type="checkbox" value=#{telString t}>#{telString t}
           $else
-            <td .linear#{n}><input name="button#{n}-#{small}" type="checkbox" value=#{telString t}>#{telString t}
+            <td .linear#{n}><input name="button#{n}-#{small}" type="checkbox" value=#{telString t} checked>#{telString t}
