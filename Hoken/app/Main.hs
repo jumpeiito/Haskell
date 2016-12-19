@@ -47,10 +47,12 @@ debugPrint persons mmap =
       putStrLn $ toDebug person mmap
 
 firstPrint :: [Person] -> MeiboMap -> Sec.SecretMap -> IO ()
-firstPrint persons mmap smap = 
+firstPrint persons mmap smap = do
+  putStrLn "\\begin{picture}(0,0)(36,255)"
   forM_ persons $ \person -> do
     when (length (feeList person) == 3) $
       putStrLn $ toString person mmap smap
+  putStrLn "\\end{picture}"
 
 main :: IO ()
 main = do
