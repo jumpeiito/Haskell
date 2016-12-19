@@ -5,9 +5,10 @@
 <!--   <p>#{fromMaybe "Nothing" b} -->
 
 <table border=1>
-  $forall (line, (ch, but)) <- hoge
+  $forall person <- hoge
     <tr>
-      <td>#{Meibo.Base.name line}
-      <td>#{ch}
-      <td>#{but}
+      <td>#{personPrettyName person}
+      <td>
+        $forall t <- tels person
+          <p>#{t}
       
