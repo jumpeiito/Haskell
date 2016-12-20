@@ -4,11 +4,12 @@
 <!-- $forall b <- hoge -->
 <!--   <p>#{fromMaybe "Nothing" b} -->
 
-<table border=1>
+<table>
   $forall person <- hoge
     <tr>
+      <td>#{Handler.PostCSV.han person}
       <td>#{personPrettyName person}
-      <td>
+      <td .tel>
         $forall t <- tels person
-          <p>#{t}
+          <div>#{t}
       

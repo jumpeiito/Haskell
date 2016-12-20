@@ -17,6 +17,7 @@ type Bunkai     = String
 type LineNumber = Int
 
 data Person = P { name  :: Text
+                , han   :: Text
                 , count :: Int
                 , tels  :: [Text]
                 , row   :: Int }
@@ -24,6 +25,7 @@ data Person = P { name  :: Text
 makePerson :: (Line, (Int, [Maybe Text])) -> Handler Person
 makePerson (l, (c, tel)) = 
   return P { name = Tx.pack $ Meibo.Base.name l
+           , han  = Tx.pack $ Meibo.Base.han l
            , count = c
            , tels = catMaybes tel
            , row = 0 }
@@ -61,4 +63,4 @@ postPostCSVR parameters = do
   info <- mapM getCSVStatus [0..(length indexes - 1)]
 
   hoge <- mapM makePerson $ zip meibo info
-  defaultLayout $(widgetFile "postcsv")
+  defaultLayout $(widgetFile "PostCSV")
