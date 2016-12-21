@@ -3,7 +3,7 @@
   <input type="button" onClick="release();" value="全選択解除">
   <table border=1 #MainTable>
     $forall (n, i) <- persons
-      <tr #tr#{n}>
+      <tr #tr#{n} onMouseOver="changeColorOver(this, '#87CEEB')" onMouseOut="changeColorOver(this, 'white')">
         <td #group#{n}><input type="checkbox" name="check#{n}" id="check#{n}" onclick="checkFunc(this)">
         <td #group#{n}>#{n}
         <td .NameID#{n} #group#{n}>#{name i}

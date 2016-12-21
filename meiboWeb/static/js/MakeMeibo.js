@@ -1,3 +1,6 @@
+function changeColorOver(obj, color) {
+    obj.style.backgroundColor = color;
+}
 
 function mainTable() {
     return document.getElementById("MainTable");
