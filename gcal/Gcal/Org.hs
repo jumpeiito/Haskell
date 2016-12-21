@@ -32,8 +32,8 @@ orgFileSource = do
   Just directory <- liftIO $ runFile orgDir
   mconcat $ map (CB.sourceFile . (directory++)) ["schedule.org", "notes.org"]
 
-orgTranslateConduit :: Monad m => Consumer BC.ByteString (ResourceT m) [Org]
-orgTranslateConduit = CB.lines
+orgTranslateConsumer :: Monad m => Consumer BC.ByteString (ResourceT m) [Org]
+orgTranslateConsumer = CB.lines
                       $= CL.fold orgTranslateFold []
 -- conduitTest = 
 --   -- schedule.orgとnotes.orgのファイルの内容を連結し、出力する.
@@ -47,8 +47,8 @@ hoge2 = do
 conduitTest2 :: IO ()
 conduitTest2 = do
   -- schedule.orgとnotes.orgのファイルの内容を連結した上で、Org型に変換し、print出力する。
-  m <- runResourceT $ (orgFileSource $$ orgTranslateConduit)
-  mapM_ (print . datetime) m
+  m <- runResourceT $ (orgFileSource $$ orgTranslateConsumer)
+  mapM_ (BC.putStrLn . title) m
 
 type OrgLevel   = Int
 type HeaderInfo = (OrgLevel, Maybe OrgStatus, OrgString, Tags)

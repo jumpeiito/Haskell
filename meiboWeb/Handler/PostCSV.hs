@@ -3,14 +3,10 @@ module Handler.PostCSV where
 
 import Import
 import           GHC.List               ((!!), init)
-import           Data.List              (intercalate)
 import           Util.StrEnum           (split)
-import           Util.Telephone         (telString, Telephone (..))
 import           Meibo.Base             (meiboMain, Line (..))
 import           Text.Read
 import           Text.Printf            (printf)
-import           Control.Arrow          ((&&&))
-import           Control.Exception      (SomeException)
 import qualified Data.Text              as Tx
 
 type Bunkai     = String
@@ -43,7 +39,7 @@ parameterInfo str = (bunkai, map read (init rest))
 
 getButtonValueList :: Int -> Handler [Maybe Text]
 getButtonValueList row = mapM (runInputPost . iopt textField) rows
-  where rows      = [ "button" <> pk row <> "-" <> pk n | n <- [0..5]]
+  where rows      = [ "button" <> pk row <> "-" <> pk n | n <- [0..5]::[Int]]
         pk        = Tx.pack . show
 
 getIntField :: Int -> Handler Int
