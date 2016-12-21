@@ -1,5 +1,6 @@
-<form #CheckBox>
-  <input type="button" onClick="getCheckbox('#{bunkai}');" value="CSV作成">
+<form #CheckBox action=@{CSVR bunkai} method="post">
+  <input type="submit" value="CSV作成">
+  <!-- <input type="button" onClick="getCheckbox('#{bunkai}');" value="CSV作成"> -->
   <input type="button" onClick="release();" value="全選択解除">
   <table border=1 #MainTable>
     $forall (n, i) <- persons

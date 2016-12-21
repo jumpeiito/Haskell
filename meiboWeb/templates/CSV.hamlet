@@ -1,4 +1,3 @@
-#{show param}
 <form action=@{PostCSVR parameter} method="post">
   <input type="submit" value="送信">
   <table border=1 #kumiai>

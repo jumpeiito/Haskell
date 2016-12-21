@@ -7,5 +7,5 @@
 
 /comments CommentR POST
 /makeMeibo/#String MakeMeiboR GET
-/csv/#String CSVR GET
+/csv/#String CSVR GET POST
 /postcsv/#String PostCSVR POST
