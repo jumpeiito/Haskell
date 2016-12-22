@@ -25,6 +25,7 @@ library
                      Handler.MakeMeibo
                      Handler.CSV
                      Handler.PostCSV
+                     Handler.TelFind
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

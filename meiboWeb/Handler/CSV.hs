@@ -35,15 +35,17 @@ kumiaihiRatio yet allP = (((a - y) * 1000) / (10.0 * a))
   where (y, a) = (fromIntegral yet, fromIntegral allP)
 
 getCheckedBoxValue :: Int -> Handler [Int]
-getCheckedBoxValue maxBound = do
-  let labels = ["check" <> (Tx.pack $ show n) | n <- [0..maxBound - 1]]
+getCheckedBoxValue maxRow = do
+  let labels = ["check" <> (Tx.pack $ show n) | n <- [0..maxRow - 1]]
   catMaybes <$> mapM (runInputPost . iopt intField) labels
 
 getParameter :: (Bunkai, [LineNumber]) -> String
-getParameter (bun, n) = printf "%s&%s" bun $ concatMap show n
+getParameter (bun, n) = printf "%s&%s" bun $ concatMap ((++ "&") . show) n
 
 postCSVR :: String -> Handler Html
 postCSVR bunkai = do
+  param <- reqGetParams <$> getRequest
+
   datalist <- liftIO $ meiboMain bunkai
 
   let len = length datalist
