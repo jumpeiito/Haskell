@@ -22,6 +22,7 @@ library
                      Handler.Common
                      Handler.Home
                      Handler.Comment
+                     Handler.Camera
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -84,7 +85,9 @@ library
                  , vector
                  , time
                  , case-insensitive
-                 , wai
+                , wai
+                , Util -any
+                , async
 
 executable         Camera
     if flag(library-only)
@@ -92,7 +95,10 @@ executable         Camera
 
     main-is:           main.hs
     hs-source-dirs:    app
-    build-depends:     base, Camera
+    build-depends:     base
+                     , Camera
+                     , Util -any
+                     , async
 
     ghc-options:       -threaded -rtsopts -with-rtsopts=-N
 
