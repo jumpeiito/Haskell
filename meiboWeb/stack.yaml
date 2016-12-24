@@ -15,7 +15,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-6.18
+resolver: lts-6.27
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -61,8 +61,7 @@ extra-package-dbs: []
 # arch: x86_64
 # 
 # Extra directories used by stack for building
-# extra-include-dirs: [/path/to/dir]
-# extra-lib-dirs: [/path/to/dir]
-# 
+# extra-include-dirs: ["c:/Program Files/MySQL/MySQL Server 5.7/include/"]
+# extra-lib-dirs: ["c:/Program Files/MySQL/MySQL Server 5.7/lib/"]
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor

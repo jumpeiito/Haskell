@@ -94,6 +94,10 @@ library
                 , mtl
                 , process
                 , tagsoup
+                , persistent
+                , persistent-sqlite
+                , persistent-template
+                , resourcet
 
 executable         meiboWeb
     if flag(library-only)
