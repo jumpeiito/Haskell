@@ -16,4 +16,4 @@ postTelFindR = do
   let targets = filter ((Tx.unpack query `isInfixOf`) . telephoneStr) datalist
   let persons = zip [0..] targets :: [(Int, Line)]
   let bunkai  = "全"
-  defaultLayout $(widgetFile "MakeMeibo")
+  defaultLayout $(widgetFile "TelFind")

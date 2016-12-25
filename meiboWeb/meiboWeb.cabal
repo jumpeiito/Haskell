@@ -98,6 +98,7 @@ library
                 , persistent-sqlite
                 , persistent-template
                 , resourcet
+                , directory
 
 executable         meiboWeb
     if flag(library-only)

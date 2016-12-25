@@ -324,3 +324,4 @@ latexEnv :: String -> [String] -> String
 latexEnv envName args =
   "\\begin{" ++ envName ++ "}" ++ concatMap enclose args ++ "\\end{" ++ envName ++ "}"
   where enclose s = "{" ++ s ++ "}"
+

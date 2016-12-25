@@ -1,4 +1,5 @@
 /static StaticR Static appStatic
+/auth   AuthR   Auth   getAuth
 
 /favicon.ico FaviconR GET
 /robots.txt RobotsR GET
@@ -6,4 +7,6 @@
 / HomeR GET POST
 
 /comments CommentR POST
-/camera/ CameraR GET
+
+/profile ProfileR GET
+/camera/#String CameraR GET POST
