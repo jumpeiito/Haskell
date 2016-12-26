@@ -1,0 +1,16 @@
+<form #QueryFind action=@{TelFindR} method="post">
+  <input type="text" name="query">
+  <input type="submit" value="検索">
+<form #CheckBox action=@{CSVR bunkai} method="post">
+  <input type="submit" value="CSV作成">
+  <!-- <input type="button" onClick="getCheckbox('#{bunkai}');" value="CSV作成"> -->
+  <input type="button" onClick="release();" value="全選択解除">
+  <table border=1 #MainTable>
+    $forall (n, i) <- persons
+      <tr #tr#{n} onMouseOver="changeColorOver(this, '#87CEEB')" onMouseOut="changeColorOver(this, 'white')">
+        <td #group#{n}><input type="checkbox" name="check#{n}" id="check#{n}" onclick="checkFunc(this)" value="#{n}">
+        <td #group#{n}>#{n}
+        <td .NameID#{n} #group#{n}>#{name i}
+        <td #group#{n}>
+          <a href="https://maps.google.co.jp/maps?q=#{addressStr i}">#{addressStr i}
+        <td .TelID#{n} #group#{n}>#{telephoneStr i}

@@ -1,0 +1,19 @@
+table {
+    border: 1px solid;
+    border-collapse: collapse;
+    th {
+	border: 1px solid;
+    }
+    tr {
+	border: 1px solid;
+	height: 30px;
+    }
+    td {
+	padding: 2px 3px;
+
+    }
+    .tel {
+	border: 1px solid;
+	background: #dcdcdc;
+    }
+}

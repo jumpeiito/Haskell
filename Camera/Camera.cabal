@@ -25,6 +25,7 @@ library
                      Handler.Comment
                      Handler.Profile
                      Handler.Camera
+                     Handler.InterSection
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

@@ -1,0 +1,8 @@
+#{extra}
+<table border=1 #kumiai>
+$forall (n, p) <- #{persons}
+  <tr .linear#{n}>
+    <form #form#{n}>
+      <td width=20pt .linear#{n}>#{han p}
+      <td width=120pt .linear#{n}>#{name p}
+      <td .linear#{n}>^{fvInput view}

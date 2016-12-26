@@ -19,16 +19,15 @@ removeFileIfExists path = do
 
 timingP :: IO Bool
 timingP = do
-  Just excelFile <- runFile excel
-  sqlFile <- runFile sqlite
-  exist <- doesFileExist excelFile
-  case (sqlFile, exist) of
-    (Nothing, True) -> return True
-    (Just sql, True) -> do
-      excelDate <- getModificationTime excelFile
-      sqlDate <- getModificationTime sql
+  excelFile <- runFile excel
+  sqlFile   <- runFile sqlite
+  case (sqlFile, excelFile) of
+    (Nothing, Just _) -> return True
+    (Just sql', Just excel') -> do
+      excelDate <- getModificationTime excel'
+      sqlDate   <- getModificationTime sql'
       return $ diffUTCTime excelDate sqlDate > 0
-    (_, _) -> return True
+    (_, _) -> return False
 
 insertDB :: HandlerT App IO ()
 insertDB = do
@@ -52,6 +51,7 @@ refreshDB = do
     False -> return ()
     True  -> do
       liftIO $ removeFileIfExists sql
+      runDB $ runMigration migrateAll
       insertDB
   
 getBunkai :: String -> HandlerT App IO [Person]
@@ -73,12 +73,13 @@ getCameraR :: String -> Handler Html
 getCameraR bunkai = do
   timing <- liftIO timingP
 
-  _ <- refreshDB
+  refreshDB
 
   meibo <- getBunkai bunkai
   let persons = zip [0..] meibo :: [(Int, Person)]
   defaultLayout $ do
     bunkaiHrefWidget
+    addScript $ StaticR js_Camera_js
     $(widgetFile "camera")
 
 postCameraR :: String -> Handler Html

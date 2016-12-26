@@ -10,3 +10,4 @@
 
 /profile ProfileR GET
 /camera/#String CameraR GET POST
+/intersection/#String InterSectionR POST
