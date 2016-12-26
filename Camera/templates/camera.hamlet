@@ -1,4 +1,4 @@
-#{show bool}
+#{show timing}
 <form #QueryFind action="" method="post">
   <input type="text" name="query">
   <input type="submit" value="検索">
