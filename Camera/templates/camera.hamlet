@@ -2,7 +2,7 @@
 <form #QueryFind action="" method="post">
   <input type="text" name="query">
   <input type="submit" value="検索">
-<form #CheckBox action="" method="post">
+<form #CheckBox action=@{InterSectionR bunkai} method="post">
   <input type="submit" value="CSV作成">
   <!-- <input type="button" onClick="getCheckbox('#{bunkai}');" value="CSV作成"> -->
   <input type="button" onClick="release();" value="全選択解除">

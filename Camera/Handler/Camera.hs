@@ -69,8 +69,8 @@ bunkaiHrefWidget = do
                       <a href=@{CameraR bun}>#{bun}
                    |]
 
-getCameraR :: String -> Handler Html
-getCameraR bunkai = do
+postCameraR :: String -> Handler Html
+postCameraR bunkai = do
   timing <- liftIO timingP
 
   refreshDB
@@ -82,6 +82,6 @@ getCameraR bunkai = do
     addScript $ StaticR js_Camera_js
     $(widgetFile "camera")
 
-postCameraR :: String -> Handler Html
-postCameraR bunkai = error "Not yet implemented: postCameraR"
+getCameraR :: String -> Handler Html
+getCameraR bunkai = error "Not yet implemented: getCameraR"
   

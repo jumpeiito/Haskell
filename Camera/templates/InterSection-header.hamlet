@@ -1,0 +1,3 @@
+<div .container>
+  <ul .breadcrumb>
+    <li .active>滞納者#{yetpay}人 現勢#{mother}人 推定納入率#{kumiaihiRatio yetpay mother}%

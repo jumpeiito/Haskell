@@ -5,7 +5,7 @@ import Import
 import           Import
 import           GHC.List               ((!!), init)
 import           Util.StrEnum           (split)
-import           Util.Telephone         (telString, Telephone (..))
+import           Util.Telephone         (telParse, telString, Telephone (..))
 import           Meibo.Base             (meiboMain, Line (..))
 import           Text.Read
 import           Text.Printf            (printf)
@@ -25,10 +25,10 @@ exceptFax = filter faxFilter
   where faxFilter (Fax _) = False
         faxFilter _ = True
 
-telOnly :: Line -> [Telephone]
-telOnly = exceptFax . tel
+telOnly :: Person -> [Telephone]
+telOnly = exceptFax . telParse . personTel
 
-telOnlyWithNum :: Line -> [(Int, Telephone)]
+telOnlyWithNum :: Person -> [(Int, Telephone)]
 telOnlyWithNum = zip [0..] . telOnly
 
 kumiaihiRatio :: Int -> Int -> Float
@@ -52,6 +52,16 @@ postInterSectionR :: Bunkai -> Handler Html
 postInterSectionR bunkai = do
   indexes <- getCheckedBoxValue
 
-  persons <- getMeibo indexes
+  meibo <- getMeibo indexes
+  let persons = zip ([0..]::[Int]) $ meibo
+  let yetpay = length indexes
+  let mother = length meibo
+  let parameter = getParameter (bunkai, indexes)
 
+  defaultLayout $ do
+    addScript $ StaticR js_buttonChange_js
+    $(widgetFile "InterSection-header")
+    $(widgetFile "InterSection-button")
+    $(widgetFile "InterSection")
+  
   
