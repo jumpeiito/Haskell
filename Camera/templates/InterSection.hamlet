@@ -4,7 +4,7 @@
   <table border=1 #kumiai>
     $forall (n, p) <- persons
       <tr .linear#{n}>
-        <td width=20pt .linear#{n}>班
+        <td width=20pt .linear#{n}>#{personHan p}
         <td width=120pt .linear#{n}>#{personName p}
         <td .linear#{n}><input name="count#{n}" type="number" maxlength=2 max=40 min=1 value=1 style="width:40px;" .numbers onchange="change(#{mother});">
         $forall (small, t) <- telOnlyWithNum p

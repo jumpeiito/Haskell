@@ -1,4 +1,6 @@
-#{show timing}
+<div>sqlite:#{show sq}
+<div>excel:#{show ex}
+<div>#{show timing}
 <form #QueryFind action="" method="post">
   <input type="text" name="query">
   <input type="submit" value="検索">
@@ -9,8 +11,8 @@
   <table border=1 #MainTable>
     $forall (n, i) <- persons
       <tr #tr#{n} onMouseOver="changeColorOver(this, '#87CEEB')" onMouseOut="changeColorOver(this, 'white')">
-        <td #group#{n}><input type="checkbox" name="check#{n}" id="check#{n}" onclick="checkFunc(this)" value="#{n}">
-        <td #group#{n}>#{n}
+        <td #group#{n}><input type="checkbox" name="check#{n}" id="check#{n}" onclick="checkFunc(this)" value="#{personPid i}">
+        <td #group#{n}>#{personHan i}
         <td .NameID#{n} #group#{n}>#{personName i}
         <td #group#{n}>
           <a href="https://maps.google.co.jp/maps?q=#{personAddress i}">#{personAddress i}

@@ -16,6 +16,8 @@ type LineNumber = Int
 
 data Counter = Counter { counter :: Int }
 
+-- http://kurokawh.blogspot.jp/2014/09/haskellyesodsqlite-haskellquery.html
+
 parameterInfo :: String -> (Bunkai, [LineNumber])
 parameterInfo str = (bunkai, map read (init rest))
   where bunkai:rest = split '&' str
@@ -45,7 +47,7 @@ getParameter (bun, n) = printf "%s&%s" bun $ concatMap ((++ "&") . show) n
 
 getMeibo :: [Int] -> HandlerT App IO [Person]
 getMeibo indexes = runDB $ do
-  bkn <- selectList [PersonPid /<-. indexes] []
+  bkn <- selectList [PersonPid <-. indexes] []
   return $ map entityVal bkn
 
 postInterSectionR :: Bunkai -> Handler Html

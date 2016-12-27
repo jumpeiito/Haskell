@@ -1,5 +1,6 @@
 Person
     pid Int
+    han String
     bunkai String
     name String
     address String
