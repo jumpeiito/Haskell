@@ -6,7 +6,7 @@
       <tr .linear#{n}>
         <td width=20pt .linear#{n}>#{personHan p}
         <td width=120pt .linear#{n}>#{personName p}
-        <td .linear#{n}><input name="count#{n}" type="number" maxlength=2 max=40 min=1 value=1 style="width:40px;" .numbers onchange="change(#{mother});">
+        <td .linear#{n}><input name="count#{n}" type="number" maxlength=2 max=40 min=1 value=1 style="width:40px;" class="numbers" onchange="change(#{mother});">
         $forall (small, t) <- telOnlyWithNum p
           $if (length $ telOnly p) > 2
             <td .linear#{n}><input name="button#{n}-#{small}" type="checkbox" value=#{telString t}>#{telString t}

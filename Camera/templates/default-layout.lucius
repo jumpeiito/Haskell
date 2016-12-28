@@ -6,6 +6,12 @@
 .navbar-default .navbar-nav > .active > a {
     background-color: transparent;
     border-bottom: 2px solid white;
+
+}
+
+.container > .breadcrumb > .active {
+    font-size: 1.7em;
+    font-weight: normal;
 }
 
 .navbar-nav {

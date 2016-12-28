@@ -1,12 +1,9 @@
 module Handler.InterSection where
 
-import Import
-
 import           Import
-import           GHC.List               ((!!), init)
+import           GHC.List               (init)
 import           Util.StrEnum           (split)
 import           Util.Telephone         (telParse, telString, Telephone (..))
-import           Meibo.Base             (meiboMain, Line (..))
 import           Text.Read
 import           Text.Printf            (printf)
 import qualified Data.Text              as Tx
@@ -39,11 +36,16 @@ kumiaihiRatio yet allP = (((a - y) * 1000) / (10.0 * a))
 
 getCheckedBoxValue :: Handler [Int]
 getCheckedBoxValue = do
-  let labels = ["check" <> (Tx.pack $ show n) | n <- [0..1000]]
+  let labels = ["check" <> (Tx.pack $ show n) | n <- [0..1000]::[Int]]
   catMaybes <$> mapM (runInputPost . iopt intField) labels
 
 getParameter :: (Bunkai, [LineNumber]) -> String
 getParameter (bun, n) = printf "%s&%s" bun $ concatMap ((++ "&") . show) n
+
+getBunkai :: String -> HandlerT App IO [Person]
+getBunkai bk = runDB $ do
+  bkn <- selectList [PersonBunkai ==. bk] []
+  return $ map entityVal bkn
 
 getMeibo :: [Int] -> HandlerT App IO [Person]
 getMeibo indexes = runDB $ do
@@ -52,12 +54,12 @@ getMeibo indexes = runDB $ do
 
 postInterSectionR :: Bunkai -> Handler Html
 postInterSectionR bunkai = do
-  indexes <- getCheckedBoxValue
-
-  meibo <- getMeibo indexes
+  indexes     <- getCheckedBoxValue
+  meibo       <- getMeibo indexes
+  bunkaiMeibo <- getBunkai bunkai
   let persons = zip ([0..]::[Int]) $ meibo
   let yetpay = length indexes
-  let mother = length meibo
+  let mother = length bunkaiMeibo
   let parameter = getParameter (bunkai, indexes)
 
   defaultLayout $ do
