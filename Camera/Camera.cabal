@@ -26,6 +26,8 @@ library
                      Handler.Profile
                      Handler.Camera
                      Handler.InterSection
+                     Handler.QForm
+                     Handler.Appear
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -95,6 +97,7 @@ library
                 , wai
                 , Meibo
                 , Util
+                , array
 
 executable         Camera
     if flag(library-only)

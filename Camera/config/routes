@@ -11,3 +11,5 @@
 /profile ProfileR GET
 /camera/#String CameraR GET POST
 /intersection/#String InterSectionR POST
+/qform/ QFormR POST
+/appear/ AppearR POST

@@ -141,6 +141,8 @@ instance Yesod App where
     isAuthorized RobotsR _ = return Authorized
     isAuthorized (CameraR _) _ = return Authorized
     isAuthorized (InterSectionR _) _ = return Authorized
+    isAuthorized AppearR _ = return Authorized
+    isAuthorized QFormR _ = return Authorized
     isAuthorized (StaticR _) _ = return Authorized
 
     isAuthorized ProfileR _ = isAuthenticated

@@ -11,7 +11,7 @@
   <table border=1 #MainTable>
     $forall (n, i) <- persons
       <tr #tr#{n} onMouseOver="changeColorOver(this, '#87CEEB')" onMouseOut="changeColorOver(this, 'white')">
-        <td #group#{n}><input type="checkbox" name="check#{n}" id="check#{n}" onclick="checkFunc(this)" value="#{personPid i}">
+        <td #group#{n}><input type="checkbox" name="check#{personPid i}" id="check#{n}" onclick="checkFunc(this)" value="#{personPid i}">
         <td #group#{n}>#{personHan i}
         <td .NameID#{n} #group#{n}>#{personName i}
         <td #group#{n}>

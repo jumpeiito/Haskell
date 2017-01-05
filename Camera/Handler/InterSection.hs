@@ -47,6 +47,11 @@ getBunkai bk = runDB $ do
   bkn <- selectList [PersonBunkai ==. bk] []
   return $ map entityVal bkn
 
+getAll :: HandlerT App IO [Person]
+getAll = runDB $ do
+  bkn <- selectList [] []
+  return $ map entityVal bkn
+
 getMeibo :: [Int] -> HandlerT App IO [Person]
 getMeibo indexes = runDB $ do
   bkn <- selectList [PersonPid <-. indexes] []

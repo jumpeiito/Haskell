@@ -69,8 +69,8 @@ getCameraR :: String -> Handler Html
 getCameraR bunkai = do
   timing <- liftIO timingP
 
-  -- _ <- refreshDB bunkai
-  refreshDB bunkai
+  _ <- refreshDB bunkai
+  -- insertDB
 
   ex <- liftIO $ getModificationTime =<< fromMaybe "" <$> runFile excel
   sq <- liftIO $ getModificationTime =<< fromMaybe "" <$> runFile sqlite

@@ -1,0 +1,13 @@
+<table>
+  $forall person <- dataMain
+    <tr>
+      <td>#{personHan $ meibo person}
+      <td>#{personPrettyName person}
+      <td>
+        $forall tel <- catMaybes $ tels person
+          <div>#{tel}
+      <!-- <td>#{Handler.PostCSV.han person} -->
+      <!-- <td>#{personPrettyName person} -->
+      <!-- <td .tel> -->
+      <!--   $forall t <- tels person -->
+      <!--     <div>#{t} -->
