@@ -8,5 +8,9 @@ extra-deps: []
 
 flags: {}
 
-extra-include-dirs: ["f:\\Haskell\\Snews", "f:\\Haskell\\icu\\include"]
-extra-lib-dirs: ["f:\\Haskell\\Snews", "f:\\Haskell\\icu\\lib"]
+extra-include-dirs: ["C:\\Users\\Jumpei\\Haskell\\Snews", "C:\\Users\\Jumpei\\Haskell\\icu\\include"]
+extra-lib-dirs: ["C:\\Users\\Jumpei\\Haskell\\Snews", "C:\\Users\\Jumpei\\Haskell\\icu\\lib"]
+
+build:
+  library-profiling: true
+  executable-profiling: true

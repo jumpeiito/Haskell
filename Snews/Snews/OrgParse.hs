@@ -6,9 +6,10 @@ module Snews.OrgParse  where
 import Util                             (makeMap, uniq, readUTF8File, FileDirect (..), (<^>), allfd)
 import Util.Strdt                       (strdt, toYear, toMonth, toDay, todayDay)
 import Util.StrEnum                     (split)
-import Data.List                        (sort)
 import Data.Time                        (Day (..), fromGregorian)
 import Data.Maybe                       (isJust, mapMaybe)
+import Data.Sequence                    ((|>))
+import qualified Data.Sequence          as Seq
 import Text.Printf                      (printf)
 import Control.Monad.Writer
 import Control.Concurrent.Async
@@ -16,16 +17,17 @@ import Text.StringLike                  (castString, StringLike (..))
 import Text.Parsec
 import Text.Parsec.String
 import Control.Monad.Reader
+import System.Directory                 (doesFileExist)
 import qualified Data.Map               as Map
-import qualified Util                   as U
 import qualified Control.Monad.State    as St
-import qualified System.IO              as I
+-- import qualified System.IO              as I
 
 data OrgConfig = OC { topdir    :: FilePath
                     , basename  :: String
                     , condition :: FileDirect }
 
-config = OC { topdir    = "d:/home/Org/news/"
+config :: OrgConfig
+config = OC { topdir    = "C:/Users/Jumpei/org/news/"
             , basename  = "%s%04d%02d.org"
             , condition = (FD (const True) ("org" <^>))}
 
@@ -41,7 +43,7 @@ data Lines s =
   | OrgLine s
   | OrgArticle { time   :: Maybe Day
                , header :: s
-               , body   :: [s]
+               , body   :: Seq.Seq s
                , paper' :: s }
   | OrgError deriving (Show, Eq)
 
@@ -52,7 +54,7 @@ instance (StringLike s, Monoid s) => Monoid (Lines s) where
   mempty = makeOrgArticle
   OrgDate s        `mappend` art@OrgArticle{} = art { time = strdt s }
   OrgTitle s       `mappend` art@OrgArticle{} = takeHeader art s
-  OrgLine s        `mappend` art@OrgArticle{} = art { body = body art ++ [s] }
+  OrgLine s        `mappend` art@OrgArticle{} = art { body = body art |> s }
   art@OrgArticle{} `mappend` OrgArticle{}     = art
   _ `mappend` _ = mempty
 
@@ -96,16 +98,16 @@ makeMonthList day year month
 aChar :: Parser String
 aChar = many1 (noneOf "\r\n")
 
-titleP, dateP, lineP :: Parser (Lines String)
-titleP = OrgTitle <$> (string "** " *> aChar)
-dateP  = OrgDate  <$> (string "* "  *> manyTill (oneOf "0123456789/-") eof)
-lineP  = OrgLine  <$> manyTill anyChar eof
+selectedParse :: Parser (Lines String)
+selectedParse = do
+  try (OrgTitle <$> (string "** " *> aChar))
+  <|> try (OrgDate <$> (string "* " *> manyTill (oneOf "0123456789/-") eof))
+  <|> OrgLine <$> (many1 anyChar)
 
 toLine :: StringLike a => a -> Lines String
 toLine s = either (const OrgError) id 
-                  $ parse selected "" target
-  where selected = choice [try titleP, try dateP, lineP]
-        target   = castString s
+                  $ parse selectedParse "" target
+  where target   = castString s
 ----------------------------------------------------------------------------------------------------
 type PaperMap a = Map.Map Int [a]
 
@@ -117,7 +119,6 @@ takeHeader :: (StringLike a, Monoid a) => Lines a -> a -> Lines a
 takeHeader art head' = art { header = head', paper' = p }
   where p = takePaper head'
 
--- takePaper :: (StringLike a, Monoid a) => a -> a
 takePaper :: (StringLike a, Monoid a) => a -> a
 takePaper s = case parse takePaperParse mempty (castString s) of
   Right s' -> castString s'
@@ -169,10 +170,15 @@ orgLineList = dateFold . map toLine . lines . castString
 parseToDayList :: Integer -> Int -> IO [Day]
 parseToDayList year month = do
   today    <- todayDay
-  contents <- orgLineList <$> readUTF8File (orgFileName year month `runReader` config)
-  let daylist = makeMonthList today year month
-  let days    = notElemDay daylist contents
-  return $ map (fromGregorian year month) days
+  let orgFile = orgFileName year month `runReader` config
+  orgFileExist <- doesFileExist orgFile
+  case orgFileExist of
+    False -> error $ printf "orgfile(%s) doesn't exists! from OrgParse.hs" orgFile
+    True -> do
+      contents <- orgLineList <$> readUTF8File orgFile
+      let daylist = makeMonthList today year month
+      let days    = notElemDay daylist contents
+      return $ map (fromGregorian year month) days
 ----------------------------------------------------------------------------------------------------
 headerTags :: String -> [String]
 headerTags head = case split ':' head of

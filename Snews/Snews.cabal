@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 executable snews
   hs-source-dirs:      ., Snews
   main-is:             snews.hs
-  ghc-options:         -O3
+  ghc-options:         -O3 
   build-depends:       base
                      , Util
                      , mtl
@@ -32,10 +32,15 @@ executable snews
                      , bytestring
                      , yaml
                      , directory
+                     , resourcet
+                     , conduit
+                     , conduit-extra
+                     , attoparsec
   other-modules:     Snews.NewsArticle.Akahata
                      Snews.NewsArticle.Base
                      Snews.NewsArticle.Common
                      Snews.OrgParse
+                     Snews.OrgConduit
   default-language:    Haskell2010
 
 library
@@ -43,6 +48,7 @@ library
                        Snews.NewsArticle.Base
                        Snews.NewsArticle.Common
                        Snews.OrgParse
+                       Snews.OrgConduit
   default-language:    Haskell2010
   hs-source-dirs:      .
   build-depends:       base
@@ -54,7 +60,12 @@ library
                      , parsec
                      , containers
                      , async
-
+                     , directory
+                     , resourcet
+                     , conduit
+                     , conduit-extra
+                     , bytestring
+                     , attoparsec
 -- test-suite Snews-test
 --   type:                exitcode-stdio-1.0
 --   hs-source-dirs:      test, Snews

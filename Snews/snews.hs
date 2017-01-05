@@ -1,6 +1,7 @@
-import           Util                           (withAppendFile, withOutFile)
+import           Util                           (withAppendFile, withOutFile, runFile, FileSystem (..))
 import           Util.Strdt                     (strdt, toYear, toMonth, todayDay, dayStr6)
-import           Snews.OrgParse                 (parseToDayList, tagsOutput1)
+import           Snews.OrgParse                 (tagsOutput1)
+import           Snews.OrgConduit               (parseToDayList)
 import           Snews.NewsArticle.Base
 import           Control.Monad.Reader
 import           Control.Concurrent.Async
@@ -44,10 +45,15 @@ printer = printerCore Txio.putStrLn
 
 fPrinter filename = printerCore $ filePrinter filename
 
+orgDirectory :: IO (Maybe FilePath)
+orgDirectory = runFile $ Directory [ "c:/Users/Jumpei/org/news/"
+                                   , "d:/home/Org/news/"]
+
 dayMaker :: Bool -> Day -> IO ()
 dayMaker bp td = do
   --(deciding output destination)-------------------------
-  let orgFile = "d:/home/Org/news/" ++ dayStr6 td ++ ".org"
+  Just orgdir <- orgDirectory
+  let orgFile = orgdir ++ dayStr6 td ++ ".org"
   bool <- doesFileExist orgFile
   
   let (trueOutput, headOutput)
