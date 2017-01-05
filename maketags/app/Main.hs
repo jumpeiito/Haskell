@@ -12,7 +12,7 @@ data Config = Con { topDir     :: FileSystem
 type CfgReaderT a = ReaderT Config IO a
 
 config :: Config
-config = Con { topDir     = Directory ["C:/Users/jumpei/", "D:/home/"]
+config = Con { topDir     = Directory ["C:/Users/jumpei/Haskell/", "D:/home/Haskell/"]
              , direction  = FD (".stack-work" <!~>) ("hs" <^>)
              }
 
