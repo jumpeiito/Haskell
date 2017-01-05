@@ -11,27 +11,20 @@ module Meibo.Base ( Line (..)
                   , getMeibo) where
 
 import Codec.Xlsx                       hiding (Parser)
-import Codec.Xlsx.Formatted
 import qualified Data.ByteString.Lazy as L
 import Control.Lens                     hiding (noneOf)
 import Data.Maybe
 import Data.Text                        (unpack, pack, Text)
 import Data.Time.Calendar
-import GHC.Float
-import Util                             (runRubyString, readUTF8File, group, runFile, FileSystem (..))
+import Util                             (group, runFile, FileSystem (..))
 import Util.Strdt
 import Util.Telephone
 import Util.StrEnum
 import Data.List                        hiding (group)
-import Data.Maybe                       (fromMaybe, isJust)
 import Control.Monad.Writer
 import Control.Monad.State
-import Data.Time
-import Control.Concurrent.Async
-import System.Process
 import Text.Parsec                      hiding (Line, State)
 import Text.Parsec.String
-import qualified System.IO              as I
 
 data Line = Line { bunkai :: String,
                    bknum  :: String,
@@ -147,6 +140,7 @@ zipWithNth numList a b f = snd $ runWriter (loop a b 0)
 trans day tx = st2 day $ snd $ (`execState` ("", [])) $ ft2 tx
 
 combinate :: [Text] -> [[Text]] -> [[Text]]
+combinate _ [] = []
 combinate txLine (car:cdr) = replaced : cdr
   where a `plus` b = mconcat [a, "・" , b]
         replaced   = zipWithNth [5,6] car txLine plus
