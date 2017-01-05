@@ -1,7 +1,7 @@
 module Hoken.Parser ( pobjectParse
                     , splitAddress) where
 
-import Hoken.Base               (Person (..), config, MeiboMap)
+import Hoken.Base               (Person (..))
 import Util.Telephone           (telFuncPure, Telephone (..))
 import Control.Monad.State
 import Text.Parsec              hiding (Line, State)
@@ -64,6 +64,7 @@ numToBunkai "03" = "小栗栖"
 numToBunkai "04" = "一言寺"
 numToBunkai "05" = "三宝院"
 numToBunkai "50" = "点在"
+numToBunkai _    = error "illegal argument"
 
 pobjectParse :: Parser Person
 pobjectParse = do
@@ -72,7 +73,7 @@ pobjectParse = do
   tel    <- telStringParse
   _      <- many (char '＊')
   fee    <- hokenFeeMany <* string " "
-  sum'   <- hokenFeeParse
+  _      <- hokenFeeParse
   let feel = feeSplit fee
   let num' = drop 2 num
   return P { number = num'

@@ -2,32 +2,17 @@
 
 module Main where
 
-import           Util                   ((++++)
-                                        , locEncoding
-                                        , makeMap
-                                        , scan
-                                        , runFile
-                                        , ketaNum
-                                        , FileSystem (..)
-                                        , latexCom)
+import           Util                   (makeMap, scan)
 import           Util.Strdt             (getWeekDateString, strdt, toDay)
-import qualified Util.Telephone         as Tel
 import           Hoken.Base             (runXdoc, Person (..), config, MeiboMap)
-import           Hoken.Parser           (pobjectParse, splitAddress)
+import           Hoken.Parser           (pobjectParse)
 import           Hoken.Meibo            (toLatex, toString, toDebug)
 import qualified Hoken.Secrets          as Sec
 import qualified Meibo.Base             as Meibo
 import           Data.Time
 import           Data.Monoid
-import           Data.Maybe             (fromMaybe, isJust)
-import           Data.List              (isPrefixOf, intercalate, find)
-import qualified Data.Map               as Map
-import           Data.Text              (Text)
-import qualified Data.Text.IO           as T
-import           Data.Yaml              hiding (Parser, Array)
 import           Control.Monad.Reader
 import           Text.Parsec            hiding (Line, State)
-import           Test.Hspec
 import qualified System.IO              as I
 import qualified Options.Applicative    as O
 

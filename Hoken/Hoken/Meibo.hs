@@ -3,22 +3,20 @@
 module Hoken.Meibo  (toLatex, toString, toDebug) where
 
 import Util                     hiding ((&&&))
-import Hoken.Base               (Person (..), config, MeiboMap)
-import Hoken.Parser             (splitAddress, pobjectParse)
-import Hoken.Secrets            ((<<|>>), Secrets (..))
+import Hoken.Base               (Person (..), MeiboMap)
+import Hoken.Parser             (splitAddress)
+import Hoken.Secrets            ((<<|>>))
 -- import Meibo.Base               (Line (..))
-import qualified Meibo.Base     as MB
+-- import qualified Meibo.Base     as MB
 import qualified Hoken.Secrets  as Sec
 import qualified Meibo.Base     as Meibo
 import qualified Data.Map       as Map
 import Control.Arrow            ((&&&))
 import Data.List                (isPrefixOf, find)
 import Data.Maybe               (fromMaybe)
-import Util.Telephone           (telFuncPure, Telephone (..), telString, telMap)
+-- import Util.Telephone           (telFuncPure, Telephone (..), telString, telMap)
+import Util.Telephone           (Telephone (..), telString, telMap)
 import Control.Monad.State
-import Text.Parsec              hiding (Line, State)
-import Text.Parsec.String
-import Test.Hspec
 
 hasTel :: Telephone -> Meibo.Line -> Bool
 hasTel telkey line = telkey `elem` Meibo.tel line

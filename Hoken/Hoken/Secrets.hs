@@ -8,14 +8,10 @@ module Hoken.Secrets ( SecretPerson (..)
                      , (<<|>>)) where
   
 import           Util                   (runFile, FileSystem (..), makeSingleMap)
-import           Control.Monad  
 import           Data.Yaml              hiding (Parser, Array)
 import           Data.Text              (Text)
-import           Data.Maybe             (fromMaybe)
 import qualified Data.Map               as Map
-import qualified Data.Text.IO           as T
 import           Text.StringLike        (castString)
-import qualified System.IO              as I
 
 data Secrets = S { secrets :: [[Text]] }
 type SecretMap   = Map.Map String SecretPerson
@@ -48,6 +44,6 @@ secretMap = do
   Just file <- runFile $ File [ "d:/home/Haskell/Hoken/app/secret.yaml"
                               , "c:/Users/Jumpei/Haskell/Hoken/app/secret.yaml"]
 
-  Just rc <- decodeFile file :: IO (Maybe Secrets)
+  Just rc <- decodeFile file
   let gen = map toSecretPerson $ secrets rc
   return $ makeSingleMap number id gen
