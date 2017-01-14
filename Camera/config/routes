@@ -13,3 +13,4 @@
 /intersection/#String InterSectionR POST
 /qform/ QFormR POST
 /appear/ AppearR POST
+/search/ SearchR GET POST

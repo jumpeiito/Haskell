@@ -143,6 +143,7 @@ instance Yesod App where
     isAuthorized (InterSectionR _) _ = return Authorized
     isAuthorized AppearR _ = return Authorized
     isAuthorized QFormR _ = return Authorized
+    isAuthorized SearchR _ = return Authorized
     isAuthorized (StaticR _) _ = return Authorized
 
     isAuthorized ProfileR _ = isAuthenticated

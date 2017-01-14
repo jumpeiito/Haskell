@@ -28,6 +28,7 @@ library
                      Handler.InterSection
                      Handler.QForm
                      Handler.Appear
+                     Handler.Search
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -98,6 +99,7 @@ library
                 , Meibo
                 , Util
                 , array
+                , parsec
 
 executable         Camera
     if flag(library-only)

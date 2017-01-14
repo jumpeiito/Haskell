@@ -28,8 +28,8 @@ data OrgConfig = OC { topdir    :: FileSystem
 
 config = OC { topdir = Directory [ "C:/Users/Jumpei/Org/news/"
                                  , "d:/home/Org/news/"]
-            , basename = "%s%04d%02d.org"
-            , condition = (FD (const True) ("org" <^>)) }
+            , basename  = "%s%04d%02d.org"
+            , condition = FD (const True) ("org" <^>) }
 
 orgDir :: ReaderT OrgConfig IO (Maybe FilePath)
 orgDir = do
@@ -201,11 +201,10 @@ orgSource file = CB.sourceFile file $= CB.lines
 oneOf xs = foldl1 (<|>) (map char xs)
 
 orgDayConsumer :: Monad m => Consumer B.ByteString (ResourceT m) [Maybe Day]
-orgDayConsumer = do
-  CL.fold orgFunc []
+orgDayConsumer = CL.fold orgFunc []
   where dateParse = string "* " *> many1 (oneOf "0123456789/-") 
         orgFunc xs line = case parse dateParse line `feed` mempty of
-                            Done _ d -> (strdt d) : xs
+                            Done _ d -> strdt d : xs
                             _ -> xs
 
 parseToDayList :: Integer -> Int -> IO [Day]
