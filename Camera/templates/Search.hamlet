@@ -1,2 +1,10 @@
-$forall m <- meibo
-  <p>#{show m}
+<form action=@{AppearR} method="post">
+  <input type="submit" value="送信">
+  <table border=1 #kumiai>
+    $forall p <- meibo
+      <tr>
+        <td width=20pt>#{personHan p}
+        <td width=120pt>#{personName p}
+        <td>
+          <a href="https://maps.google.co.jp/maps?q=#{personAddress p}">#{personAddress p}
+        <td>#{personTel p}
