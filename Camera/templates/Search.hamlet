@@ -1,8 +1,10 @@
-<form action=@{AppearR} method="post">
-  <input type="submit" value="送信">
+<form #QueryFind action=@{SearchR} method="post">
+  <input type="text" name="query">
+  <input type="submit" value="検索">
   <table border=1 #kumiai>
     $forall p <- meibo
       <tr>
+        <td width=80pt>#{personBunkai p}
         <td width=20pt>#{personHan p}
         <td width=120pt>#{personName p}
         <td>
