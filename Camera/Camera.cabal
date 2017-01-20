@@ -29,6 +29,7 @@ library
                      Handler.QForm
                      Handler.Appear
                      Handler.Search
+                     Handler.Kumiaihi
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT

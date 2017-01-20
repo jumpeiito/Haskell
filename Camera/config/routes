@@ -14,3 +14,4 @@
 /qform/ QFormR POST
 /appear/ AppearR POST
 /search/ SearchR GET POST
+/kumiaihi/ KumiaihiR GET

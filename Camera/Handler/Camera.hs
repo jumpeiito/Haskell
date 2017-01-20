@@ -1,10 +1,10 @@
 module Handler.Camera where
 
+import Data.Time.Clock
 import Import
-import           Util
-import           Data.Time.Clock
-import           Meibo.Base (meiboMain, telephoneStr, addressStr, Line (..))
-import           System.Directory (removeFile, getModificationTime)
+import Meibo.Base (meiboMain, telephoneStr, addressStr, Line (..))
+import System.Directory (removeFile, getModificationTime)
+import Util
 
 excel, sqlite :: FileSystem
 excel  = File [ "c:/Users/Jumpei/Haskell/組合員名簿.xlsm"

@@ -1,0 +1,5 @@
+<table id="tableID">
+  <tr>
+  $forall title <- ["種別", "組合費", "保険料", "介護保険料", "保険料合計", "全体合計"]
+    <th>#{title}
+  <tr>
