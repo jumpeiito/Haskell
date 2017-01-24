@@ -43,20 +43,15 @@ insertDB = do
       _ <- insert $ Person n han' bk name' ad' tel'
       return ()
 
-deleteDB = do
-  runDB $ do
-    _ <- deleteWhere ([] :: [Filter Person])
-    return ()
+deleteDB :: HandlerT App IO ()
+deleteDB = runDB $ deleteWhere ([] :: [Filter Person])
 
 refreshDB :: String -> HandlerT App IO ()
 refreshDB bunkai = do
   timing <- liftIO timingP
   case timing of
     False -> return ()
-    True  -> do
-      liftIO (removeFileIfExists <$> runFile sqlite)
-      deleteDB
-      insertDB
+    True  -> deleteDB >> insertDB
       
 getBunkai :: String -> HandlerT App IO [Person]
 getBunkai bk = runDB $ do
@@ -73,11 +68,9 @@ bunkaiHrefWidget = do
 
 getCameraR :: String -> Handler Html
 getCameraR bunkai = do
-  timing <- liftIO timingP
-
-  _ <- refreshDB bunkai
+  refreshDB bunkai
   -- insertDB
-
+  
   ex <- liftIO $ getModificationTime =<< fromMaybe "" <$> runFile excel
   sq <- liftIO $ getModificationTime =<< fromMaybe "" <$> runFile sqlite
 
