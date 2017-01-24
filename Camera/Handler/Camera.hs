@@ -3,7 +3,7 @@ module Handler.Camera where
 import Data.Time.Clock
 import Import
 import Meibo.Base (meiboMain, telephoneStr, addressStr, Line (..))
-import System.Directory (removeFile, getModificationTime)
+import System.Directory 
 import Util
 
 excel, sqlite :: FileSystem
@@ -30,7 +30,7 @@ timingP = do
 
 insertDB :: HandlerT App IO ()
 insertDB = do
-  gen <- liftIO $ meiboMain "全"
+  gen      <- liftIO $ meiboMain "全"
   runDB $ do
     runMigration migrateAll
     let meibo = zip [0..] gen
@@ -40,8 +40,13 @@ insertDB = do
       let name' = Meibo.Base.name line
       let ad'   = addressStr line
       let tel'  = telephoneStr line
-      discard <- insert $ Person n han' bk name' ad' tel'
+      _ <- insert $ Person n han' bk name' ad' tel'
       return ()
+
+deleteDB = do
+  runDB $ do
+    _ <- deleteWhere ([] :: [Filter Person])
+    return ()
 
 refreshDB :: String -> HandlerT App IO ()
 refreshDB bunkai = do
@@ -50,6 +55,7 @@ refreshDB bunkai = do
     False -> return ()
     True  -> do
       liftIO (removeFileIfExists <$> runFile sqlite)
+      deleteDB
       insertDB
       
 getBunkai :: String -> HandlerT App IO [Person]
@@ -84,4 +90,3 @@ getCameraR bunkai = do
 
 postCameraR :: String -> Handler Html
 postCameraR bunkai = error "Not yet implemented: getCameraR"
-  
