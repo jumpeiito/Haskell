@@ -21,6 +21,7 @@ library
                        Util.Holiday
                        Util.StrEnum
                        Util.ZenkakuHankaku
+                       Util.Kumiaihi
   build-depends:       base >= 4.7 && < 5
                      , mtl
                      , directory
