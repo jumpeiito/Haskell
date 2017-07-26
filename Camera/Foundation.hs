@@ -144,6 +144,7 @@ instance Yesod App where
     isAuthorized AppearR _ = return Authorized
     isAuthorized QFormR _ = return Authorized
     isAuthorized SearchR _ = return Authorized
+    isAuthorized KumiaihiR _ = return Authorized
     isAuthorized (StaticR _) _ = return Authorized
 
     isAuthorized ProfileR _ = isAuthenticated

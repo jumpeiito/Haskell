@@ -101,6 +101,7 @@ library
                 , Util
                 , array
                 , parsec
+                , process
 
 executable         Camera
     if flag(library-only)
@@ -175,3 +176,4 @@ test-suite test
                  , classy-prelude
                  , classy-prelude-yesod
                  , aeson
+                 , process

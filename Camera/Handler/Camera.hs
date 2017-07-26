@@ -1,9 +1,14 @@
+ {-# OverloadedStrings #-} 
 module Handler.Camera where
 
 import Data.Time.Clock
+import Data.List ((!!))
 import Import
 import Meibo.Base (meiboMain, telephoneStr, addressStr, Line (..))
-import System.Directory 
+import System.Directory
+import System.Process
+import qualified System.IO as I
+import qualified Data.Text.IO as Tx
 import Util
 
 excel, sqlite :: FileSystem
@@ -52,7 +57,7 @@ refreshDB bunkai = do
   case timing of
     False -> return ()
     True  -> deleteDB >> insertDB
-      
+
 getBunkai :: String -> HandlerT App IO [Person]
 getBunkai bk = runDB $ do
   bkn <- selectList [PersonBunkai ==. bk] []
@@ -68,9 +73,13 @@ bunkaiHrefWidget = do
 
 getCameraR :: String -> Handler Html
 getCameraR bunkai = do
+  (_, sout, _, _) <- liftIO $ runInteractiveProcess "ls" ["-shal", "d:/home/Haskell/Makefile"] Nothing Nothing
+  hoge <- liftIO $ lines <$> Tx.hGetContents sout
+
+  liftIO $ mapM_ putStrLn hoge
+
   refreshDB bunkai
-  -- insertDB
-  
+
   ex <- liftIO $ getModificationTime =<< fromMaybe "" <$> runFile excel
   sq <- liftIO $ getModificationTime =<< fromMaybe "" <$> runFile sqlite
 
