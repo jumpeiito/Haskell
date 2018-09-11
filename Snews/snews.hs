@@ -26,23 +26,29 @@ convertUTF8 s = do
   sjis <- C.open "cp932" (Just False)
   return $ C.fromUnicode utf8 $ C.toUnicode sjis $ B.pack s
 
-getPageContents :: String -> IO [TagTree Tx.Text]
-getPageContents url = do
+noconvertUTF8 :: String -> IO B.ByteString
+noconvertUTF8 = return . castString
+
+getPageContents :: (String-> IO B.ByteString) -> String -> IO [TagTree Tx.Text]
+getPageContents f url = do
   http      <- simpleHTTP $ getRequest url
   body      <- getResponseBody http
-  converted <- castString <$> convertUTF8 body
+  converted <- castString <$> f body
   return $ translateTags converted
 ----------------------------------------------------------------------------------------------------
 filePrinter filename dt = 
   withAppendFile filename $ \handle ->
     Txio.hPutStrLn handle dt
 
+printerCore :: Monad m => (Tx.Text -> m b) -> Config a -> a -> m ()
 printerCore outputF config page = do
   outputF $ takeTitle page `runReader` config
   mapM_ outputF $ takeText page `runReader` config
 
+printer :: Config a -> a -> IO ()
 printer = printerCore Txio.putStrLn
 
+fPrinter :: FilePath -> Config a -> a -> IO ()
 fPrinter filename = printerCore $ filePrinter filename
 
 orgDirectory :: IO (Maybe FilePath)
@@ -55,7 +61,7 @@ dayMaker bp td = do
   Just orgdir <- orgDirectory
   let orgFile = orgdir ++ dayStr6 td ++ ".org"
   bool <- doesFileExist orgFile
-  
+
   let (trueOutput, headOutput)
         | bp        = (printer, Txio.putStrLn)
         | otherwise = (fPrinter orgFile, filePrinter orgFile)
@@ -64,14 +70,14 @@ dayMaker bp td = do
   I.hFlush I.stdout
   --(make a promise)--------------------------------------
   let url = (makeURL td `runReader`)
-  cmPromise  <- async $ getPageContents (url Cm.config)
-  urlPromise <- async $ Ak.makeNewsList <$> getPageContents (url Ak.config)
+  cmPromise  <- async $ getPageContents convertUTF8 (url Cm.config)
+  urlPromise <- async $ Ak.makeNewsList <$> getPageContents noconvertUTF8 (url Ak.config)
   --(common parts)----------------------------------------
   cmContents <- wait cmPromise
   forM_ (Cm.makeTree cmContents) $ trueOutput Cm.config
   --(akahata parts)---------------------------------------
   urls <- wait urlPromise
-  conc <- forM urls (async . getPageContents)
+  conc <- forM urls (async . getPageContents noconvertUTF8)
   forM_ conc $ \asy -> do
     promise <- wait asy
     trueOutput Ak.config promise
@@ -102,6 +108,11 @@ main = do
     (True, _, _, _) -> orgfileTagsOut
     (_, True, _, _) -> makeF td
     (_, _, f, d)    -> case (strdt f, strdt d) of
+                         (Nothing, Nothing) -> do
+                           let (y, m) = (toYear td, toMonth td)
+                           -- 指定した年月のOrgファイルをパー
+                           dlist      <- parseToDayList y m
+                           forM_ dlist makeF
                          -- 指定した日の記事を取得。(-f)
                          (Just f', _) -> makeF f'
                          -- 指定した年月のOrgファイルをパーズし,取得して
