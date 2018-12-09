@@ -1,11 +1,12 @@
-module Util.KanParse (kanParse, kanParseStr, kanParseText) where
+module Util.KanParseB (kanParse, kanParseStr, kanParseText) where
 
 import qualified Data.Map       as M
 import           Data.Maybe     (fromJust)
 import           Data.Monoid
 import           Data.Text
-import           Text.Parsec
-import           Text.Parsec.String
+-- import           Text.Parsec
+-- import           Text.Parsec.String
+import Data.Attoparsec.Text
 
 data KP = Keta Integer
   | Num     Integer
@@ -45,7 +46,7 @@ kanjiBigKetaMap = M.fromList [('万', 10000),
                               ('京', 10000000000000000),
                               ('垓', 100000000000000000000)]
 
--- oneOf = satisfy . inClass
+oneOf = satisfy . inClass
 
 kanjiParseBuilder :: M.Map Char Integer -> (Integer -> KP) -> Parser KP
 kanjiParseBuilder mp f = do
@@ -59,7 +60,7 @@ ketaParse    = kanjiParseBuilder kanjiKetaMap    Keta
 bigKetaParse = kanjiParseBuilder kanjiBigKetaMap BigKeta
 
 kParse :: Parser [KP]
-kParse = many $ choice [try numParse, try ketaParse, bigKetaParse]
+kParse = many' $ choice [try numParse, try ketaParse, bigKetaParse]
 
 kpSum :: [KP] -> Integer
 kpSum xk = x1 + x2 + x3

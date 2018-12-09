@@ -1,0 +1,8 @@
+kumiaiFile: "c:/社労務/組合員データ活用.csv"
+officeFile: "c:/社労務/hiho.csv"
+kumiaiOfficeFile: "c:/社労務/事業所情報(CSV).csv"
+hihoFile: "c:/社労務/hiho2.csv"
+kumiaiDB: "kumiai.db"
+officeDB: "office.db"
+kumiaiOfficeDB: "kumiaiOffice.db"
+hihoDB: "hiho.db"

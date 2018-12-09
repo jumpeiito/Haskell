@@ -1,0 +1,106 @@
+name:                Match
+version:             0.1.0.0
+github:              "githubuser/Match"
+license:             BSD3
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2018 Author name here"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/Match#readme>
+
+dependencies:
+  - base >= 4.7 && < 5
+  - mtl
+  - containers
+  - time
+  - attoparsec
+  - text
+  - parsec
+  - transformers
+  - parallel
+  - Util
+  - safe-exceptions
+  - doctest
+  - conduit
+  - conduit-extra
+  - aeson
+  - bytestring
+  # - yaml
+  - directory
+
+library:
+  source-dirs: src
+  ghc-options:
+    - -O2
+  dependencies:
+    - aeson
+    # - yaml
+    - sqlite-simple
+    - attoparsec-csv
+    - split
+    - directory
+    - bytestring
+    - path
+    - filepath
+
+executables:
+  Match-exe:
+    main:                Main.hs
+    source-dirs:
+    - app
+    ghc-options:
+    - -O3
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - Match
+    - async
+    - optparse-applicative
+  Ukyo:
+    main:                Ukyo.hs
+    source-dirs:
+    - app
+    ghc-options:
+    - -O2
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - Match
+    - async
+    - optparse-applicative
+   
+tests:
+  # Match-test:
+  #   main:                Spec.hs
+  #   source-dirs:         test
+  #   ghc-options:
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   dependencies:
+  #   - Match
+  Match-doctest:
+    main: test/doctests.hs
+    ghc-options:
+    - -O0
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - doctest
+    - doctest-discover
+    - Match
+    - base

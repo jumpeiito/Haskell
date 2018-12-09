@@ -3,12 +3,16 @@
 module Util where
 
 import Data.List
+import Data.Ord
+import Data.IORef
 import Data.Char                        (ord, chr)
 import Control.Exception                hiding (try)
 import Control.Monad
 import Control.Monad.Writer
-import Control.Monad.State
-import System.Directory
+import Control.Monad.State.Strict
+import Control.Arrow
+import Control.Concurrent.Async
+import System.Directory                 hiding (listDirectory)
 import System.Process
 import Text.StringLike                  (StringLike)
 import qualified Data.Map               as Map
@@ -17,6 +21,7 @@ import qualified Data.Text              as Tx
 import qualified Data.Text.IO           as Txio
 import qualified Data.Text.Internal     as Txi
 import qualified Data.ByteString.Char8  as B
+import qualified Data.ByteString.Lazy.Char8 as BL
 import Text.Parsec                      hiding (State)
 import Text.Parsec.String
 ----------------------------------------------------------------------------------------------------
@@ -99,6 +104,16 @@ makeCountMap _ [] = Map.empty
 makeCountMap kF (x:xs) =
    Map.insertWith' (+) (kF x) 1 $ makeCountMap kF xs
 
+makeSumMap :: (Num a, Ord k) => (t -> k) -> (t -> a) -> [t] -> Map.Map k a
+makeSumMap _ _ [] = Map.empty
+makeSumMap kF vF (x:xs) =
+   Map.insertWith' (+) (kF x) (vF x) $ makeSumMap kF vF xs
+
+makeListMap :: Ord k => (t -> k) -> (t -> [a]) -> [t] -> Map.Map k [a]
+makeListMap _ _ [] = Map.empty
+makeListMap kF vF (x:xs) =
+   Map.insertWith' (++) (kF x) (vF x) $ makeListMap kF vF xs
+
 class ReadFile a where
   readUTF8     :: FilePath -> IO a
   readUTF8line :: FilePath -> IO [a]
@@ -133,7 +148,13 @@ instance ReadFile B.ByteString where
   readUTF8line fp = B.lines <$> readUTF8 fp
   readSJIS        = baseReadSJIS B.hGetContents
   readSJISline fp = B.lines <$> readSJIS fp
-    
+
+instance ReadFile BL.ByteString where
+  readUTF8        = baseReadUTF8 BL.hGetContents
+  readUTF8line fp = BL.lines <$> readUTF8 fp
+  readSJIS        = baseReadSJIS BL.hGetContents
+  readSJISline fp = BL.lines <$> readSJIS fp
+
 instance ReadFile Txi.Text where
   readUTF8        = baseReadUTF8 Txio.hGetContents
   readUTF8line fp = Tx.lines <$> readUTF8 fp
@@ -202,9 +223,6 @@ appendUTF8File fp contents = do
   then dirname ++ filename
   else dirname ++ "/" ++ filename
 
-(&&&), (|||) :: Monad m => m Bool -> m Bool -> m Bool
-(&&&) x y = (&&) <$> x <*> y
-(|||) x y = (||) <$> x <*> y
 
 _include :: [String] -> Parser String
 _include xs = do
@@ -257,7 +275,7 @@ whereLoc = do
     (True, _) -> return LocHome
     (_, True) -> return LocOffice
     (_, _)    -> return LocOther
-     
+
 locEncoding :: IO ()
 locEncoding = do
   loc <- whereLoc
@@ -289,7 +307,7 @@ intToExp :: Int -> [Int]
 intToExp i = case columnDivide i of
                (modulo, 0) -> [modulo]
                (m, d) -> intToExp d ++ [m]
-           
+
 intToString :: Int -> String
 intToString i = map (\n -> chr $ n + 64) $ intToExp i
 
@@ -324,4 +342,220 @@ latexEnv :: String -> [String] -> String
 latexEnv envName args =
   "\\begin{" ++ envName ++ "}" ++ concatMap enclose args ++ "\\end{" ++ envName ++ "}"
   where enclose s = "{" ++ s ++ "}"
+
+data Hoken     = Ordinary | Nenkin | Kaigo deriving (Eq, Ord, Bounded, Enum)
+data HokenKind = New | Old deriving (Eq, Ord)
+type HokenKey  = (Hoken, HokenKind)
+type HokenCell = (Hoken, HokenKind, Rational)
+data HokenCalcurator = HC { initialList :: [HokenCell]
+                          , answer      :: [(Hoken, Rational)]
+                          , hokenFee    :: Int
+                          } deriving (Show, Eq)
+
+takeFeeMax :: [HokenCalcurator] -> [HokenCalcurator]
+takeFeeMax alist = filter ((==) maxFee . hokenFee) alist
+  where maxFee = maximum $ map hokenFee alist
+
+takeMax :: [HokenCalcurator] -> [HokenCalcurator]
+takeMax alist = filter maxAndLeast alist
+  where maxFeeList     = takeFeeMax alist
+        maxFee         = maximum $ map hokenFee alist
+        leastSize      = minimum $ map (length . initialList) maxFeeList
+        maxAndLeast hc = maxFee == hokenFee hc && leastSize == length (initialList hc)
+
+takeNth :: Int -> [HokenCalcurator] -> [HokenCalcurator]
+takeNth n = take n . reverse . sort
+
+instance Show Hoken where
+  show Ordinary = "o"
+  show Nenkin   = "n"
+  show Kaigo    = "k"
+
+instance Show HokenKind where
+  show New = "."
+  show Old = "!"
+
+instance Ord HokenCalcurator where
+  hc1 `compare` hc2 = if fee' == fee''
+                      then Down length' `compare` Down length''
+                      else fee' `compare` fee''
+    where makePair = (&&&) hokenFee (length . initialList)
+          (fee', length') = makePair hc1
+          (fee'', length'') = makePair hc2
+
+makeHC :: [HokenCell] -> HokenCalcurator
+makeHC hc = HC hc (sumHoken hc) (totalHoken hc)
+
+kojoCalc :: (HokenKey, Rational) -> (HokenKey, Rational)
+kojoCalc (hk, r) = (hk, kojo hk r)
+
+kojo :: HokenKey -> Rational -> Rational
+kojo (_, New) i = kojoNew i
+kojo (_, Old) i = kojoOld i
+
+kojoNew :: Rational -> Rational
+kojoNew i | i <= 20000 = i
+          | i <= 40000 = i / 2 + 10000
+          | i <= 80000 = i / 4 + 20000
+          | otherwise   = 40000
+
+kojoOld :: Rational -> Rational
+kojoOld i | i <= 25000 = 0
+          | i <= 50000 = i / 2 + 12500
+          | i <= 100000 = i / 4 + 25000
+          | otherwise  = 50000
+
+fmax :: Num a => Ord a => Maybe a -> Maybe a -> Maybe a
+Just i  `fmax` Just j  = Just i `max` Just j
+Just i  `fmax` Nothing = Just i
+Nothing `fmax` Just i  = Just i
+Nothing `fmax` Nothing = Nothing
+
+filterHoken :: HokenKey -> [(HokenKey, Rational)] -> Maybe (HokenKey, Rational)
+filterHoken key alist = case filter ((==) key . fst) alist of
+                    []  -> Nothing
+                    [x] -> Just x
+                    _   -> Nothing
+
+whichLarge :: Hoken -> [(HokenKey, Rational)] -> (Hoken, Rational)
+whichLarge h alist = (h, fee)
+  where toFee kind = snd <$> filterHoken (h, kind) alist
+        fee = case toFee New `fmax` toFee Old of
+                Just x  -> x
+                Nothing -> 0
+
+sumHoken :: [HokenCell] -> [(Hoken, Rational)]
+sumHoken = makeTotallySum .
+           map kojoCalc .
+           Map.assocs .
+           makeSumMap ((&&&) fst3 snd3) thd3
+  where makeTotallySum x = map (flip whichLarge x) ([minBound..maxBound] :: [Hoken])
+
+totalHoken :: [HokenCell] -> Int
+totalHoken = truncate .
+             (`min` 120000) .
+             sum . map snd . sumHoken
+
+fst3 :: (a, b, c) -> a
+snd3 :: (a, b, c) -> b
+thd3 :: (a, b, c) -> c
+fst3 (a, _, _) = a
+snd3 (_, a, _) = a
+thd3 (_, _, a) = a
+
+combi :: [t] -> [[t]]
+combi [] = []
+combi [x] = [[], [x]]
+combi (x:y) = (++) <$> [[], [x]] <*> combi y
+
+x :: [HokenCell]
+x = [ (Ordinary, New, 20000)
+    , (Ordinary, Old, 40000)
+    , (Ordinary, New, 62000)
+    , (Nenkin, Old, 50000)
+    , (Nenkin, New, 60000)]
+
+listDirectory :: FilePath -> IO [FilePath]
+listDirectory fp = do
+  contents <- getDirectoryContents fp
+  return $ map (fp <>) $ filter (`notElem` [".", ".."]) contents
+{-# INLINE listDirectory #-}
+-- pathSearch :: Bool -> FilePath -> IO [FilePath]
+-- pathSearch inclF fp = do
+--   p <- doesDirectoryExist fp
+--   case (p, inclF) of
+--     (False, True)  -> return [fp]
+--     (False, False) -> return []
+--     (True, _)      -> do contents <- listDirectory (fp <> "/")
+--                          alls     <- mapM (pathSearch inclF) contents
+--                          return $ ([fp] <>) $ mconcat alls
+
+
+-- pSearch :: FilePath -> (String -> IO [FilePath]) -> IO [FilePath]
+-- pSearch fp f = do
+--   p <- doesDirectoryExist fp
+--   if p
+--     then do contents <- listDirectory (fp <> "/") -- Directory
+--             alls     <- toDiffList <$> mapM (flip pSearch f) contents
+--             return $ fp : (mconcat $ fromDiffList alls)
+--             -- let toDL s = map toDiffList <$> pSearch s f
+--             -- descend  <- concat <$> mapM toDL contents
+--             -- let alls = toDiffList fp : descend
+--             -- return $ fromDiffList alls
+--     else f fp                   -- File
+
+newtype DiffList a = DiffList { getDiffList :: [a] -> [a] }
+
+toDiffList :: [a] -> DiffList a
+toDiffList xs = DiffList (xs++)
+
+fromDiffList :: DiffList a -> [a]
+fromDiffList (DiffList f) = f []
+
+instance Monoid (DiffList a) where
+    mempty = DiffList (\xs -> [] ++ xs)
+    (DiffList f) `mappend` (DiffList g) = DiffList (\xs -> f (g xs))
+
+-- pSearchD :: FilePath -> IO [FilePath]
+-- pSearchD fp = do
+--   dirs <- newIORef (mempty :: [FilePath])
+
+--   let loop f = do
+--         p <- doesDirectoryExist f
+--         when p $ do
+--           contents <- listDirectoryFull (f <> "/")
+--           forM_ contents $ \element -> do
+--             descend <- loop element
+--             modifyIORef dirs (descend ++)
+--   _    <- loop fp
+--   diff <- readIORef dirs
+--   return diff
+
+-- xSearchD :: FilePath -> IO [FilePath]
+-- xSearchD fp = (`execStateT` []) $ do
+--   loop :: FilePath -> StateT [FilePath] IO ()
+--   let loop f = do
+--         p <- liftIO $ doesDirectoryExist f
+--         when p $ do
+--           contents <- liftIO $ listDirectory (fp <> "/")
+--           forM_ contents $ \element -> do
+--             descend <- loop element
+--             modify (descend ++)
+--   loop fp
+-- listDirectoryFull fp = map ((fp ++) . ("/" ++)) <$> listDirectory fp
+
+pathSearchFile :: FilePath -> IO [FilePath]
+pathSearchFile fp = do
+  diff <- (`execStateT` mempty) $ do
+    directoryP <- liftIO $ doesDirectoryExist fp
+    if directoryP
+      then do contents <- liftIO $ listDirectory (fp ++ "/")
+              alls     <- mapM (liftIO . async . pathSearchFile) contents
+              let toDL a = wait a >>= (return . toDiffList)
+              promise  <- liftIO (mconcat <$> mapM toDL alls)
+              modify (promise <>)
+      else modify (toDiffList [fp] <>)
+  return $ fromDiffList diff
+
+pathSearchDirectory :: FilePath -> IO [FilePath]
+pathSearchDirectory fp = (`execStateT` []) $ do
+  directoryP <- lift $ doesDirectoryExist fp
+  when directoryP $ do
+    contents <- lift $ listDirectory (fp ++ "/")
+    alls     <- mconcat <$> mapM (lift . pathSearchDirectory) contents
+    modify (([fp] ++ alls) ++)
+
+pSearch :: FilePath -> IO [FilePath]
+pSearch fp = do
+  diff <- do
+    dirs <- newIORef (mempty :: DiffList FilePath)
+    p    <- doesDirectoryExist fp
+    if p
+      then do contents <- listDirectory (fp <> "/")
+              forM_ contents $ \element -> do
+                descend <- pSearch element
+                modifyIORef dirs (toDiffList descend <>)
+      else modifyIORef dirs (toDiffList [fp] <>)
+    readIORef dirs
+  return $ fromDiffList diff
 
