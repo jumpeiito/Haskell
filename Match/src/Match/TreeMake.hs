@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Match.TreeMake (
   sortCRF
-  , listToRT3
+  , listToRT
   , toList
   , Log
   , Logger
@@ -12,7 +12,9 @@ module Match.TreeMake (
   , KNumberMap) where
 
 import           Control.Monad    (foldM, when)
+import           Control.Monad.Trans (lift)
 import           Control.Monad.Trans.Writer.Strict
+import           Control.Monad.Trans.State
 import           Data.Monoid      ((<>))
 import qualified Data.Map.Strict  as M
 import           Data.Text        (Text, unpack)
@@ -32,8 +34,7 @@ data ErrorType =
   OyakataHanUnMatch RTK RTK
   | OyakataNotFound RTK
   | ChildNotFound Text
-  | NeedToRepair RTK Text
-  | DeleteNodeWithChildren RTK
+  | RevOrder RTK Text
   | Something Int
   deriving (Show, Eq)
 
@@ -132,44 +133,58 @@ hasPendingItem tx (x:xs)
   | tx == fst x = snd x : hasPendingItem tx xs
   | otherwise   = hasPendingItem tx xs
 
+pendingsClean :: RTK -> RelTree RTK -> [RTK] -> Logger (RelTree RTK)
+pendingsClean oya = foldM (addR oya)
+
 insertRT :: OyakataMap -> KNumberMap
-  -> (RelTree RTK, [(Text, RTK)]) -> Kumiai
-  -> Logger (RelTree RTK, [(Text, RTK)])
-insertRT om km (rt, state) x = do
+  -> RelTree RTK -> Kumiai
+  -> StateT [(Text, RTK)] (Writer Log) (RelTree RTK)
+insertRT om km rt x = do
   let rtkx = RTK x
   let key  = rknum x
+  -- 付き情報があるかどうか。
   let isRelational = snd <$> key `M.lookup` om
+  -- stateには親方より先に現れた子方を入れておく。
+  state <- get
   case (isRelational, hasPendingItem key state)  of
-    (Nothing, []) ->
-      return (append rtkx rt, state)
+    -- 付きでない場合
     (Nothing, pendings) -> do
+      -- RelTreeの最後尾に配置。
       let rt' = append rtkx rt
-      newRT <- foldM (addR rtkx) rt' pendings
-      return (newRT, state)
+      -- このノードの子方で先に現れていた場合、このノードの左側につけていく。
+      lift $ pendingsClean rtkx rt' pendings
+    -- 付きの場合
     (Just oyakataN, pendings) -> do
       case regularN oyakataN `M.lookup` km of
+        -- 親方の番号から、親方の基幹情報 (oyakata) を取る。
         Just oyakata -> do
+          -- RelTreeの中にすでに親方が入っているか。
           if hasTree (RTK oyakata) rt
-            then do rt'   <- addR (RTK oyakata) rt rtkx
-                    newRT <- foldM (addR rtkx) rt' pendings
-                    return (newRT, state)
-            else do tell [NeedToRepair rtkx (regularN oyakataN)]
-                    return (rt, (oyakataN, rtkx) : state)
+            -- 入っている場合は問題がないので、RelTreeに挿入し、さらにその
+            -- 子方がいる場合も、RelTreeに挿入していく。
+            then do rt' <- lift $ addR (RTK oyakata) rt rtkx
+                    lift $ pendingsClean rtkx rt' pendings
+            -- 親方が入っていない場合は、RelTreeに挿入せず、stateに保管
+            -- していき、元のRelTreeを返す。
+            else do lift $ tell [RevOrder rtkx (regularN oyakataN)]
+                    put $ (oyakataN, rtkx) : state
+                    return rt
+        -- 親方の番号から、親方の基幹情報 (oyakata) を取れない場合、
+        -- OyakataNotFoundを発行し、記録しておく。また、RelTree上には親方が
+        -- 配置されていないので、RelTreeの最後尾にノードを配置し、その子方も
+        -- 配置していく。
         Nothing -> do
-          tell [OyakataNotFound rtkx]
+          lift $ tell [OyakataNotFound rtkx]
           let rt' = append rtkx rt
-          newRT <- foldM (addR rtkx) rt' pendings
-          return (newRT, state)
+          lift $ pendingsClean rtkx rt' pendings
 
-listToRT3 :: OyakataMap -> KNumberMap -> [Kumiai] -> Logger (RelTree RTK)
-listToRT3 rm km ks = do
-  let ((rtk, _), log) = runWriter $ foldM (insertRT rm km) (N, []) ks
-  tell log
-  return rtk
+listToRT :: OyakataMap -> KNumberMap -> [Kumiai]
+ -> Logger (RelTree RTK)
+listToRT rm km = (`evalStateT` []) . foldM (insertRT rm km) N
 
 sortCRF :: OyakataMap -> KNumberMap -> [Kumiai] -> Logger [Kumiai]
 sortCRF om km x = do
-  rtk <- listToRT3 om km x
+  rtk <- listToRT om km x
   return $ map runK (toList rtk)
 
 rknum :: Kumiai -> Text
