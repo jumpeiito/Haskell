@@ -17,6 +17,7 @@ import           Data.Conduit              (Sink
                                            , yield
                                            , awaitForever
                                            , ($=)
+                                           , (.|)
                                            , ($$))
 import qualified Data.Conduit.List         as CL
 import qualified Data.Map.Strict           as M
@@ -254,9 +255,9 @@ kNumberMap = do
   let source = parseCSVSource spec csvName
   gen <- (lift . runConduit) $
          source
-         $= CL.map makeKumiai
-         $= CL.map ((regularN . kNumber) &&& id)
-         $= CL.consume
+         .| CL.map makeKumiai
+         .| CL.map ((regularN . kNumber) &&& id)
+         .| CL.consume
   return $ M.fromList gen
 ---addRelational----------------------------------
 relationalMap :: UnderConfigT IO OyakataMap
@@ -264,9 +265,9 @@ relationalMap = do
   source <- csvSource relationalFileName
   gen    <- (lift . runConduit) $
             source
-            $= CL.map (\[num, oyakata, oyakataN] ->
+            .| CL.map (\[num, oyakata, oyakataN] ->
                          (regularN num, (oyakata, regularN oyakataN)))
-            $= CL.consume
+            .| CL.consume
   return $ M.fromList gen
 
 relationalNotAliveCheck :: MonadIO m
@@ -274,10 +275,10 @@ relationalNotAliveCheck :: MonadIO m
 relationalNotAliveCheck kmap = do
   source <- csvSource relationalFileName
   xl <- (liftIO . runConduit) $ source
-        $= CL.map (\[n, _, _] -> ((`M.lookup` kmap) &&& id) $ regularN n)
-        $= CL.filter (isNothing . fst)
-        $= CL.map (ChildNotFound . snd)
-        $= CL.consume
+        .| CL.map (\[n, _, _] -> ((`M.lookup` kmap) &&& id) $ regularN n)
+        .| CL.filter (isNothing . fst)
+        .| CL.map (ChildNotFound . snd)
+        .| CL.consume
   return xl
 
 addRelationaltoKumiai :: OyakataMap -> Kumiai -> Kumiai
@@ -338,14 +339,14 @@ sortConsumer rmap kmap = do
   if bool
     then do liftIO . print $ length xl
             let (sorted, log) = runWriter $ sortCRF rmap kmap xl
-            forM_ sorted printerLambda
-            -- forM_ xl $ \kumiai ->
-            --   if (not (kumiai `elem` sorted))
-            --   then printerLambda kumiai
-            --   else return ()
-            liftIO . print $ length sorted
-            -- mapM_ (liftIO . print) log
-            -- mapM_ (liftIO . print) plog
+            if (length xl == length sorted)
+              then forM_ sorted printerLambda
+              else do forM_ xl $ \kumiai ->
+                        if (not (kumiai `elem` sorted))
+                        then printerLambda kumiai
+                        else return ()
+            mapM_ (liftIO . print) log
+            mapM_ (liftIO . print) plog
     else do forM_ xl printerLambda
 ---Sink Parts-------------------------------------
 ukyoSink :: UnderConfigT (Sink Kumiai IO) ()
@@ -360,9 +361,9 @@ ukyoSink = do
 figureSink :: OyakataMap -> KNumberMap -> Sink Kumiai IO ()
 figureSink om km = do
   xl <- CL.consume
-  liftIO $ print $ runWriterT $ listToRT3 om km xl
+  liftIO $ print $ runWriterT $ listToRT om km xl
 ---Main-------------------------------------------
-(<#>) = runReader
+(<#>)  = runReader
 (<##>) = runReaderT
 
 main :: IO ()
@@ -379,22 +380,22 @@ main = do
       kmap <- kNumberMap <##> conf
       let dataName = (dataCSVFileName <$> ask) <#> conf
 
-      -- encoding <- I.mkTextEncoding "cp932"
-      -- I.hSetEncoding I.stdout encoding
-      I.hSetEncoding I.stdout I.utf8
+      encoding <- I.mkTextEncoding "cp932"
+      I.hSetEncoding I.stdout encoding
+      -- I.hSetEncoding I.stdout I.utf8
 
       let source = parseCSVSource spec dataName
-                   $= CL.map makeKumiai
-                   $= addRelationConduit rmap
-                   $= CL.map (\k -> repairKumiai k <#> conf)
+                   .| CL.map makeKumiai
+                   .| addRelationConduit rmap
+                   .| CL.map (\k -> repairKumiai k <#> conf)
                    -- $= CL.filter ((=="17") . kBunkaiCode)
                    -- $= CL.filter ((=="09") . kHan)
 
       if (figure opt)
         then do
-          source $$ figureSink rmap kmap
+          runConduit $ source .| figureSink rmap kmap
         else do
-          source $$ (sortConsumer rmap kmap <##> conf)
+          runConduit $ source .| (sortConsumer rmap kmap <##> conf)
           -- source $= sortConduit rmap kmap <##> conf $$ ukyoSink <##> conf
       -- xl <- source $$ CL.consume
       -- print (length $ pairPosition rmap xl, length xl)
