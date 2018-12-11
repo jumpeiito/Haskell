@@ -36,7 +36,6 @@ dependencies:
   - conduit-extra
   - aeson
   - bytestring
-  # - yaml
   - directory
 
 library:
