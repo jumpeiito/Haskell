@@ -16,12 +16,17 @@ library
   hs-source-dirs:      ., Util
   exposed-modules:     Util
                        Util.KanParse
+                       Util.KanParseB
                        Util.Strdt
+                       Util.Strbt
+                       Util.Tele
                        Util.Telephone
                        Util.Holiday
                        Util.StrEnum
                        Util.ZenkakuHankaku
                        Util.Kumiaihi
+                       Util.Exception
+                       Util.Yaml
   build-depends:       base >= 4.7 && < 5
                      , mtl
                      , directory
@@ -29,12 +34,19 @@ library
                      , text
                      , bytestring
                      , tagsoup
+                     , attoparsec
                      , parsec
                      , time
                      , yaml
                      , hspec
                      , QuickCheck
                      , process
+                     , parallel
+                     , async
+                     , safe-exceptions
+                     , aeson
+                     , yaml
+                     , bytestring
   default-language:    Haskell2010
 
 source-repository head
