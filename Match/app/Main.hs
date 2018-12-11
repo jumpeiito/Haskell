@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import           Control.Arrow ((>>>))
+import           Control.Arrow ((>>>), (&&&))
 import           Control.Monad             (when, guard)
 import           Control.Monad.Except      (ExceptT, runExceptT, liftIO)
 import           Data.List                 (sortBy)
@@ -12,6 +12,8 @@ import           Data.Conduit              (Source
                                            , Sink
                                            , awaitForever
                                            , yield
+                                           , runConduit
+                                           , (.|)
                                            , ($=), ($$))
 import qualified Data.Conduit.List         as CL
 import qualified Data.Map.Strict           as M
@@ -19,6 +21,7 @@ import           Data.Maybe                (isNothing, isJust, fromMaybe)
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as Tx
+import qualified Data.Text.IO              as Tx
 import           Data.Text.Lazy.Builder    (Builder, fromText)
 import           Match.Directory           (createHihoDirectory
                                            , removeBlankDirectory)
@@ -181,6 +184,24 @@ hihoAddressMatchUp = do
                                       , HihoOfficeName
                                       , KillBlanks HihoName
                                       , HihoBirthday ]}
+----------------------------------------------------------------------
+kumiaiOfficeBlankMatchUp :: IO ()
+kumiaiOfficeBlankMatchUp = do
+  kMap <- K.officeCodeMap
+
+  let mapSearch l m = case l `M.lookup` m of Just x -> x; Nothing -> []
+  let tp t = Tx.pack (fromMaybe "" $ show <$> t)
+  let funcs = [K.kShibu, K.kBunkai, K.kHan
+              , K.kNumber, K.kName, tp . K.kGot, tp . K.kLost]
+  let kumiaiInfo k = map ($ k) funcs
+  runConduit
+    $ KO.initializeSource
+    .| CL.filter ((=="") . KO.koOwnerName)
+    .| CL.map (id &&& (KO.koCode >>> (`mapSearch` kMap)))
+    .| CL.filter (\(_, l) -> not (null l))
+    .| CL.map (\(ko, l) -> (map toText (KO.stringList ko), l))
+    .| CL.map (\(ko, l) -> map (kumiaiInfo >>> (ko++) >>> Tx.intercalate ",") l)
+    .| CL.mapM_ (mapM_ Tx.putStrLn)
 ----------------------------------------------------------------------
 shibuMatchUp :: Text -> IO ()
 shibuMatchUp s = do
@@ -385,6 +406,7 @@ main = do
   when (kumiaiO' opt)        kumiaiOfficeMatchUp
   when (createD' opt)        createHihoDirectory
   when (yakuD' opt)          yakuOutput
+  when (kumiaiBlank' opt)    kumiaiOfficeBlankMatchUp
 
   case shibu' opt of
     "" -> return ()
@@ -402,6 +424,7 @@ data Options = Options { hAddress'       :: Bool
                        , kumiaiO'        :: Bool
                        , createD'        :: Bool
                        , yakuD'          :: Bool
+                       , kumiaiBlank'    :: Bool
                        , shibu'          :: String
                        } deriving (Show)
 
@@ -419,6 +442,7 @@ kumiaiOfficeP    = Q.switch $ Q.short 'l' <> Q.long "kumiaiOffice"   <> Q.help "
 createDirectoryP = Q.switch $ Q.short 'm' <> Q.long "createDirectory" <> Q.help ""
 simpleOfficeP    = Q.switch $ Q.short 'y' <> Q.long "simpleOffice"   <> Q.help ""
 yakuOutputP      = Q.switch $ Q.short 'b' <> Q.long "yakuOutput "   <> Q.help ""
+kumiaiBlankP     = Q.switch $ Q.short 'q' <> Q.long "koBlank "   <> Q.help ""
 
 shibuP :: Q.Parser String
 shibuP = Q.strOption $ mconcat
@@ -442,6 +466,7 @@ optionsP = (<*>) Q.helper
            <*> kumiaiOfficeP
            <*> createDirectoryP
            <*> yakuOutputP
+           <*> kumiaiBlankP
            <*> shibuP
 
 myParserInfo :: Q.ParserInfo Options

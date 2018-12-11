@@ -5,7 +5,7 @@
 module Match.Kumiai where
 
 import           Control.Arrow
-import           Control.Parallel.Strategies
+import           Control.Parallel.Strategies (parMap, rseq)
 import qualified Data.Map.Strict             as M
 import           Data.List                   (foldl')
 import           Data.Conduit
@@ -25,6 +25,7 @@ import           Match.Base                  (killBlanks, killBunkai
                                              , regularize)
 import           Text.Read                   (readMaybe)
 import           Util.Strbt                  (strdt)
+import           Util                        (makeListMap)
 
 type MaybeIO a = IO (Either String a)
 
@@ -143,6 +144,7 @@ data Kumiai = K {
   , kBirthday   :: Maybe Day
   , kWork       :: ! Text
   , kOffice     :: ! Text
+  , kOfficeCode :: ! Text
   , kPrintOrder :: Maybe Double
   , kPhone      :: ! Text
   , kCellPhone  :: ! Text
@@ -189,6 +191,7 @@ makeKumiai record = case record of
     , _lost                     -- 脱退日
     , _work                     -- 職種
     , _office                   -- 就労先
+    , _officeCode               -- 就労先コード
     , _printOrder               -- 台帳表示順
     , _tel                      -- 電話番号
     , _cellphone                -- 携帯番号
@@ -218,6 +221,7 @@ makeKumiai record = case record of
          , kBirthday   = strdt _birth
          , kWork       = officeTypeRegularize $ killBlanks _work
          , kOffice     = _office
+         , kOfficeCode = _officeCode
          , kPrintOrder = readMaybe $ Tx.unpack _printOrder
          , kPhone      = _tel
          , kCellPhone  = _cellphone
@@ -298,6 +302,14 @@ birthdayNameCMap = do
         in let k = killBlanks $ kKana el
         in M.insertWith (++) (k, b) [el] mp
   initializeSource $$ CL.fold insert M.empty
+
+officeCodeMap :: IO (M.Map Text [Kumiai])
+officeCodeMap = do
+  ls <- runConduit
+        $ initializeSource
+        .| CL.consume
+  let rize = Tx.justifyRight 7 '0'
+  return $ makeListMap (rize . kOfficeCode) (:[]) ls
 
 verboseName :: Kumiai -> Text
 verboseName k = kName k <> "(" <> kKana k <> ")"
