@@ -4,7 +4,7 @@
 module Main where
 
 import           Control.Arrow             ((>>>), (&&&))
-import           Control.Exception.Safe    (MonadThrow)
+import           Control.Exception.Safe    (MonadThrow, throwM)
 import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Reader
@@ -36,6 +36,7 @@ import           Match.TreeMake
 import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
 import           System.IO.Unsafe          (unsafePerformIO)
+import           Util.Exception            (FileNotExistException (..))
 import           Util.Strdt                (todayDay, howOld)
 import           Util.Yaml                 (readYaml)
 
@@ -270,16 +271,19 @@ relationalMap = do
             .| CL.consume
   return $ M.fromList gen
 
-relationalNotAliveCheck :: MonadIO m
-  => KNumberMap -> UnderConfigT m [ErrorType]
+relationalNotAliveCheck ::
+  MonadIO m => KNumberMap -> UnderConfigT m [ErrorType]
 relationalNotAliveCheck kmap = do
   source <- csvSource relationalFileName
   xl <- (liftIO . runConduit) $ source
         .| CL.map (\[n, _, _] -> ((`M.lookup` kmap) &&& id) $ regularN n)
-        .| CL.filter (isNothing . fst)
-        .| CL.map (ChildNotFound . snd)
         .| CL.consume
-  return xl
+  let xlWithLineNumber = zip [2..] xl
+  rs <- (liftIO . runConduit) $ CL.sourceList xlWithLineNumber
+        .| CL.filter (isNothing . fst . snd)
+        .| CL.map (\(ln, (num, k)) -> ChildNotFound k ln)
+        .| CL.consume
+  return rs
 
 addRelationaltoKumiai :: OyakataMap -> Kumiai -> Kumiai
 addRelationaltoKumiai m k =
@@ -314,40 +318,68 @@ repairKumiai k = do
   return $ k { kWork    = workReplace repMap (kWork k)
              , kAddress = repairAddress removeAddress (kAddress k)}
 --------------------------------------------------
--- sortConduit ::
---   OyakataMap -> KNumberMap
---   -> UnderConfigT (ConduitM Kumiai Kumiai IO) ()
--- sortConduit rmap kmap = do
---   bool <- sortCR <$> ask
---   if bool
---     then do xl <- lift $ CL.consume
---             let sorted = sortConsideringRelation rmap kmap xl
---             mapM_ (lift . yield) sorted
---     else lift $ awaitForever yield
+sortConsumerPrinter :: Kumiai -> UnderConfigT (Sink Kumiai IO) ()
+sortConsumerPrinter kumiai = do
+  pOrder <- printOrder <$> ask
+  let funcs = map translate pOrder
+  (Tx.intercalate "," >>> Tx.putStrLn >>> liftIO) $
+    map ($ kumiai) funcs
+
+errorPrinter = liftIO . Tx.hPutStrLn I.stderr
+
+errorSource :: Log -> Source IO ErrorType
+errorSource = CL.sourceList
+
+childNotFoundConduit :: Conduit ErrorType IO Text
+childNotFoundConduit = do
+  awaitForever $ \e -> do
+    case e of
+      ChildNotFound num linenum -> do
+        let ln = Tx.pack $ show linenum
+        yield $ ln <> "行目, 組合員番号 " <> num
+      _ -> return ()
+
+oyakataNotFoundConduit :: Conduit ErrorType IO Text
+oyakataNotFoundConduit = do
+  awaitForever $ \e -> do
+    case e of
+      OyakataNotFound k oN -> do
+        let oNT  = "指定されている親方番号： " <> oN
+        let num  = "組合員番号： " <> (kNumber $ runK k)
+        let name = "組合員氏名： " <> (kName $ runK k)
+        yield $ Tx.intercalate ", " $ [num, name, oNT]
+      _ -> return ()
+
+errorSink :: Sink Text IO ()
+errorSink = awaitForever (liftIO . Tx.hPutStrLn I.stderr)
+-- errorSink = awaitForever errorPrinter
 
 sortConsumer :: OyakataMap -> KNumberMap
   ->　UnderConfigT (Sink Kumiai IO) ()
 sortConsumer rmap kmap = do
   bool   <- sortCR <$> ask
-  pOrder <- printOrder <$> ask
   xl     <- lift $ CL.consume
   plog   <- relationalNotAliveCheck kmap
-  let funcs = map translate pOrder
-  let printer = Tx.intercalate "," >>> Tx.putStrLn >>> liftIO
-  let printerLambda k = printer $ map ($ k) funcs
+  let printer = sortConsumerPrinter
 
   if bool
     then do liftIO . print $ length xl
             let (sorted, log) = runWriter $ sortCRF rmap kmap xl
             if (length xl == length sorted)
-              then forM_ sorted printerLambda
+              then forM_ sorted printer
               else do forM_ xl $ \kumiai ->
                         if (not (kumiai `elem` sorted))
-                        then printerLambda kumiai
+                        then printer kumiai
                         else return ()
-            mapM_ (liftIO . print) log
-            mapM_ (liftIO . print) plog
-    else do forM_ xl printerLambda
+            let errors = errorSource $ log ++ plog
+            (liftIO . runConduit) $ do
+              errorPrinter
+                "◎ 以下の組合員はすでに脱退しているので,「付名簿」から削除可能です。"
+              errors .| childNotFoundConduit .| errorSink
+              errorPrinter
+                "◎ 以下の組合員について指定されている親方番号が不明です。"
+              errors .| oyakataNotFoundConduit .| errorSink
+    else do forM_ xl printer
 ---Sink Parts-------------------------------------
 ukyoSink :: UnderConfigT (Sink Kumiai IO) ()
 ukyoSink = do
@@ -371,34 +403,28 @@ main = do
   opt <- Q.customExecParser (Q.prefs Q.showHelpOnError) myParserInfo
 
   case yamlFile opt of
-    -- "" -> throwM $
-    --         FileNotExistException "Set configuration-file.(e.g. -y yamlfile)"
+    "" -> throwM $
+            FileNotExistException "Set configuration-file.(e.g. -y yamlfile)"
     y  -> do
-      -- conf <- readConfig y
-      conf <- readConfig "app/config.yaml"
+      conf <- readConfig y
+      -- conf <- readConfig "app/config.yaml"
       rmap <- relationalMap <##> conf
       kmap <- kNumberMap <##> conf
       let dataName = (dataCSVFileName <$> ask) <#> conf
 
       encoding <- I.mkTextEncoding "cp932"
       I.hSetEncoding I.stdout encoding
-      -- I.hSetEncoding I.stdout I.utf8
 
       let source = parseCSVSource spec dataName
                    .| CL.map makeKumiai
                    .| addRelationConduit rmap
                    .| CL.map (\k -> repairKumiai k <#> conf)
-                   -- $= CL.filter ((=="17") . kBunkaiCode)
-                   -- $= CL.filter ((=="09") . kHan)
 
       if (figure opt)
         then do
           runConduit $ source .| figureSink rmap kmap
         else do
           runConduit $ source .| (sortConsumer rmap kmap <##> conf)
-          -- source $= sortConduit rmap kmap <##> conf $$ ukyoSink <##> conf
-      -- xl <- source $$ CL.consume
-      -- print (length $ pairPosition rmap xl, length xl)
 --------------------------------------------------
 data Options = Options { yamlFile :: String
                        , figure   :: Bool} deriving (Show)

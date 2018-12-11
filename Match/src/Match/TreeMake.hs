@@ -32,8 +32,8 @@ data RelTree a = Node a (RelTree a) (RelTree a)
 
 data ErrorType =
   OyakataHanUnMatch RTK RTK
-  | OyakataNotFound RTK
-  | ChildNotFound Text
+  | OyakataNotFound RTK Text
+  | ChildNotFound Text Int
   | RevOrder RTK Text
   | Something Int
   deriving (Show, Eq)
@@ -174,7 +174,7 @@ insertRT om km rt x = do
         -- 配置されていないので、RelTreeの最後尾にノードを配置し、その子方も
         -- 配置していく。
         Nothing -> do
-          lift $ tell [OyakataNotFound rtkx]
+          lift $ tell [OyakataNotFound rtkx oyakataN]
           let rt' = append rtkx rt
           lift $ pendingsClean rtkx rt' pendings
 
