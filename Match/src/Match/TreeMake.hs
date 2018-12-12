@@ -11,7 +11,7 @@ module Match.TreeMake (
   , OyakataMap
   , KNumberMap) where
 
-import           Control.Monad    (foldM, when)
+import           Control.Monad    (foldM, when, ap)
 import           Control.Monad.Trans (lift)
 import           Control.Monad.Trans.Writer.Strict
 import           Control.Monad.Trans.State
@@ -26,6 +26,33 @@ type KNumberMap  = M.Map Text Kumiai
 type Log         = [ErrorType]
 type Logger a    = Writer Log a
 type LoggerT m a = WriterT Log m a
+
+data RT a = RN a (RT a) (RT a)
+          | Nan deriving (Eq, Show)
+
+instance Functor RT where
+  _ `fmap` Nan = Nan
+  f `fmap` RN a l r = RN (f a) (f `fmap` l) (f `fmap` r)
+
+instance Applicative RT where
+  pure = return
+  Nan <*> _   = Nan
+  _   <*> Nan = Nan
+  RN a1 _ _ <*> RN a2 l2 r2 = do
+    RN (a1 a2) (a1 <$> l2) (a1 <$> r2)
+
+instance Monad RT where
+  return x = RN x Nan Nan
+  Nan >>= _ = Nan
+  RN a l r >>= f = do
+    a' <- f a
+    RN a' (l >>= f) (r >>= f)
+
+test :: RT String
+test = do
+  x <- RN "hoge" Nan Nan
+  return x
+
 
 data RelTree a = Node a (RelTree a) (RelTree a)
                | N deriving (Eq)
@@ -125,7 +152,7 @@ instance Eq RTK where
   rk1 == rk2 = kNumber (runK rk1) == kNumber (runK rk2)
 
 instance Show RTK where
-  show rtk = unpack $ "R(" <> (kNumber $ runK rtk) <> ")"
+  show rtk = unpack $ "R(" <> kNumber (runK rtk) <> ")"
 
 hasPendingItem :: Text -> [(Text, RTK)] -> [RTK]
 hasPendingItem _ [] = []
@@ -154,10 +181,10 @@ insertRT om km rt x = do
       -- このノードの子方で先に現れていた場合、このノードの左側につけていく。
       lift $ pendingsClean rtkx rt' pendings
     -- 付きの場合
-    (Just oyakataN, pendings) -> do
+    (Just oyakataN, pendings) ->
       case regularN oyakataN `M.lookup` km of
         -- 親方の番号から、親方の基幹情報 (oyakata) を取る。
-        Just oyakata -> do
+        Just oyakata ->
           -- RelTreeの中にすでに親方が入っているか。
           if hasTree (RTK oyakata) rt
             -- 入っている場合は問題がないので、RelTreeに挿入し、さらにその

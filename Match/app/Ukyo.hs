@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
-module Main where
+module Ukyo where
 
 import           Control.Arrow             ((>>>), (&&&))
 import           Control.Exception.Safe    (MonadThrow, throwM)
-import           Control.Monad             (forM_)
+import           Control.Monad             (forM_, when)
 import           Control.Monad.Trans       (MonadIO, liftIO, lift)
 import           Control.Monad.Trans.Reader
 import           Control.Monad.Trans.Writer.Strict
@@ -84,6 +84,7 @@ spec = [ "支部コード"
        , "脱退日"
        , "職種"
        , "就労先"
+       , "就労先コード"
        , "台帳表示順"
        , "電話番号"
        , "携帯番号"
@@ -277,11 +278,10 @@ relationalNotAliveCheck kmap = do
         .| CL.map (\[n, _, _] -> ((`M.lookup` kmap) &&& id) $ regularN n)
         .| CL.consume
   let xlWithLineNumber = zip [2..] xl
-  rs <- (liftIO . runConduit) $ CL.sourceList xlWithLineNumber
-        .| CL.filter (isNothing . fst . snd)
-        .| CL.map (\(ln, (_, k)) -> ChildNotFound k ln)
-        .| CL.consume
-  return rs
+  (liftIO . runConduit) $ CL.sourceList xlWithLineNumber
+    .| CL.filter (isNothing . fst . snd)
+    .| CL.map (\(ln, (_, k)) -> ChildNotFound k ln)
+    .| CL.consume
 
 addRelationaltoKumiai :: OyakataMap -> Kumiai -> Kumiai
 addRelationaltoKumiai m k =
@@ -322,8 +322,8 @@ errorSource :: Log -> Source IO ErrorType
 errorSource = CL.sourceList
 
 childNotFoundConduit :: Conduit ErrorType IO Text
-childNotFoundConduit = do
-  awaitForever $ \e -> do
+childNotFoundConduit =
+  awaitForever $ \e ->
     case e of
       ChildNotFound num linenum -> do
         let ln = Tx.pack $ show linenum
@@ -331,14 +331,14 @@ childNotFoundConduit = do
       _ -> return ()
 
 oyakataNotFoundConduit :: Conduit ErrorType IO Text
-oyakataNotFoundConduit = do
-  awaitForever $ \e -> do
+oyakataNotFoundConduit =
+  awaitForever $ \e ->
     case e of
       OyakataNotFound k oN -> do
         let oNT  = "指定されている親方番号： " <> oN
-        let num  = "組合員番号： " <> (kNumber $ runK k)
-        let name = "組合員氏名： " <> (kName $ runK k)
-        yield $ Tx.intercalate ", " $ [num, name, oNT]
+        let num  = "組合員番号： " <> kNumber (runK k)
+        let name = "組合員氏名： " <> kName (runK k)
+        yield $ Tx.intercalate ", " [num, name, oNT]
       _ -> return ()
 
 errorSink :: Sink Text IO ()
@@ -354,18 +354,17 @@ sortConsumerPrinter kumiai = do
 sortConsumerPrintOut :: [Kumiai] -> [Kumiai] -> UnderConfigT (Sink Kumiai IO) ()
 sortConsumerPrintOut xl sorted = do
   let printer = sortConsumerPrinter
-  if (length xl == length sorted)
+  if length xl == length sorted
     then forM_ sorted printer
-    else do forM_ xl $ \kumiai ->
-              if (not (kumiai `elem` sorted))
-              then printer kumiai
-              else return ()
+    else forM_ xl $ \kumiai ->
+           when (kumiai `notElem` sorted)
+             $ printer kumiai
 
 sortConsumer :: OyakataMap -> KNumberMap
   ->　UnderConfigT (Sink Kumiai IO) ()
 sortConsumer rmap kmap = do
   bool   <- sortCR <$> ask
-  xl     <- lift $ CL.consume
+  xl     <- lift CL.consume
   plog   <- relationalNotAliveCheck kmap
 
   if bool
@@ -380,7 +379,7 @@ sortConsumer rmap kmap = do
               errorPrinter
                 "◎ 以下の組合員について指定されている親方番号が不明です。"
               errors .| oyakataNotFoundConduit .| errorSink
-    else do forM_ xl sortConsumerPrinter
+    else forM_ xl sortConsumerPrinter
 ---Sink Parts-------------------------------------
 ukyoSink :: UnderConfigT (Sink Kumiai IO) ()
 ukyoSink = do
@@ -420,12 +419,11 @@ main = do
                    .| CL.map makeKumiai
                    .| addRelationConduit rmap
                    .| CL.map (\k -> repairKumiai k <#> conf)
+                   .| CL.filter ((=="01") . kBunkaiCode)
 
-      if (figure opt)
-        then do
-          runConduit $ source .| figureSink rmap kmap
-        else do
-          runConduit $ source .| (sortConsumer rmap kmap <##> conf)
+      if figure opt
+        then runConduit $ source .| figureSink rmap kmap
+        else runConduit $ source .| (sortConsumer rmap kmap <##> conf)
 --------------------------------------------------
 data Options = Options { yamlFile :: String
                        , figure   :: Bool} deriving (Show)
