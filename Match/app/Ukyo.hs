@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
-module Main where
+module Ukyo where
 
 import           Control.Arrow             ((>>>), (&&&))
 import           Control.Exception.Safe    (MonadThrow, throwM)

@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds #-}
 module Match.TreeMake (
   sortCRF
   , listToRT
@@ -53,6 +55,11 @@ instance Functor RelTree where
 instance Foldable RelTree where
   foldMap _ N = mempty
   foldMap f (Node a l r) = f a <> foldMap f l <> foldMap f r
+
+instance Traversable RelTree where
+  traverse f N = pure N
+  traverse f (Node a l r) =
+    Node <$> (f a) <*> (traverse f l) <*> (traverse f r)
 
 regularN :: Text -> Text
 regularN = Tx.justifyRight 7 '0'
@@ -167,12 +174,19 @@ sortCRF om km x = do
 -- A・B・Cがそれぞれ単独の場合
 testcase1 = Node "A" N (Node "B" N (Node "C" N N))
 
--- B・CがA付、DがB付、Eが単独の場合
--- A---E
--- |
--- B---C
--- |
--- D
+-- B・C・XがA付、DがB付、Eが単独の場合
+-- A---B---D
+-- |   |
+-- |   C---Y
+-- |   |   |
+-- |   |   Z
+-- |   X
+-- E
+-- A | B | D
+--   | C | Y
+--   |   | Z
+--   | X
+-- E
 -- ("A" ("B" ("D" _ _) ("C" _ _)) ("E" _ _))
-testcase2 = Node "A" (Node "B" (Node "D" N N) (Node "C" N N)) (Node "E" N N)
+testcase2 = Node "A" (Node "B" (Node "D" N N) (Node "C" (Node "Y" N (Node "Z" N N)) (Node "X" N N))) (Node "E" N N)
 
