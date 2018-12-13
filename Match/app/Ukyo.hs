@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
-module Ukyo where
+module Main where
 
 import           Control.Arrow             ((>>>), (&&&))
 import           Control.Exception.Safe    (MonadThrow, throwM)
@@ -419,7 +419,6 @@ main = do
                    .| CL.map makeKumiai
                    .| addRelationConduit rmap
                    .| CL.map (\k -> repairKumiai k <#> conf)
-                   .| CL.filter ((=="01") . kBunkaiCode)
 
       if figure opt
         then runConduit $ source .| figureSink rmap kmap

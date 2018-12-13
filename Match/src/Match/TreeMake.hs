@@ -2,7 +2,6 @@
 module Match.TreeMake (
   sortCRF
   , listToRT
-  , toList
   , Log
   , Logger
   , LoggerT
@@ -11,48 +10,23 @@ module Match.TreeMake (
   , OyakataMap
   , KNumberMap) where
 
-import           Control.Monad    (foldM, when, ap)
-import           Control.Monad.Trans (lift)
-import           Control.Monad.Trans.Writer.Strict
-import           Control.Monad.Trans.State
-import           Data.Monoid      ((<>))
-import qualified Data.Map.Strict  as M
-import           Data.Text        (Text, unpack)
-import qualified Data.Text                 as Tx
-import           Match.Kumiai
+import           Control.Monad                      (foldM, when)
+import           Control.Monad.Trans                (lift)
+import           Control.Monad.Trans.Writer.Strict  (Writer, WriterT
+                                                    , tell)
+import           Control.Monad.Trans.State          (StateT, put, get
+                                                    , evalStateT)
+import           Data.Monoid                        ((<>))
+import qualified Data.Map.Strict                    as M
+import           Data.Text                          (Text, unpack)
+import qualified Data.Text                          as Tx
+import           Match.Kumiai                       (Kumiai (..))
 
 type OyakataMap  = M.Map Text (Text, Text)
 type KNumberMap  = M.Map Text Kumiai
 type Log         = [ErrorType]
 type Logger a    = Writer Log a
 type LoggerT m a = WriterT Log m a
-
-data RT a = RN a (RT a) (RT a)
-          | Nan deriving (Eq, Show)
-
-instance Functor RT where
-  _ `fmap` Nan = Nan
-  f `fmap` RN a l r = RN (f a) (f `fmap` l) (f `fmap` r)
-
-instance Applicative RT where
-  pure = return
-  Nan <*> _   = Nan
-  _   <*> Nan = Nan
-  RN a1 _ _ <*> RN a2 l2 r2 = do
-    RN (a1 a2) (a1 <$> l2) (a1 <$> r2)
-
-instance Monad RT where
-  return x = RN x Nan Nan
-  Nan >>= _ = Nan
-  RN a l r >>= f = do
-    a' <- f a
-    RN a' (l >>= f) (r >>= f)
-
-test :: RT String
-test = do
-  x <- RN "hoge" Nan Nan
-  return x
-
 
 data RelTree a = Node a (RelTree a) (RelTree a)
                | N deriving (Eq)
@@ -72,32 +46,22 @@ instance Show a => Show (RelTree a) where
       lis = [show a, show l, show r]
       str = unwords lis
 
+instance Functor RelTree where
+  f `fmap` N = N
+  f `fmap` (Node a l r) = Node (f a) (f `fmap` l) (f `fmap` r)
+
 instance Foldable RelTree where
   foldMap _ N = mempty
   foldMap f (Node a l r) = f a <> foldMap f l <> foldMap f r
 
--- A・B・Cがそれぞれ単独の場合
-testcase1 = Node "A" N (Node "B" N (Node "C" N N))
-
--- B・CがA付、DがB付、Eが単独の場合
--- A---E
--- |
--- B---C
--- |
--- D
--- ("A" ("B" ("D" _ _) ("C" _ _)) ("E" _ _))
-testcase2 = Node "A" (Node "B" (Node "D" N N) (Node "C" N N)) (Node "E" N N)
-
 regularN :: Text -> Text
 regularN = Tx.justifyRight 7 '0'
 
-singleton :: a -> RelTree a
-singleton a = Node a N N
+rknum :: Kumiai -> Text
+rknum = regularN . kNumber
 
 toList :: RelTree a -> [a]
-toList N = []
-toList (Node a N N) = [a]
-toList (Node a l r) = [a] ++ toList l ++ toList r
+toList = foldr (:) []
 
 -- 新たに単独を追加する場合
 -- testcase2の場合で、A・Eの後にFを追加する
@@ -107,22 +71,9 @@ toList (Node a l r) = [a] ++ toList l ++ toList r
 -- |
 -- D
 append :: a -> RelTree a -> RelTree a
-append a N = singleton a
+append a N = Node a N N
 append new (Node a l r) = Node a l (append new r)
 {-# INLINE append #-}
-
--- B・CがA付、DがB付、Eが単独の場合で,新たにXをBCより先に追加する。
--- A---E
--- |
--- B---C
--- |
--- D
--- というRelTreeを下記のように変更する。
--- A---E
--- |
--- X---B---C
---     |
---     D
 
 sameHanP :: RTK -> RTK -> Bool
 sameHanP new oya = (bc new == bc oya) && (h new == h oya)
@@ -131,8 +82,7 @@ sameHanP new oya = (bc new == bc oya) && (h new == h oya)
     h  = kHan . runK
 
 hasTree :: Eq a => a -> RelTree a -> Bool
-hasTree _ N = False
-hasTree x (Node a l r) = x == a || hasTree x l || hasTree x r
+hasTree x rt = foldr (||) False ((==x) <$> rt)
 
 addR :: RTK -> RelTree RTK -> RTK -> Logger (RelTree RTK)
 addR _ N _ = return N
@@ -214,5 +164,15 @@ sortCRF om km x = do
   rtk <- listToRT om km x
   return $ map runK (toList rtk)
 
-rknum :: Kumiai -> Text
-rknum = regularN . kNumber
+-- A・B・Cがそれぞれ単独の場合
+testcase1 = Node "A" N (Node "B" N (Node "C" N N))
+
+-- B・CがA付、DがB付、Eが単独の場合
+-- A---E
+-- |
+-- B---C
+-- |
+-- D
+-- ("A" ("B" ("D" _ _) ("C" _ _)) ("E" _ _))
+testcase2 = Node "A" (Node "B" (Node "D" N N) (Node "C" N N)) (Node "E" N N)
+
