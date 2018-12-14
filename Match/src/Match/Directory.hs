@@ -25,7 +25,7 @@ import           Match.Config               ( directorySpecF
                                             , fileTreeDirectory
                                             , sendCSVFileName)
 import           Match.CSV                  (parseCSV2)
-import           System.Directory           (createDirectoryIfMissing
+import           System.Directory           ( createDirectoryIfMissing
                                             , doesDirectoryExist
                                             , getDirectoryContents
                                             , removeDirectory)

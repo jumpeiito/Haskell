@@ -17,14 +17,14 @@ where
 
 import           Control.Exception.Safe
 import           Control.Monad.Trans
--- import           Control.Monad.Trans.Maybe
+import           Control.Monad.Trans.Maybe
 import           Data.Aeson
--- import qualified Data.ByteString.Char8     as BS
+import qualified Data.ByteString.Char8     as BS
 import           Data.Text                 (Text)
 import           GHC.Generics
--- import           System.Directory          (doesFileExist)
--- import           Util.Exception           ( FileNotExistException (..)
---                                           , YamlParseFailException (..))
+import           System.Directory          (doesFileExist)
+import           Util.Exception           ( FileNotExistException (..)
+                                          , YamlParseFailException (..))
 import           Util.Yaml                (readYaml)
 
 data Config = Config { directoryFile    :: ! String
@@ -74,7 +74,13 @@ kumiaiOfficeSpecF = kumiaiOfficeSpec <$> safeReadConfig
 defaultConfig :: Config
 defaultConfig =
   Config { directoryFile    = "d:/送信案件一覧.csv"
-         , directorySpec    = []
+         , directorySpec    = [ "事業所コード"
+                              , "事業所名"
+                              , "手続名"
+                              , "被保険者名"
+                              , "現在状況"
+                              , "社労士"
+                              ]
          , hihoSpec         = []
          , kumiaiSpec       = []
          , officeSpec       = []

@@ -68,9 +68,9 @@ executables:
     - async
     - optparse-applicative
   Ukyo:
-    main:                Ukyo.hs
+    main:                Main.hs
     source-dirs:
-    - app
+    - app/Ukyo
     ghc-options:
     - -O3
     - -threaded
@@ -80,6 +80,17 @@ executables:
     - Match
     - async
     - optparse-applicative
+  CreateDirectory:
+    main:                Main.hs
+    source-dirs:
+    - app/CreateDirectory
+    ghc-options:
+    - -O3
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - Match
    
 tests:
   # Match-test:
