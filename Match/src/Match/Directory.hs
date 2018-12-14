@@ -36,7 +36,7 @@ import           Text.Parsec.String
 import           Text.Read                  (readMaybe)
 import           Util                       (listDirectory, makeListMap)
 
-type TreeDirectoryMap = M.Map (Maybe Int) [(String, String)]
+type TreeDirectoryMap = M.Map (Maybe Int) [(String, String, Bool)]
 
 data Situation = Done | Yet deriving (Eq, Ord, Show)
 data SendType  = Get  | Lost | Other deriving (Eq, Ord, Show)
@@ -107,7 +107,7 @@ makeTreeDirectoryMap :: [Maybe TreeDirectory] -> TreeDirectoryMap
 makeTreeDirectoryMap td =
   let insert mp Nothing = mp
       insert mp (Just el) =
-        M.insertWith (++) (shibuCode el) [(oCode el, person el)] mp
+        M.insertWith (++) (shibuCode el) [(oCode el, person el, isLost el)] mp
   in foldl insert M.empty td
 
 getTreeDirectory :: (MonadCatch m, MonadIO m)
@@ -137,7 +137,9 @@ sourceDescendDirectory fp = do
 hasTree :: TreeDirectoryMap -> Send -> Bool
 hasTree tdMap send =
   case shibu send `M.lookup` tdMap of
-    Just shibuAlist -> (code send, hihoName send) `elem` shibuAlist
+    Just shibuAlist ->
+      let bool = if sendType send == Get then False else True
+      in (code send, hihoName send, bool) `elem` shibuAlist
     Nothing         -> False
 
 debugPrint :: Send -> String
