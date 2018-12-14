@@ -61,6 +61,19 @@ instance Traversable RelTree where
   traverse f (Node a l r) =
     Node <$> (f a) <*> (traverse f l) <*> (traverse f r)
 
+instance Applicative RelTree where
+  pure = return
+  N <*> _ = N
+  _ <*> N = N
+  Node a1 _ _ <*> Node a2 l2 r2 = do
+    Node (a1 a2) (a1 <$> l2) (a1 <$> r2)
+
+instance Monad RelTree where
+  return x = Node x N N
+  N >>= _ = N
+  Node a l r >>= f = let (Node a' _ _) = f a
+                     in Node a' (l >>= f) (r >>= f)
+
 regularN :: Text -> Text
 regularN = Tx.justifyRight 7 '0'
 
@@ -78,7 +91,7 @@ toList = foldr (:) []
 -- |
 -- D
 append :: a -> RelTree a -> RelTree a
-append a N = Node a N N
+append a N = return a
 append new (Node a l r) = Node a l (append new r)
 {-# INLINE append #-}
 
