@@ -1,8 +1,12 @@
+{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Match.Directory
-  (createHihoDirectory, removeBlankDirectory) where
+  (createHihoDirectory, removeBlankDirectory, directoryTest) where
+
+import Foreign.C.Types
+import Foreign.C.String
 
 import           Control.Arrow              ((>>>))
 import           Control.Exception.Safe
@@ -138,7 +142,7 @@ hasTree :: TreeDirectoryMap -> Send -> Bool
 hasTree tdMap send =
   case shibu send `M.lookup` tdMap of
     Just shibuAlist ->
-      let bool = if sendType send == Get then False else True
+      let bool = sendType send /= Get
       in (code send, hihoName send, bool) `elem` shibuAlist
     Nothing         -> False
 
@@ -255,8 +259,8 @@ duplicateOfficeCheck = do
         xl <- CL.consume
         let l = M.toList $ makeListMap officeNumber (:[]) xl
         mapM_ yield l
-  let dupFilter = do
-        awaitForever $ \(key, val) -> do
+  let dupFilter =
+        awaitForever $ \(key, val) ->
           when (length val /= 1) $ yield val
   let dupSink = do
         xl <- CL.consume

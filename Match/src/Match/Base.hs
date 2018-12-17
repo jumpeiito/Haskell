@@ -92,11 +92,11 @@ killStrings part s = case killStringsParser part `parseOnly` s of
                        Left _   -> s
 
 killStringsAllParser :: Text -> Parser String
-killStringsAllParser s = do
-  ((++)
-    <$> (manyTill anyChar (string s))
-    <*> killStringsAllParser s)
-  <|> (manyTill anyChar endOfInput)
+killStringsAllParser s =
+  (++)
+    <$> manyTill anyChar (string s)
+    <*> killStringsAllParser s
+  <|> manyTill anyChar endOfInput
 
 -- |
 --

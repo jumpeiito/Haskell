@@ -82,7 +82,7 @@ parseCSVSource spec fp = do
     then do contents <- liftIO $ readSJIS fp
             case CSV.parseCSV contents of
               Left _  -> throwM $ CSVParseFailException fp
-              Right c -> do
+              Right c ->
                 case spec `parseHeader` head c of
                   []     -> mapM_ (commaReplace >>> yield) $ tail c
                   sindex -> mapM_ ((sindex `extractColumns`) >>> commaReplace >>> yield) $ tail c

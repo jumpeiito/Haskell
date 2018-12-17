@@ -8,6 +8,15 @@ dataCSVFileName: "組合員データ活用.csv"
 relationalFileName: "Tsuki.csv"
 
 # 「付き」を考慮した並び順に変更。
+# 例えば、B・C・XがA付、DがB付、Y・ZがC付の場合、
+# A---B---D
+# |   |
+# |   C---Y
+# |   |   |
+# |   |   Z
+# |   X
+# E
+# A→B→D→C→Y→Z→X→Eという順番に並べる。
 # 元の方がいい場合はFalseにしておいて下さい。
 sortCR: True
 

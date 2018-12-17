@@ -84,8 +84,7 @@ initializeData = do
   return $ parMap rseq makeKumiaiOffice csv
 
 initializeSource :: Source IO KumiaiOffice
-initializeSource = do
-  initializeCSVSource $= CL.map makeKumiaiOffice
+initializeSource = initializeCSVSource $= CL.map makeKumiaiOffice
 
 makeKeySimplize :: Text -> Text
 makeKeySimplize = Tx.take 6 . makeKey 6 . Tx.drop 3

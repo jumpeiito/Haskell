@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DataKinds #-}
 module Match.TreeMake (
   sortCRF
   , listToRT
@@ -59,20 +58,7 @@ instance Foldable RelTree where
 instance Traversable RelTree where
   traverse f N = pure N
   traverse f (Node a l r) =
-    Node <$> (f a) <*> (traverse f l) <*> (traverse f r)
-
-instance Applicative RelTree where
-  pure = return
-  N <*> _ = N
-  _ <*> N = N
-  Node a1 _ _ <*> Node a2 l2 r2 = do
-    Node (a1 a2) (a1 <$> l2) (a1 <$> r2)
-
-instance Monad RelTree where
-  return x = Node x N N
-  N >>= _ = N
-  Node a l r >>= f = let (Node a' _ _) = f a
-                     in Node a' (l >>= f) (r >>= f)
+    Node <$> f a <*> traverse f l <*> traverse f r
 
 regularN :: Text -> Text
 regularN = Tx.justifyRight 7 '0'
@@ -91,7 +77,7 @@ toList = foldr (:) []
 -- |
 -- D
 append :: a -> RelTree a -> RelTree a
-append a N = return a
+append a N = Node a N N
 append new (Node a l r) = Node a l (append new r)
 {-# INLINE append #-}
 
@@ -102,7 +88,7 @@ sameHanP new oya = (bc new == bc oya) && (h new == h oya)
     h  = kHan . runK
 
 hasTree :: Eq a => a -> RelTree a -> Bool
-hasTree x rt = foldr (||) False ((==x) <$> rt)
+hasTree x rt = or ((==x) <$> rt)
 
 addR :: RTK -> RelTree RTK -> RTK -> Logger (RelTree RTK)
 addR _ N _ = return N
@@ -137,8 +123,9 @@ insertRT :: OyakataMap -> KNumberMap
   -> RelTree RTK -> Kumiai
   -> StateT [(Text, RTK)] (Writer Log) (RelTree RTK)
 insertRT om km rt x = do
-  let rtkx = RTK x
-  let key  = rknum x
+  let rtkx  = RTK x
+  let tell' = lift . tell
+  let key   = rknum x
   -- 付き情報があるかどうか。
   let isRelational = snd <$> key `M.lookup` om
   -- stateには親方より先に現れた子方を入れておく。
@@ -163,7 +150,7 @@ insertRT om km rt x = do
                     lift $ pendingsClean rtkx rt' pendings
             -- 親方が入っていない場合は、RelTreeに挿入せず、stateに保管
             -- していき、元のRelTreeを返す。
-            else do lift $ tell [RevOrder rtkx (regularN oyakataN)]
+            else do tell' [RevOrder rtkx (regularN oyakataN)]
                     put $ (oyakataN, rtkx) : state
                     return rt
         -- 親方の番号から、親方の基幹情報 (oyakata) を取れない場合、
@@ -171,7 +158,7 @@ insertRT om km rt x = do
         -- 配置されていないので、RelTreeの最後尾にノードを配置し、その子方も
         -- 配置していく。
         Nothing -> do
-          lift $ tell [OyakataNotFound rtkx oyakataN]
+          tell' [OyakataNotFound rtkx oyakataN]
           let rt' = append rtkx rt
           lift $ pendingsClean rtkx rt' pendings
 
@@ -202,4 +189,3 @@ testcase1 = Node "A" N (Node "B" N (Node "C" N N))
 -- E
 -- ("A" ("B" ("D" _ _) ("C" _ _)) ("E" _ _))
 testcase2 = Node "A" (Node "B" (Node "D" N N) (Node "C" (Node "Y" N (Node "Z" N N)) (Node "X" N N))) (Node "E" N N)
-
