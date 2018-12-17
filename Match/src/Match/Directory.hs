@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Match.Directory
-  (createHihoDirectory, removeBlankDirectory, directoryTest) where
+  (createHihoDirectory, removeBlankDirectory) where
 
 import Foreign.C.Types
 import Foreign.C.String
