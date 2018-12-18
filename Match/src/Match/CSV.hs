@@ -37,6 +37,10 @@ extractColumns spec record' = foldr extract [] spec
       | size > s = record' !! s : seed
       | otherwise = seed
 
+-- |
+--
+-- >>> commaReplace ["hoge,foo", "buz,boo"] == ["hoge・foo", "buz・boo"]
+-- True
 commaReplace :: Record -> Record
 commaReplace = map $ replace "," "・"
 

@@ -1,3 +1,4 @@
+-- -*- coding: utf-8 -*-
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
@@ -240,6 +241,12 @@ makeKumiai record = case record of
          }
   _ -> error $ "must not be happen." <> (Tx.unpack $ Tx.intercalate (Tx.pack ",") record)
 
+-- |
+--
+-- >>> blankMaybe ""
+-- Nothing
+-- >>> blankMaybe "text"
+-- Just "text"
 blankMaybe :: Text -> Maybe Text
 blankMaybe "" = Nothing
 blankMaybe x  = Just x
