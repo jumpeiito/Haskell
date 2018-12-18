@@ -3,7 +3,6 @@ module Match.SQL (fetchSQL, fetchSQLSource) where
 
 import           Control.Arrow              ((>>>))
 import           Control.Monad.Reader
--- import           Control.Monad.Trans.Except
 import           Control.Exception.Safe
 import           Data.Conduit
 import           Data.Text                  (Text)

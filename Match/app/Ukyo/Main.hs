@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
+-- module Ukyo.Main where
 module Main where
 
 import           Control.Arrow             ((>>>), (&&&))

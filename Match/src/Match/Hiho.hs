@@ -1,3 +1,4 @@
+-- -*- coding:utf-8 -*-
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
@@ -147,7 +148,6 @@ hihoNameUnfinishedP :: Hiho -> Bool
 hihoNameUnfinishedP h =
   let parser = (many1 $ satisfy inKatakana)
   in let answer = parser `parseOnly` hihoName h
-  -- in and [isRight answer, isNothing $ lost h, isNothing $ alien h]
   in (isRight answer && (isNothing $ lost h) && (isNothing $ alien h))
 
 hihoAddressBlankP :: Hiho -> Bool

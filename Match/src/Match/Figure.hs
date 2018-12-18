@@ -109,8 +109,8 @@ instance FigureSorter FigureSorterBY where toFigure = runFigureBY
 
 -- instance Ord FigureSorterHY where
 --   compare = mconcat $ map directionToSorter directions
-    -- where
-    --   sortL = [KHonbuY, ShibuCode, KBirthday]
+--     where
+--       sortL = [KHonbuY, ShibuCode, KBirthday]
 
 -- toDirection :: FigureSorterX -> [Direction]
 -- toDirection (FSH _ d) = d
@@ -140,12 +140,12 @@ directionToSorter Han        = compareWithKumiai K.kHan
 --       f = K.kHonbuY . sorterToKumiai toFigure
 --       g = K.kShibuCode . sorterToKumiai toFigure
 --       h = K.kBirthday . sorterToKumiai toFigure
-  -- x `compare` y = sortL
-  --   where
-  --     sortL = mconcat
-  --             [ comparing K.kHonbuY
-  --             , comparing K.kShibuCode
-  --             , comparing K.kBirthday]
+--   x `compare` y = sortL
+--     where
+--       sortL = mconcat
+--               [ comparing K.kHonbuY
+--               , comparing K.kShibuCode
+--               , comparing K.kBirthday]
 
 -- instance Ord FigureSorterSY where
 --   compare x y = (f x `compare` f y) <> (g x `compare` g y) <> (h x `compare` h y)

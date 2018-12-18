@@ -1,11 +1,10 @@
--- coding:utf-8
+-- -*- coding:utf-8 -*-
 {-# LANGUAGE OverloadedStrings #-}
 module Match.CSV
   (parseCSV, parseCSV2, Spec, parseCSVSource)
 where
 
 import           Control.Arrow         ((>>>))
--- import           Control.Exception
 import           Control.Exception.Safe
 import           Control.Monad.Trans
 import           Data.Conduit
@@ -30,11 +29,6 @@ type Record    = [Text]
 -- >>> [Nothing, Nothing] `extractColumns` ["hoge", "foo", "buz"]
 -- []
 extractColumns :: SpecIndex -> Record -> Record
--- extractColumns spec record' = map (`extract` record') spec
---   where size = length record'
---         Nothing `extract` _ = ""
---         Just i  `extract` record | size > i = record !! i
---                                  | otherwise = ""
 extractColumns spec record' = foldr extract [] spec
   where
     size = length record'
@@ -82,9 +76,10 @@ parseCSVSource spec fp = do
     then do contents <- liftIO $ readSJIS fp
             case CSV.parseCSV contents of
               Left _  -> throwM $ CSVParseFailException fp
-              Right c ->
+              Right c -> do
+                let yield' = commaReplace >>> yield
                 case spec `parseHeader` head c of
-                  []     -> mapM_ (commaReplace >>> yield) $ tail c
-                  sindex -> mapM_ ((sindex `extractColumns`) >>> commaReplace >>> yield) $ tail c
+                  []     -> mapM_ yield' $ tail c
+                  sindex -> mapM_ ((sindex `extractColumns`) >>> yield') $ tail c
     else throwM $ FileNotExistException fp
 

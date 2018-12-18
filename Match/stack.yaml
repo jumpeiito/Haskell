@@ -20,7 +20,7 @@
 # resolver: https://example.com/snapshots/2018-01-01.yaml
 allow-newer: true
 resolver: lts-9.21
-# resolver: lts-11.22
+# resolver: lts-12.24
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
