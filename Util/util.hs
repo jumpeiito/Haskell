@@ -559,3 +559,19 @@ pSearch fp = do
     readIORef dirs
   return $ fromDiffList diff
 
+dSearch :: FilePath -> IO [FilePath]
+dSearch fp = do
+  diff <- do
+    dirs <- newIORef (mempty :: DiffList FilePath)
+    p    <- doesDirectoryExist fp
+    if p
+      then do modifyIORef dirs (toDiffList [fp] <>)
+              contents <- listDirectory (fp <> "/")
+              forM_ contents $ \element -> do
+                descend <- dSearch element
+                modifyIORef dirs (toDiffList descend <>)
+      else return ()
+    readIORef dirs
+  return $ fromDiffList diff
+
+
