@@ -137,6 +137,9 @@ regularize = Tx.map sconc
   where
     sconc el = fromMaybe el $ el `M.lookup` regularizeMap
 -- --------------------------------------------------
+-- |
+-- >>> officeTypeReplace "株式会社青木工務店" == "㈱青木工務店"
+-- True
 officeTypeReplace :: Text -> Text
 officeTypeReplace s = case otrParser `parseOnly` s of
                         Right xs -> mconcat xs
@@ -144,6 +147,9 @@ officeTypeReplace s = case otrParser `parseOnly` s of
   where
     otrParser = many (officeTypeReplaceParser <|> Atp.take 1)
 
+-- |
+-- >>> officeTypeRegularize "㈱青木工務店" == "株式会社青木工務店"
+-- True
 officeTypeRegularize :: Text -> Text
 officeTypeRegularize s = either Tx.pack mconcat (otrParser `parseOnly` s)
   where
@@ -215,9 +221,15 @@ shibuCodeMap = M.fromList shibuCodeAlist
 codeShibuMap :: M.Map Int String
 codeShibuMap = M.fromList $ map swap shibuCodeAlist
 
+-- |
+-- >>> _toCode "北"
+-- Just 10
 _toCode :: String -> Maybe Int
 _toCode s = s `M.lookup` shibuCodeMap
 
+-- |
+-- >>> toShibu 10 == Just "北"
+-- True
 toShibu :: Int -> Maybe String
 toShibu i | i == 12 = Just "京都中央"
           | otherwise = i `M.lookup` codeShibuMap
