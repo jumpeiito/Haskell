@@ -120,10 +120,10 @@ getTreeDirectory :: (MonadCatch m, MonadIO m)
 getTreeDirectory f = do
   topdir <- fileTreeDirectory
   let conduit = sourceDescendDirectory topdir
-                =$ CL.filter f
-                =$ CL.map makeTreeDirectory
-                $$ CL.consume
-  liftIO conduit
+                .| CL.filter f
+                .| CL.map makeTreeDirectory
+                .| CL.consume
+  liftIO $ runConduit conduit
 
 fileTree :: (MonadCatch m, MonadIO m) => m TreeDirectoryMap
 fileTree = do
@@ -265,8 +265,9 @@ duplicateOfficeCheck = do
   let dupSink = do
         xl <- CL.consume
         mapM_ (liftIO . putStrLn) $ concat xl
-  sourceDescendDirectory t
-    $= CL.filter officeP
-    $= dupListConduit
-    $= dupFilter
-    $$ dupSink
+  runConduit
+    $ sourceDescendDirectory t
+    .| CL.filter officeP
+    .| dupListConduit
+    .| dupFilter
+    .| dupSink
