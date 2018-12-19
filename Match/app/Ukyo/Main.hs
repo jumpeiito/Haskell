@@ -385,9 +385,9 @@ sortConsumer rmap kmap = do
 
             let errors = errorSource $ log ++ plog
             (liftIO . runConduit) $ do
-              errorPrinter
-                "◎ 以下の組合員は指定されている親方よりも先に名簿に現れています。"
-              errors .| revOrderConduit .| errorSink
+              -- errorPrinter
+              --   "◎ 以下の組合員は指定されている親方よりも先に名簿に現れています。"
+              -- errors .| revOrderConduit .| errorSink
               errorPrinter
                 "◎ 以下の組合員はすでに脱退しているので,「付名簿」から削除可能です。"
               errors .| childNotFoundConduit .| errorSink
@@ -429,6 +429,7 @@ main = do
 
       encoding <- I.mkTextEncoding "cp932"
       I.hSetEncoding I.stdout encoding
+      I.hSetEncoding I.stderr encoding
 
       let source = parseCSVSource spec dataName
                    $=& CL.map makeKumiai

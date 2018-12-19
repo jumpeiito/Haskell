@@ -141,18 +141,34 @@ insertRT om km rt x = do
     (Just oyakataN, pendings) ->
       case regularN oyakataN `M.lookup` km of
         -- 親方の番号から、親方の基幹情報 (oyakata) を取る。
-        Just oyakata ->
-          -- RelTreeの中にすでに親方が入っているか。
-          if hasTree (RTK oyakata) rt
-            -- 入っている場合は問題がないので、RelTreeに挿入し、さらにその
-            -- 子方がいる場合も、RelTreeに挿入していく。
-            then do rt' <- lift $ addR (RTK oyakata) rt rtkx
-                    lift $ pendingsClean rtkx rt' pendings
-            -- 親方が入っていない場合は、RelTreeに挿入せず、stateに保管
-            -- していき、元のRelTreeを返す。
-            else do tell' [RevOrder rtkx (regularN oyakataN)]
-                    put $ (oyakataN, rtkx) : state
-                    return rt
+        Just oyakata -> do
+          let rtko = RTK oyakata
+          tree <- case (hasTree rtko rt, sameHanP rtkx rtko) of
+                    -- RelTreeの中にすでに親方が入っており、親方と子方が
+		    -- 同じ分会・班である場合。問題がないので、親方につける
+		    -- ように配置する。
+                    (True, True)  -> lift $ addR rtko rt rtkx
+		    -- RelTreeの中にすでに親方が入っているが、親方と
+		    -- 子方の分会または班が異なる場合。エラーと判断し、
+		    -- OyakataHanUnMatchを発行したうえで、子方のノードを
+		    -- 最後尾に配置する。
+                    (True, False) -> do
+		      tell' [OyakataHanUnMatch rtkx rtko]
+		      return $ append rtkx rt
+		    -- 親方はまだRelTreeの中に入っていないが、分会・班が同じの
+		    -- 場合。いったん、RelTreeには入れず
+		    -- Stateに保管し、親方がRelTreeに入るタイミングで付け足していく。
+  		    (False, True) -> do
+                      tell' [RevOrder rtkx (regularN oyakataN)]
+                      put $ (oyakataN, rtkx) : state
+                      return $ rt
+		    -- 親方がRelTreeに入っておらず、分会・班が異なる場合。
+		    -- エラーと判断し、OyakataHanUnMatchを発行したうえで、
+		    -- 子方のノードを最後尾に配置する。
+                    (False, False) -> do
+                      tell' [OyakataHanUnMatch rtkx rtko]
+                      return $ append rtkx rt
+          lift $ pendingsClean rtkx tree pendings
         -- 親方の番号から、親方の基幹情報 (oyakata) を取れない場合、
         -- OyakataNotFoundを発行し、記録しておく。また、RelTree上には親方が
         -- 配置されていないので、RelTreeの最後尾にノードを配置し、その子方も
