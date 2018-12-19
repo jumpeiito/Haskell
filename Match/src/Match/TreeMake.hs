@@ -48,7 +48,7 @@ instance Show a => Show (RelTree a) where
       str = unwords lis
 
 instance Functor RelTree where
-  f `fmap` N = N
+  _ `fmap` N = N
   f `fmap` (Node a l r) = Node (f a) (f `fmap` l) (f `fmap` r)
 
 instance Foldable RelTree where
@@ -56,7 +56,7 @@ instance Foldable RelTree where
   foldMap f (Node a l r) = f a <> foldMap f l <> foldMap f r
 
 instance Traversable RelTree where
-  traverse f N = pure N
+  traverse _ N = pure N
   traverse f (Node a l r) =
     Node <$> f a <*> traverse f l <*> traverse f r
 
@@ -130,22 +130,18 @@ insertRT om km rt x = do
   let isRelational = snd <$> key `M.lookup` om
   -- stateには親方より先に現れた子方を入れておく。
   state <- get
-  case (isRelational, hasPendingItem key state)  of
-    -- 付きでない場合
-    (Nothing, pendings) -> do
-      -- RelTreeの最後尾に配置。
-      let rt' = append rtkx rt
-      -- このノードの子方で先に現れていた場合、このノードの左側につけていく。
-      lift $ pendingsClean rtkx rt' pendings
-    -- 付きの場合
-    (Just oyakataN, pendings) ->
-      case regularN oyakataN `M.lookup` km of
-        -- 親方の番号から、親方の基幹情報 (oyakata) を取る。
-        Just oyakata -> do
-          let rtko = RTK oyakata
-          tree <- case (hasTree rtko rt, sameHanP rtkx rtko) of
+  tree <- case isRelational  of
+            -- 付きでない場合
+            Nothing -> return $ append rtkx rt
+            -- 付きの場合
+            Just oyakataN ->
+              case regularN oyakataN `M.lookup` km of
+                -- 親方の番号から、親方の基幹情報 (oyakata) を取る。
+                Just oyakata -> do
+                  let rtko = RTK oyakata
+                  case (hasTree rtko rt, sameHanP rtkx rtko) of
                     -- RelTreeの中にすでに親方が入っており、親方と子方が
-		    -- 同じ分会・班である場合。問題がないので、親方につける
+                    -- 同じ分会・班である場合。問題がないので、親方につける
 		    -- ように配置する。
                     (True, True)  -> lift $ addR rtko rt rtkx
 		    -- RelTreeの中にすでに親方が入っているが、親方と
@@ -161,22 +157,22 @@ insertRT om km rt x = do
   		    (False, True) -> do
                       tell' [RevOrder rtkx (regularN oyakataN)]
                       put $ (oyakataN, rtkx) : state
-                      return $ rt
+                      return rt
 		    -- 親方がRelTreeに入っておらず、分会・班が異なる場合。
 		    -- エラーと判断し、OyakataHanUnMatchを発行したうえで、
 		    -- 子方のノードを最後尾に配置する。
                     (False, False) -> do
                       tell' [OyakataHanUnMatch rtkx rtko]
                       return $ append rtkx rt
-          lift $ pendingsClean rtkx tree pendings
-        -- 親方の番号から、親方の基幹情報 (oyakata) を取れない場合、
-        -- OyakataNotFoundを発行し、記録しておく。また、RelTree上には親方が
-        -- 配置されていないので、RelTreeの最後尾にノードを配置し、その子方も
-        -- 配置していく。
-        Nothing -> do
-          tell' [OyakataNotFound rtkx oyakataN]
-          let rt' = append rtkx rt
-          lift $ pendingsClean rtkx rt' pendings
+                -- 親方の番号から、親方の基幹情報 (oyakata) を取れない場合、
+                -- OyakataNotFoundを発行し、記録しておく。また、RelTree上には親方が
+                -- 配置されていないので、RelTreeの最後尾にノードを配置し、その子方も
+                -- 配置していく。
+                Nothing -> do
+                  tell' [OyakataNotFound rtkx oyakataN]
+                  return $ append rtkx rt
+  let pendings = hasPendingItem key state
+  lift $ pendingsClean rtkx tree pendings
 
 listToRT :: OyakataMap -> KNumberMap -> [Kumiai]
  -> Logger (RelTree RTK)
