@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
-module Ukyo.Main where
--- module Main where
+-- module Ukyo.Main where
+module Main where
 
 import           Control.Arrow             ((>>>), (&&&))
 import           Control.Exception.Safe    (MonadThrow, throwM)
@@ -18,6 +18,7 @@ import           Data.Conduit              (Sink
                                            , yield
                                            , awaitForever
                                            , (.|))
+import           Data.Conduit.Async
 import qualified Data.Conduit.List         as CL
 import qualified Data.Map.Strict           as M
 import           Data.Maybe                (fromMaybe
@@ -254,35 +255,34 @@ kNumberMap = do
   csvName <- dataCSVFileName <$> ask
 
   let source = parseCSVSource spec csvName
-  gen <- (lift . runConduit) $
+  gen <- lift $
          source
-         .| CL.map makeKumiai
-         .| CL.map ((regularN . kNumber) &&& id)
-         .| CL.consume
+         $=& CL.map makeKumiai
+         $=& CL.map ((regularN . kNumber) &&& id)
+         $$& CL.consume
   return $ M.fromList gen
 ---addRelational----------------------------------
 relationalMap :: UnderConfigT IO OyakataMap
 relationalMap = do
   source <- csvSource relationalFileName
-  gen    <- (lift . runConduit) $
-            source
-            .| CL.map (\[num, oyakata, oyakataN] ->
+  gen    <- lift $ source
+            $=& CL.map (\[num, oyakata, oyakataN] ->
                          (regularN num, (oyakata, regularN oyakataN)))
-            .| CL.consume
+            $$& CL.consume
   return $ M.fromList gen
 
 relationalNotAliveCheck ::
   MonadIO m => KNumberMap -> UnderConfigT m [ErrorType]
 relationalNotAliveCheck kmap = do
   source <- csvSource relationalFileName
-  xl <- (liftIO . runConduit) $ source
-        .| CL.map (\[n, _, _] -> ((`M.lookup` kmap) &&& id) $ regularN n)
-        .| CL.consume
+  xl <- liftIO $ source
+        $=& CL.map (\[n, _, _] -> ((`M.lookup` kmap) &&& id) $ regularN n)
+        $$& CL.consume
   let xlWithLineNumber = zip [2..] xl
-  (liftIO . runConduit) $ CL.sourceList xlWithLineNumber
-    .| CL.filter (isNothing . fst . snd)
-    .| CL.map (\(ln, (_, k)) -> ChildNotFound k ln)
-    .| CL.consume
+  liftIO $ CL.sourceList xlWithLineNumber
+    $=& CL.filter (isNothing . fst . snd)
+    $=& CL.map (\(ln, (_, k)) -> ChildNotFound k ln)
+    $$& CL.consume
 
 addRelationaltoKumiai :: OyakataMap -> Kumiai -> Kumiai
 addRelationaltoKumiai m k =
@@ -342,6 +342,17 @@ oyakataNotFoundConduit =
         yield $ Tx.intercalate ", " [num, name, oNT]
       _ -> return ()
 
+revOrderConduit :: Conduit ErrorType IO Text
+revOrderConduit =
+  awaitForever $ \e ->
+    case e of
+      RevOrder k oN -> do
+        let oNT  = "指定されている親方番号： " <> oN
+        let num  = "組合員番号： " <> kNumber (runK k)
+        let name = "組合員氏名： " <> kName (runK k)
+        yield $ Tx.intercalate ", " [num, name, oNT]
+      _ -> return ()
+
 errorSink :: Sink Text IO ()
 errorSink = awaitForever (liftIO . Tx.hPutStrLn I.stderr)
 
@@ -374,6 +385,9 @@ sortConsumer rmap kmap = do
 
             let errors = errorSource $ log ++ plog
             (liftIO . runConduit) $ do
+              errorPrinter
+                "◎ 以下の組合員は指定されている親方よりも先に名簿に現れています。"
+              errors .| revOrderConduit .| errorSink
               errorPrinter
                 "◎ 以下の組合員はすでに脱退しているので,「付名簿」から削除可能です。"
               errors .| childNotFoundConduit .| errorSink
@@ -417,13 +431,13 @@ main = do
       I.hSetEncoding I.stdout encoding
 
       let source = parseCSVSource spec dataName
-                   .| CL.map makeKumiai
-                   .| addRelationConduit rmap
-                   .| CL.map (\k -> repairKumiai k <#> conf)
+                   $=& CL.map makeKumiai
+                   $=& addRelationConduit rmap
+                   $=& CL.map (\k -> repairKumiai k <#> conf)
 
       if figure opt
-        then runConduit $ source .| figureSink rmap kmap
-        else runConduit $ source .| (sortConsumer rmap kmap <##> conf)
+        then  source $$& figureSink rmap kmap
+        else  source $$& (sortConsumer rmap kmap <##> conf)
 --------------------------------------------------
 data Options = Options { yamlFile :: String
                        , figure   :: Bool} deriving (Show)

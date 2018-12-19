@@ -37,6 +37,7 @@ dependencies:
   - aeson
   - bytestring
   - directory
+  - stm-conduit
 
 library:
   source-dirs: src
