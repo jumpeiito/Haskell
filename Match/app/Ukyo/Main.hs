@@ -20,6 +20,7 @@ import           Data.Conduit              (Sink
                                            , (.|))
 import           Data.Conduit.Async
 import qualified Data.Conduit.List         as CL
+import           Data.List                 (intercalate)
 import qualified Data.Map.Strict           as M
 import           Data.Maybe                (fromMaybe
                                            , fromJust, isNothing)
@@ -36,6 +37,7 @@ import           Match.TreeMake
 import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
 import           System.IO.Unsafe          (unsafePerformIO)
+import           Text.Printf               (printf)
 import           Util.Exception            (FileNotExistException (..))
 import           Util.Strdt                (todayDay, howOld)
 import           Util.Yaml                 (readYaml)
@@ -233,7 +235,7 @@ makeKokuhoMark k =
 makeExplanation :: Kumiai -> Text
 makeExplanation k = case (makeKokuhoMark k, relational k) of
                       ("未", Just r)  -> "未・" <> r
-                      ("", Just r)    -> r
+                      (""  , Just r)  -> r
                       ("未", Nothing) -> "未"
                       _   -> ""
 
@@ -317,7 +319,18 @@ repairKumiai k = do
   return $ k { kWork    = workReplace repMap (kWork k)
              , kAddress = repairAddress removeAddress (kAddress k)}
 --------------------------------------------------
-errorPrinter = liftIO . Tx.hPutStrLn I.stderr
+errorPrinterCore :: MonadIO m => Text -> m ()
+errorPrinterCore = liftIO . Tx.hPutStrLn I.stderr
+
+errorPrinter :: Text -> Source IO Text -> IO ()
+errorPrinter message errors = do
+  errorsList <- runConduit $ errors .| CL.consume
+  when (not (null errorsList)) $ do
+    errorPrinterCore message
+    runConduit $ CL.sourceList errorsList .| errorSink
+
+errorSink :: Sink Text IO ()
+errorSink = awaitForever errorPrinterCore
 
 errorSource :: Log -> Source IO ErrorType
 errorSource = CL.sourceList
@@ -353,8 +366,23 @@ revOrderConduit =
         yield $ Tx.intercalate ", " [num, name, oNT]
       _ -> return ()
 
-errorSink :: Sink Text IO ()
-errorSink = awaitForever (liftIO . Tx.hPutStrLn I.stderr)
+hanUnmatchConduit :: Conduit ErrorType IO Text
+hanUnmatchConduit =
+  awaitForever $ \e ->
+    case e of
+      OyakataHanUnMatch k o -> do
+        let node = runK k
+        let oyak = runK o
+        let kB = Tx.unpack . kBunkai
+        let kH = Tx.unpack . kHan
+        let kN = Tx.unpack . kName
+        let kname = "組合員：" <> kN node
+        let kin  = printf "(%s分会・%s班)" (kB node) (kH node)
+        let oname = "親方：" <> kN oyak
+        let oin  = printf "(%s分会・%s班)" (kB oyak) (kH oyak)
+        yield $ Tx.pack $ intercalate ", " [kname <> kin, oname <> oin]
+      _ -> return ()
+
 
 sortConsumerPrinter :: Kumiai -> UnderConfigT (Sink Kumiai IO) ()
 sortConsumerPrinter kumiai = do
@@ -384,16 +412,20 @@ sortConsumer rmap kmap = do
             sortConsumerPrintOut xl sorted
 
             let errors = errorSource $ log ++ plog
-            (liftIO . runConduit) $ do
-              -- errorPrinter
-              --   "◎ 以下の組合員は指定されている親方よりも先に名簿に現れています。"
-              -- errors .| revOrderConduit .| errorSink
+            liftIO $ do
+              errorPrinter
+                "◎ 以下の組合員は指定されている親方よりも先に名簿に現れています。"
+                (errors .| revOrderConduit)
               errorPrinter
                 "◎ 以下の組合員はすでに脱退しているので,「付名簿」から削除可能です。"
-              errors .| childNotFoundConduit .| errorSink
+                (errors .| childNotFoundConduit)
               errorPrinter
                 "◎ 以下の組合員について指定されている親方番号が不明です。"
-              errors .| oyakataNotFoundConduit .| errorSink
+                (errors .| oyakataNotFoundConduit)
+              errorPrinter
+                "◎ 以下の組合員と、指定されている親方とが分会または班が異なるため、無視します。"
+                (errors .| hanUnmatchConduit)
+              -- errors .| CL.mapM_ print
     else forM_ xl sortConsumerPrinter
 ---Sink Parts-------------------------------------
 ukyoSink :: UnderConfigT (Sink Kumiai IO) ()
