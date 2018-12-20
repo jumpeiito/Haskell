@@ -1,6 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE QuasiQuotes #-}
 -- module Ukyo.Main where
 module Main where
 
@@ -37,7 +39,8 @@ import           Match.TreeMake
 import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
 import           System.IO.Unsafe          (unsafePerformIO)
-import           Text.Printf               (printf)
+import           Text.Heredoc              (heredoc)
+-- import           Text.Printf               (printf)
 import           Util.Exception            (FileNotExistException (..))
 import           Util.Strdt                (todayDay, howOld)
 import           Util.Yaml                 (readYaml)
@@ -341,7 +344,7 @@ childNotFoundConduit =
     case e of
       ChildNotFound num linenum -> do
         let ln = Tx.pack $ show linenum
-        yield $ ln <> "行目, 組合員番号 " <> num
+        yield [heredoc|${ln}行目, 組合員番号 ${num}|]
       _ -> return ()
 
 oyakataNotFoundConduit :: Conduit ErrorType IO Text
@@ -349,9 +352,9 @@ oyakataNotFoundConduit =
   awaitForever $ \e ->
     case e of
       OyakataNotFound k oN -> do
-        let oNT  = "指定されている親方番号： " <> oN
-        let num  = "組合員番号： " <> kNumber (runK k)
-        let name = "組合員氏名： " <> kName (runK k)
+        let oNT  = [heredoc|指定されている親方番号： ${oN}|]
+        let num  = [heredoc|組合員番号： ${kNumber (runK k)}|]
+        let name = [heredoc|組合員氏名： ${kName (runK k)}|]
         yield $ Tx.intercalate ", " [num, name, oNT]
       _ -> return ()
 
@@ -360,9 +363,9 @@ revOrderConduit =
   awaitForever $ \e ->
     case e of
       RevOrder k oN -> do
-        let oNT  = "指定されている親方番号： " <> oN
-        let num  = "組合員番号： " <> kNumber (runK k)
-        let name = "組合員氏名： " <> kName (runK k)
+        let oNT  = [heredoc|指定されている親方番号： ${oN}|]
+        let num  = [heredoc|組合員番号： ${kNumber (runK k)}|]
+        let name = [heredoc|組合員氏名： ${kName (runK k)}|]
         yield $ Tx.intercalate ", " [num, name, oNT]
       _ -> return ()
 
@@ -376,11 +379,9 @@ hanUnmatchConduit =
         let kB = Tx.unpack . kBunkai
         let kH = Tx.unpack . kHan
         let kN = Tx.unpack . kName
-        let kname = "組合員：" <> kN node
-        let kin  = printf "(%s分会・%s班)" (kB node) (kH node)
-        let oname = "親方：" <> kN oyak
-        let oin  = printf "(%s分会・%s班)" (kB oyak) (kH oyak)
-        yield $ Tx.pack $ intercalate ", " [kname <> kin, oname <> oin]
+        let k' = [heredoc|組合員：${kN node}(${kB node}分会・${kH node}班)|]
+        let o' = [heredoc|親方：${kN oyak}(${kB oyak}分会・${kH oyak}班)|]
+        yield $ Tx.pack $ intercalate ", " [k', o']
       _ -> return ()
 
 

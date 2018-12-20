@@ -38,6 +38,7 @@ dependencies:
   - bytestring
   - directory
   - stm-conduit
+  - heredocs
 
 library:
   source-dirs: src
