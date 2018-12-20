@@ -6,20 +6,20 @@
 module Match.Kumiai where
 
 import           Control.Arrow
+import           Control.Lens
 import           Control.Parallel.Strategies (parMap, rseq)
 import qualified Data.Map.Strict             as M
 import           Data.List                   (foldl')
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
+import           Data.Extensible
 import           Data.Monoid                 ((<>))
 import           Data.Text                   hiding (foldl', map)
 import qualified Data.Text                   as Tx
 import           Data.Time                   (Day (..))
 import           GHC.Generics
-import           Match.Config                ( Config (..)
-                                             , kumiaiSpecF)
-import           Match.SQL                   ( fetchSQL
-                                             , fetchSQLSource)
+import           Match.Config                (kumiaiSpecF)
+import           Match.SQL                   (fetchSQLSource)
 import           Match.Base                  (killBlanks, killBunkai
                                              , killShibu, makeKey
                                              , officeTypeRegularize
@@ -163,15 +163,15 @@ data Kumiai = K {
   , relational  :: Maybe Text
   } deriving (Show, Generic, Eq)
 
-initializeCSVData :: IO [[Text]]
-initializeCSVData = do
-  spec <- kumiaiSpecF
-  fetchSQL kumiaiFile spec kumiaiDB
+-- initializeCSVData :: IO [[Text]]
+-- initializeCSVData = do
+--   spec <- kumiaiSpecF
+--   fetchSQL kumiaiFile spec kumiaiDB
 
 initializeCSVSource :: Source IO [Text]
 initializeCSVSource = do
   spec <- kumiaiSpecF
-  fetchSQLSource kumiaiFile spec kumiaiDB
+  fetchSQLSource #kumiaiFile spec #kumiaiDB
 
 kanaBirthKey :: Kumiai -> (Text, Maybe Day)
 kanaBirthKey k = (killBlanks $ kKana k, kBirthday k)
@@ -251,10 +251,10 @@ blankMaybe :: Text -> Maybe Text
 blankMaybe "" = Nothing
 blankMaybe x  = Just x
 
-initializeData :: IO [Kumiai]
-initializeData = do
-  csv <- initializeCSVData
-  return $ parMap rseq makeKumiai csv
+-- initializeData :: IO [Kumiai]
+-- initializeData = do
+--   csv <- initializeCSVData
+--   return $ parMap rseq makeKumiai csv
 
 initializeSource :: Source IO Kumiai
 initializeSource = initializeCSVSource $= CL.map makeKumiai
@@ -270,20 +270,20 @@ kumiaiMakeKey = Tx.take 6 . makeKey 7
 
 numberMap :: IO (M.Map Text Kumiai)
 numberMap = do
-  csv <- initializeData
+  csv <- runConduit $ initializeSource .| CL.consume
   return $
     M.fromList $ parMap rseq ((kumiaiMakeKey . kNumber) &&& id) csv
 
 birthdayMap :: IO (M.Map (Maybe Day) [Kumiai])
 birthdayMap = do
-  csv <- initializeData
+  csv <- runConduit $ initializeSource .| CL.consume
   let insert mp el =
         M.insertWith (++) (kBirthday el) [el] mp
   return $ foldl' insert M.empty csv
 
 birthdayNameMap :: IO (M.Map (Text, Maybe Day) [Kumiai])
 birthdayNameMap = do
-  csv <- initializeData
+  csv <- runConduit $ initializeSource .| CL.consume
   let insert mp el =
         let b = kBirthday el
         in let k = killBlanks $ kKana el

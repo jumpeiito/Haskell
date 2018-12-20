@@ -132,20 +132,20 @@ insertRT om km rt x = do
                 Just oyakata -> do
                   let rtko = RTK oyakata
                   case (hasTree rtko rt, sameHanP rtkx rtko) of
-		    -- 親方と子方の分会または班が異なる場合。エラーと判断し、
-		    -- OyakataHanUnMatchを発行したうえで、子方のノードを最後尾に
-		    -- 配置する。
+                    -- 親方と子方の分会または班が異なる場合。エラーと判断し、
+                    -- OyakataHanUnMatchを発行したうえで、子方のノードを最後尾に
+                    -- 配置する。
                     (_, False) -> do
-		      tell' [OyakataHanUnMatch rtkx rtko]
-		      return $ append rtkx rt
+                      tell' [OyakataHanUnMatch rtkx rtko]
+                      return $ append rtkx rt
                     -- RelTreeの中にすでに親方が入っており、親方と子方が
                     -- 同じ分会・班である場合。問題がないので、親方につける
-		    -- ように配置する。
+                    -- ように配置する。
                     (True, True)  -> lift $ addR rtko rt rtkx
-		    -- 親方はまだRelTreeの中に入っていないが、分会・班が同じの
-		    -- 場合。いったん、RelTreeには入れず
-		    -- Stateに保管し、親方がRelTreeに入るタイミングで付け足していく。
-  		    (False, True) -> do
+                    -- 親方はまだRelTreeの中に入っていないが、分会・班が同じの
+                    -- 場合。いったん、RelTreeには入れず
+                    -- Stateに保管し、親方がRelTreeに入るタイミングで付け足していく。
+                    (False, True) -> do
                       tell' [RevOrder rtkx (regularN oyakataN)]
                       put $ (oyakataN, rtkx) : state
                       return rt

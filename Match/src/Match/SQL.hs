@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Match.SQL (fetchSQL, fetchSQLSource) where
+module Match.SQL (fetchSQLSource) where
 
 import           Control.Arrow              ((>>>))
+import           Control.Lens
 import           Control.Monad.Reader
 import           Control.Exception.Safe
 import           Data.Conduit
@@ -10,7 +11,7 @@ import qualified Data.Text                  as Tx
 import           Database.SQLite.Simple
 import           Util.Exception             (FileNotExistException (..))
 import           Match.Config               ( PathGetter
-                                            , readConfig)
+                                            , readConf)
 import           Match.CSV                  (parseCSV, Spec)
 import           System.Directory           ( doesFileExist
                                             , getModificationTime
@@ -66,17 +67,6 @@ csvToSQL sp csv db = do
   c <- sp `parseCSV` csv
   c `writeSQLite` db
 
-fetchSQL :: (MonadThrow m, MonadIO m)
-  => PathGetter -> [Text] -> PathGetter -> m [[Text]]
-fetchSQL csvf spec dbf = do
-  conf <- readConfig
-  let csv = (csvf <$> ask) `runReader` conf
-  let db  = (dbf  <$> ask) `runReader` conf
-
-  liftIO $ renewDB spec csv db
-
-  readSQLite db
-
 readSQLiteSource :: (MonadThrow m, MonadIO m) => String -> Source m [Text]
 readSQLiteSource dbname = do
   p <- liftIO $ doesFileExist dbname
@@ -87,13 +77,13 @@ readSQLiteSource dbname = do
             mapM_ (fromString >>> Tx.splitOn "," >>> yield) r
     else throwM $ FileNotExistException dbname
 
-fetchSQLSource :: (MonadThrow m, MonadIO m)
-  => PathGetter -> [Text] -> PathGetter
-  -> Source m [Text]
+-- fetchSQLSource :: (MonadThrow m, MonadIO m)
+--   => PathGetter -> [Text] -> PathGetter
+--   -> Source m [Text]
 fetchSQLSource csvf spec dbf = do
-  conf <- lift readConfig
-  let csv = (csvf <$> ask) `runReader` conf
-  let db  = (dbf  <$> ask) `runReader` conf
+  conf <- lift readConf
+  let csv = ((^. csvf) <$> ask) `runReader` conf
+  let db  = ((^. dbf)  <$> ask) `runReader` conf
 
   liftIO $ renewDB spec csv db
 

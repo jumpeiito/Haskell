@@ -1,10 +1,8 @@
-{-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
 module Match.Base ( Office (..)
                   , BaseInfo (..)
+                  , BaseInfoRecord (..)
                   , killBlanks
                   , killShibu
                   , killBunkai
@@ -19,6 +17,7 @@ module Match.Base ( Office (..)
                   ) where
 
 import           Control.Applicative
+import           Data.Extensible
 import           Data.Attoparsec.Text
 import qualified Data.Attoparsec.Text       as Atp
 import qualified Data.Map.Strict            as M
@@ -47,11 +46,37 @@ data Office =
     , rosaiNumber  :: ! Text
     , koyouNumber  :: ! Text } deriving (Show, Generic, Eq)
 
+-- type OfficeRecord = Record
+--   '[ "owner"       >: Text
+--    , "postal"      >: Text
+--    , "address"     >: Text
+--    , "address1"    >: Text
+--    , "address2"    >: Text
+--    , "tel"         >: Text
+--    , "fax"         >: Text
+--    , "got"         >: Maybe Day
+--    , "lost"        >: Maybe Day
+--    , "code"        >: Text
+--    , "name"        >: Text
+--    , "shibu"       >: Text
+--    , "otype"       >: Text
+--    , "rosaiCode"   >: Text
+--    , "rosaiNumber" >: Text
+--    , "koyouNumber" >: Text
+--    ]
+
 data BaseInfo =
   B { infoName  :: ! Text
     , infoKana  :: ! Text
     , infoBirth :: Maybe Day
     , rawBirth  :: Text } deriving (Show, Generic, Eq)
+
+type BaseInfoRecord = Record
+  '[ "name"     >: Text
+   , "kana"     >: Text
+   , "birth"    >: Maybe Day
+   , "rawBirth" >: Text
+   ]
 
 -- $setup
 -- >>> let pack = Tx.pack

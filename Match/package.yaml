@@ -39,6 +39,16 @@ dependencies:
   - directory
   - stm-conduit
   - heredocs
+  - extensible
+  - lens
+  - yaml
+
+default-extensions:
+  - DataKinds
+  - OverloadedLabels
+  - TypeApplications
+  - TypeOperators
+  - OverloadedStrings
 
 library:
   source-dirs: src
