@@ -11,6 +11,7 @@ module Match.TreeMake (
   , OyakataMap
   , KNumberMap) where
 
+import           Control.Arrow                      ((>>>))
 import           Control.Monad                      (foldM, when)
 import           Control.Monad.Trans                (lift)
 import           Control.Monad.Trans.Writer.Strict  (Writer, WriterT
@@ -108,11 +109,7 @@ instance Show RTK where
   show rtk = unpack $ "R(" <> kNumber (runK rtk) <> ")"
 
 hasPendingItem :: Text -> [(Text, RTK)] -> [RTK]
-hasPendingItem tx alist = foldr inspect [] alist
-  where
-    inspect (oN, c) seed
-      | tx == oN  = c : seed
-      | otherwise = seed
+hasPendingItem tx = filter (fst >>> (== tx)) >>> map snd
 
 insertRT :: OyakataMap -> KNumberMap
   -> RelTree RTK -> Kumiai
