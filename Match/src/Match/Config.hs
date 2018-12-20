@@ -16,9 +16,7 @@ import           Control.Lens
 import           Control.Monad.Trans
 import           Data.Extensible
 import           Data.Text                (Text)
-import           Data.Yaml
-import           Util.Exception
-import           System.Directory         (doesFileExist)
+import           Util.Yaml                (readYaml)
 
 type Conf = Record
   '[ "directoryFile"    >: String
@@ -41,15 +39,7 @@ type Conf = Record
 type PathGetter = Getting FilePath Conf FilePath
 
 readConf :: (MonadThrow m, MonadIO m) => m Conf
-readConf = do
-  let file = "d:/home/matchConfig.yaml"
-  p <- liftIO $ doesFileExist file
-  if p
-    then do yaml <- liftIO $ decodeFileEither file
-            case yaml of
-              Left _ -> throwM YamlParseFailException
-              Right c -> return c
-    else throwM $ FileNotExistException file
+readConf = readYaml "d:/home/matchConfig.yaml"
 
 safeReadConf :: (MonadCatch m, MonadIO m) => m Conf
 safeReadConf =
