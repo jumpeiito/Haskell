@@ -17,6 +17,7 @@ import           Control.Monad.Trans.Writer.Strict  (Writer, WriterT
                                                     , tell)
 import           Control.Monad.Trans.State          (StateT, put, get
                                                     , evalStateT)
+import           Data.Foldable                      (toList)
 import           Data.Monoid                        ((<>))
 import qualified Data.Map.Strict                    as M
 import           Data.Text                          (Text, unpack)
@@ -66,9 +67,6 @@ regularN = Tx.justifyRight 7 '0'
 rknum :: Kumiai -> Text
 rknum = regularN . kNumber
 
-toList :: RelTree a -> [a]
-toList = foldr (:) []
-
 -- 新たに単独を追加する場合
 -- testcase2の場合で、A・Eの後にFを追加する
 -- A---E---F
@@ -110,13 +108,11 @@ instance Show RTK where
   show rtk = unpack $ "R(" <> kNumber (runK rtk) <> ")"
 
 hasPendingItem :: Text -> [(Text, RTK)] -> [RTK]
-hasPendingItem _ [] = []
-hasPendingItem tx (x:xs)
-  | tx == fst x = snd x : hasPendingItem tx xs
-  | otherwise   = hasPendingItem tx xs
-
-pendingsClean :: RTK -> RelTree RTK -> [RTK] -> Logger (RelTree RTK)
-pendingsClean oya = foldM (addR oya)
+hasPendingItem tx alist = foldr inspect [] alist
+  where
+    inspect (oN, c) seed
+      | tx == oN  = c : seed
+      | otherwise = seed
 
 insertRT :: OyakataMap -> KNumberMap
   -> RelTree RTK -> Kumiai
@@ -164,7 +160,7 @@ insertRT om km rt x = do
                   tell' [OyakataNotFound rtkx oyakataN]
                   return $ append rtkx rt
   let pendings = hasPendingItem key state
-  lift $ pendingsClean rtkx tree pendings
+  lift $ foldM (addR rtkx) tree pendings
 
 listToRT :: OyakataMap -> KNumberMap -> [Kumiai]
  -> Logger (RelTree RTK)
