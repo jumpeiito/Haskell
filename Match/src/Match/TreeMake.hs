@@ -98,7 +98,6 @@ addR oya (Node a l r) new
   | otherwise = do
       l' <- addR oya l new
       r' <- addR oya r new
-      when (oya == a) $ tell [OyakataHanUnMatch new oya]
       return $ Node a l' r'
 {-# INLINE addR #-}
 
@@ -140,17 +139,16 @@ insertRT om km rt x = do
                 Just oyakata -> do
                   let rtko = RTK oyakata
                   case (hasTree rtko rt, sameHanP rtkx rtko) of
+		    -- 親方と子方の分会または班が異なる場合。エラーと判断し、
+		    -- OyakataHanUnMatchを発行したうえで、子方のノードを最後尾に
+		    -- 配置する。
+                    (_, False) -> do
+		      tell' [OyakataHanUnMatch rtkx rtko]
+		      return $ append rtkx rt
                     -- RelTreeの中にすでに親方が入っており、親方と子方が
                     -- 同じ分会・班である場合。問題がないので、親方につける
 		    -- ように配置する。
                     (True, True)  -> lift $ addR rtko rt rtkx
-		    -- RelTreeの中にすでに親方が入っているが、親方と
-		    -- 子方の分会または班が異なる場合。エラーと判断し、
-		    -- OyakataHanUnMatchを発行したうえで、子方のノードを
-		    -- 最後尾に配置する。
-                    (True, False) -> do
-		      tell' [OyakataHanUnMatch rtkx rtko]
-		      return $ append rtkx rt
 		    -- 親方はまだRelTreeの中に入っていないが、分会・班が同じの
 		    -- 場合。いったん、RelTreeには入れず
 		    -- Stateに保管し、親方がRelTreeに入るタイミングで付け足していく。
@@ -158,12 +156,6 @@ insertRT om km rt x = do
                       tell' [RevOrder rtkx (regularN oyakataN)]
                       put $ (oyakataN, rtkx) : state
                       return rt
-		    -- 親方がRelTreeに入っておらず、分会・班が異なる場合。
-		    -- エラーと判断し、OyakataHanUnMatchを発行したうえで、
-		    -- 子方のノードを最後尾に配置する。
-                    (False, False) -> do
-                      tell' [OyakataHanUnMatch rtkx rtko]
-                      return $ append rtkx rt
                 -- 親方の番号から、親方の基幹情報 (oyakata) を取れない場合、
                 -- OyakataNotFoundを発行し、記録しておく。また、RelTree上には親方が
                 -- 配置されていないので、RelTreeの最後尾にノードを配置し、その子方も
