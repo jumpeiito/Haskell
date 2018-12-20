@@ -38,7 +38,7 @@ type Conf = Record
    , "hihoDB"           >: String
    ]
 
-type PathGetter = Conf -> FilePath
+type PathGetter = Getting FilePath Conf FilePath
 
 readConf :: (MonadThrow m, MonadIO m) => m Conf
 readConf = do

@@ -80,6 +80,8 @@ readSQLiteSource dbname = do
 -- fetchSQLSource :: (MonadThrow m, MonadIO m)
 --   => PathGetter -> [Text] -> PathGetter
 --   -> Source m [Text]
+fetchSQLSource :: (MonadThrow m, MonadIO m) =>
+  PathGetter -> Spec -> PathGetter -> Source m [Text]
 fetchSQLSource csvf spec dbf = do
   conf <- lift readConf
   let csv = ((^. csvf) <$> ask) `runReader` conf
