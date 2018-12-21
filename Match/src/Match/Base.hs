@@ -28,42 +28,24 @@ import           Data.Time                  (Day (..))
 import           Data.Tuple                 (swap)
 import           GHC.Generics
 
-data Office =
-  O { owner        :: ! Text
-    , officePostal :: ! Text
-    , officeAd     :: ! Text
-    , officeAd1    :: ! Text
-    , officeAd2    :: ! Text
-    , officeTel    :: ! Text
-    , officeFax    :: ! Text
-    , officeGot    :: Maybe Day
-    , officeLost   :: Maybe Day
-    , officeCode   :: ! Text
-    , officeName   :: ! Text
-    , shibu        :: ! Text
-    , officeType   :: ! Text
-    , rosaiCode    :: ! Text
-    , rosaiNumber  :: ! Text
-    , koyouNumber  :: ! Text } deriving (Show, Generic, Eq)
-
--- type OfficeRecord = Record
---   '[ "owner"       >: Text
---    , "postal"      >: Text
---    , "address"     >: Text
---    , "address1"    >: Text
---    , "address2"    >: Text
---    , "tel"         >: Text
---    , "fax"         >: Text
---    , "got"         >: Maybe Day
---    , "lost"        >: Maybe Day
---    , "code"        >: Text
---    , "name"        >: Text
---    , "shibu"       >: Text
---    , "otype"       >: Text
---    , "rosaiCode"   >: Text
---    , "rosaiNumber" >: Text
---    , "koyouNumber" >: Text
---    ]
+type Office = Record
+  '[ "owner"       >: Text
+   , "postal"      >: Text
+   , "address"     >: Text
+   , "address1"    >: Text
+   , "address2"    >: Text
+   , "tel"         >: Text
+   , "fax"         >: Text
+   , "got"         >: Maybe Day
+   , "lost"        >: Maybe Day
+   , "code"        >: Text
+   , "name"        >: Text
+   , "shibu"       >: Text
+   , "otype"       >: Text
+   , "rosaiCode"   >: Text
+   , "rosaiNumber" >: Text
+   , "koyouNumber" >: Text
+   ]
 
 data BaseInfo =
   B { infoName  :: ! Text

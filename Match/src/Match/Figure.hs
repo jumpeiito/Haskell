@@ -1,14 +1,15 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE InstanceSigs #-}
 module Match.Figure where
 
+import           Control.Lens
 import           Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
 import qualified Match.Base                as B
 import qualified Match.Hiho                as H
 import qualified Match.Kumiai              as K
+import           Data.Extensible
 import           Data.Ord                  (comparing)
 import           Data.Foldable             (forM_)
 import           Data.Maybe                (fromMaybe, isNothing, isJust, fromJust)
@@ -74,7 +75,7 @@ data Direction =
 
 data Figure = Figure { runKumiai :: Maybe K.Kumiai
                      , runOffice :: Maybe B.Office
-                     , runHiho   :: Maybe H.Hiho
+                     , runHiho   :: Maybe H.HihoR
                      , direction :: [Direction]
                      , before    :: [TLB.Builder]
                      , after     :: [TLB.Builder] } deriving (Eq)
@@ -126,13 +127,13 @@ instance FigureSorter FigureSorterBY where toFigure = runFigureBY
 compareWithKumiai f = comparing (f . toKumiai)
 
 directionToSorter :: FigureSorter a => Direction -> (a -> a -> Ordering)
-directionToSorter KHonbuY    = compareWithKumiai K.kHonbuY
-directionToSorter ShibuCode  = compareWithKumiai K.kShibuCode
-directionToSorter KBirthday  = compareWithKumiai K.kBirthday
-directionToSorter KShibuY    = compareWithKumiai K.kShibuY
-directionToSorter BunkaiCode = compareWithKumiai K.kBunkaiCode
-directionToSorter KBunkaiY   = compareWithKumiai K.kBunkaiY
-directionToSorter Han        = compareWithKumiai K.kHan
+directionToSorter KHonbuY    = compareWithKumiai (^. #honbuY)
+directionToSorter ShibuCode  = compareWithKumiai (^. #shibuCode)
+directionToSorter KBirthday  = compareWithKumiai (^. #birth)
+directionToSorter KShibuY    = compareWithKumiai (^. #shibuY)
+directionToSorter BunkaiCode = compareWithKumiai (^. #bunkaiCode)
+directionToSorter KBunkaiY   = compareWithKumiai (^. #bunkaiY)
+directionToSorter Han        = compareWithKumiai (^. #han)
 
 -- instance Ord FigureSorterHY where
 --   compare x y = (f x `compare` f y) <> (g x `compare` g y) <> (h x `compare` h y)
@@ -164,50 +165,50 @@ directionToSorter Han        = compareWithKumiai K.kHan
 --       g = K.kHan . fromKumiai
 
 translate :: Direction -> Figure -> TLB.Builder
-translate ShibuCode         f = (>>->>)      $ K.kShibuCode     <$> runKumiai f
-translate Shibu             f = (>>->>)      $ K.kShibu         <$> runKumiai f
-translate BunkaiCode        f = (>>->>)      $ K.kBunkaiCode    <$> runKumiai f
-translate Bunkai            f = (>>->>)      $ K.kBunkai        <$> runKumiai f
-translate Han               f = (>>->>)      $ K.kHan           <$> runKumiai f
-translate KName             f = (>>->>)      $ K.kName          <$> runKumiai f
-translate KNumber           f = (>>->>)      $ K.kNumber        <$> runKumiai f
-translate KKana             f = (>>->>)      $ K.kKana          <$> runKumiai f
-translate KSex              f = (>>->>)      $ K.kSex           <$> runKumiai f
-translate KAddress          f = (>>->>)      $ K.kAddress       <$> runKumiai f
-translate KPostal           f = (>>->>)      $ K.kPostal        <$> runKumiai f
-translate KPhone            f = (>>->>)      $ K.kPhone         <$> runKumiai f
-translate KCellPhone        f = (>>->>)      $ K.kCellPhone     <$> runKumiai f
-translate KFax              f = (>>->>)      $ K.kFax           <$> runKumiai f
-translate KKind             f = (>>->>)      $ K.kKind          <$> runKumiai f
-translate KKyousai          f = (>>->>)      $ K.kKyousai       <$> runKumiai f
-translate KHonbuY           f = (>>->>) $ K.hyToString <$> (K.kHonbuY =<< runKumiai f)
-translate KShibuY           f = (>>->>) $ K.syToString <$> (K.kShibuY =<< runKumiai f)
-translate KBunkaiY          f = (>>->>) $ K.byToString <$> (K.kBunkaiY =<< runKumiai f)
-translate KHanY             f = (>>->>)      $ K.kHanY          =<< runKumiai f
-translate Owner             f = (>>->>)      $ B.owner          <$> runOffice f
-translate KWork             f = (>>->>)      $ K.kWork          <$> runKumiai f
-translate OfficeName        f = (>>->>)      $ B.officeName     <$> runOffice f
-translate OfficeCode        f = (>>->>)      $ B.officeCode     <$> runOffice f
-translate OfficeType        f = (>>->>)      $ B.officeType     <$> runOffice f
-translate OfficeRosaiCode   f = (>>->>)      $ B.rosaiCode      <$> runOffice f
-translate OfficeRosaiNumber f = (>>->>)      $ B.rosaiNumber    <$> runOffice f
-translate OfficeKoyouNumber f = (>>->>)      $ B.koyouNumber    <$> runOffice f
-translate OfficePostal      f = (>>->>)      $ B.officePostal   <$> runOffice f
-translate OfficeAddress     f = (>>->>)      $ B.officeAd       <$> runOffice f
-translate OfficeTel         f = (>>->>)      $ B.officeTel      <$> runOffice f
-translate OfficeFax         f = (>>->>)      $ B.officeFax      <$> runOffice f
-translate HihoOfficeCode    f = (>>->>)      $ H.hihoOfficeCode <$> runHiho f
-translate HihoOfficeName    f = (>>->>)      $ H.hihoOfficeName <$> runHiho f
-translate HihoName          f = (>>->>)      $ H.hihoName       <$> runHiho f
-translate HihoKana          f = (>>->>)      $ H.hihoKana       <$> runHiho f
-translate KGot              f = maybeBuilder $ K.kGot           =<< runKumiai f
-translate KLost             f = maybeBuilder $ K.kLost          =<< runKumiai f
-translate HihoGot           f = maybeBuilder $ H.got            =<< runHiho f
-translate HihoLost          f = maybeBuilder $ H.lost           =<< runHiho f
-translate HihoBirthday      f = maybeBuilder $ H.hihoBirthday   =<< runHiho f
-translate KBirthday         f = maybeBuilder $ K.kBirthday     =<< runKumiai f
-translate OfficeGot         f = maybeBuilder $ B.officeGot      =<< runOffice f
-translate OfficeLost        f = maybeBuilder $ B.officeLost     =<< runOffice f
+translate ShibuCode         f = (>>->>)      $ (^. #shibuCode)     <$> runKumiai f
+translate Shibu             f = (>>->>)      $ (^. #shibu)         <$> runKumiai f
+translate BunkaiCode        f = (>>->>)      $ (^. #bunkaiCode)    <$> runKumiai f
+translate Bunkai            f = (>>->>)      $ (^. #bunkai)        <$> runKumiai f
+translate Han               f = (>>->>)      $ (^. #han)           <$> runKumiai f
+translate KName             f = (>>->>)      $ (^. #name)          <$> runKumiai f
+translate KNumber           f = (>>->>)      $ (^. #number)        <$> runKumiai f
+translate KKana             f = (>>->>)      $ (^. #kana)          <$> runKumiai f
+translate KSex              f = (>>->>)      $ (^. #sex)           <$> runKumiai f
+translate KAddress          f = (>>->>)      $ (^. #address)       <$> runKumiai f
+translate KPostal           f = (>>->>)      $ (^. #postal)        <$> runKumiai f
+translate KPhone            f = (>>->>)      $ (^. #phone)         <$> runKumiai f
+translate KCellPhone        f = (>>->>)      $ (^. #cellPhone)     <$> runKumiai f
+translate KFax              f = (>>->>)      $ (^. #fax)           <$> runKumiai f
+translate KKind             f = (>>->>)      $ (^. #kind)          <$> runKumiai f
+translate KKyousai          f = (>>->>)      $ (^. #kyousai)       <$> runKumiai f
+translate KHonbuY           f = (>>->>) $ K.hyToString <$> ((^. #honbuY) =<< runKumiai f)
+translate KShibuY           f = (>>->>) $ K.syToString <$> ((^. #shibuY) =<< runKumiai f)
+translate KBunkaiY          f = (>>->>) $ K.byToString <$> ((^. #bunkaiY) =<< runKumiai f)
+translate KHanY             f = (>>->>)      $ (^. #hanY)          =<< runKumiai f
+translate Owner             f = (>>->>)      $ (^. #owner)         <$> runOffice f
+translate KWork             f = (>>->>)      $ (^. #work)          <$> runKumiai f
+translate OfficeName        f = (>>->>)      $ (^. #name)          <$> runOffice f
+translate OfficeCode        f = (>>->>)      $ (^. #code)          <$> runOffice f
+translate OfficeType        f = (>>->>)      $ (^. #otype)         <$> runOffice f
+translate OfficeRosaiCode   f = (>>->>)      $ (^. #rosaiCode)     <$> runOffice f
+translate OfficeRosaiNumber f = (>>->>)      $ (^. #rosaiNumber)   <$> runOffice f
+translate OfficeKoyouNumber f = (>>->>)      $ (^. #koyouNumber)   <$> runOffice f
+translate OfficePostal      f = (>>->>)      $ (^. #postal)        <$> runOffice f
+translate OfficeAddress     f = (>>->>)      $ (^. #address)       <$> runOffice f
+translate OfficeTel         f = (>>->>)      $ (^. #tel)           <$> runOffice f
+translate OfficeFax         f = (>>->>)      $ (^. #fax)           <$> runOffice f
+translate HihoOfficeCode    f = (>>->>)      $ (^. #officeCode)    <$> runHiho f
+translate HihoOfficeName    f = (>>->>)      $ (^. #officeName)    <$> runHiho f
+translate HihoName          f = (>>->>)      $ (^. #name)          <$> runHiho f
+translate HihoKana          f = (>>->>)      $ (^. #kana)          <$> runHiho f
+translate KGot              f = maybeBuilder $ (^. #got)           =<< runKumiai f
+translate KLost             f = maybeBuilder $ (^. #lost)          =<< runKumiai f
+translate HihoGot           f = maybeBuilder $ (^. #got)           =<< runHiho f
+translate HihoLost          f = maybeBuilder $ (^. #lost)          =<< runHiho f
+translate HihoBirthday      f = maybeBuilder $ (^. #birth)         =<< runHiho f
+translate KBirthday         f = maybeBuilder $ (^. #birth)         =<< runKumiai f
+translate OfficeGot         f = maybeBuilder $ (^. #got)           =<< runOffice f
+translate OfficeLost        f = maybeBuilder $ (^. #lost)          =<< runOffice f
 -- --------------------------------------------------
 translate (RawString s)     _ = TLB.fromText s
 translate (KillBlanks d)    f = TLB.fromText
@@ -298,4 +299,3 @@ figureMaybeConduit :: MaybeT (ConduitM a Figure IO) Figure
 figureMaybeConduit c = do
   fig <- runMaybeT c
   forM_ fig yield
-

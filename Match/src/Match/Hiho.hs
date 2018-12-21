@@ -18,6 +18,7 @@ import           Data.Monoid                 ((<>))
 import           Data.Text                   hiding (foldl', map)
 import qualified Data.Text                   as Tx
 import           Data.Time                   (Day (..))
+import           Match.Base                  (killBlanks)
 import           Match.Config                (hihoSpecF)
 import           Match.SQL                   (fetchSQLSource)
 import           Util.Strbt                  (strdt)
@@ -39,6 +40,8 @@ type HihoR = Record
    , "shibu"      >: Maybe Text
    , "officeCode" >: Text
    , "officeName" >: Text
+   , "officeGot"  >: Maybe Day
+   , "officeLost" >: Maybe Day
    ]
 
 type MaybeIO a = IO (Either String a)
@@ -99,11 +102,16 @@ makeHiho record = case record of
        <: #shibu      @= (Tx.take 5 (Tx.drop 5 _knum) `M.lookup` shibuMap)
        <: #officeCode @= _code
        <: #officeName @= _officename
+       <: #officeGot  @= Nothing
+       <: #officeLost @= Nothing
        <: nil
   _ -> error "must not be happen"
 
 hihoAliveP :: HihoR -> Bool
 hihoAliveP = isNothing . (^. #lost)
+
+hihoOfficeAliveP :: HihoR -> Bool
+hihoOfficeAliveP = isNothing . (^. #officeLost)
 
 inKatakana :: Char -> Bool
 inKatakana = inClass ['ア'..'ン']
@@ -136,7 +144,7 @@ numberMap = do
 kanaBirthCMap :: IO (M.Map (Text, Maybe Day) [HihoR])
 kanaBirthCMap = do
   let insert mp el =
-        M.insertWith (++) (el ^. #kana, el ^. #birth) [el] mp
+        M.insertWith (++) (killBlanks (el ^. #kana), el ^. #birth) [el] mp
   initializeSource $$ CL.fold insert M.empty
 
 numberCMap :: IO (M.Map Text HihoR)

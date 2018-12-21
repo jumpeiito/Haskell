@@ -12,6 +12,7 @@ module Match.TreeMake (
   , KNumberMap) where
 
 import           Control.Arrow                      ((>>>))
+import           Control.Lens
 import           Control.Monad                      (foldM, when)
 import           Control.Monad.Trans                (lift)
 import           Control.Monad.Trans.Writer.Strict  (Writer, WriterT
@@ -66,7 +67,7 @@ regularN :: Text -> Text
 regularN = Tx.justifyRight 7 '0'
 
 rknum :: Kumiai -> Text
-rknum = regularN . kNumber
+rknum = regularN . (^. #number)
 
 -- 新たに単独を追加する場合
 -- testcase2の場合で、A・Eの後にFを追加する
@@ -83,8 +84,8 @@ append new (Node a l r) = Node a l (append new r)
 sameHanP :: RTK -> RTK -> Bool
 sameHanP new oya = (bc new == bc oya) && (h new == h oya)
   where
-    bc = kBunkaiCode . runK
-    h  = kHan . runK
+    bc = (^. #bunkaiCode) . runK
+    h  = (^. #han) . runK
 
 hasTree :: Eq a => a -> RelTree a -> Bool
 hasTree x rt = or ((==x) <$> rt)
@@ -103,10 +104,10 @@ addR oya (Node a l r) new
 newtype RTK = RTK { runK :: Kumiai }
 
 instance Eq RTK where
-  rk1 == rk2 = kNumber (runK rk1) == kNumber (runK rk2)
+  rk1 == rk2 = (runK rk1) ^. #number == (runK rk2) ^. #number
 
 instance Show RTK where
-  show rtk = unpack $ "R(" <> kNumber (runK rtk) <> ")"
+  show rtk = unpack $ "R(" <> (runK rtk) ^. #number <> ")"
 
 hasPendingItem :: Text -> [(Text, RTK)] -> [RTK]
 hasPendingItem tx = filter (fst >>> (== tx)) >>> map snd

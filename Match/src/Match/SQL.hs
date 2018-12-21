@@ -77,9 +77,6 @@ readSQLiteSource dbname = do
             mapM_ (fromString >>> Tx.splitOn "," >>> yield) r
     else throwM $ FileNotExistException dbname
 
--- fetchSQLSource :: (MonadThrow m, MonadIO m)
---   => PathGetter -> [Text] -> PathGetter
---   -> Source m [Text]
 fetchSQLSource :: (MonadThrow m, MonadIO m) =>
   PathGetter -> Spec -> PathGetter -> Source m [Text]
 fetchSQLSource csvf spec dbf = do
