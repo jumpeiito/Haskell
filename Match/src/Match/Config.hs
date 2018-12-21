@@ -1,11 +1,7 @@
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
 module Match.Config
   ( PathGetter
-  , Config (..)
-  , readConfig
+  , Conf (..)
+  , readConf
   , sendCSVFileName
   , fileTreeDirectory
   , directorySpecF
@@ -16,81 +12,72 @@ module Match.Config
 where
 
 import           Control.Exception.Safe
+import           Control.Lens
 import           Control.Monad.Trans
-import           Control.Monad.Trans.Maybe
-import           Data.Aeson
-import qualified Data.ByteString.Char8     as BS
-import           Data.Text                 (Text)
-import           GHC.Generics
-import           System.Directory          (doesFileExist)
-import           Util.Exception           ( FileNotExistException (..)
-                                          , YamlParseFailException (..))
+import           Data.Extensible
+import           Data.Text                (Text)
 import           Util.Yaml                (readYaml)
 
-data Config = Config { directoryFile    :: ! String
-                     , directorySpec    :: [Text]
-                     , hihoSpec         :: [Text]
-                     , kumiaiSpec       :: [Text]
-                     , officeSpec       :: [Text]
-                     , kumiaiOfficeSpec :: [Text]
-                     , fileTree         :: ! String
-                     , kumiaiFile       :: ! String
-                     , officeFile       :: ! String
-                     , kumiaiOfficeFile :: ! String
-                     , hihoFile         :: ! String
-                     , kumiaiDB         :: ! String
-                     , officeDB         :: ! String
-                     , kumiaiOfficeDB   :: ! String
-                     , hihoDB           :: ! String }
-  deriving (Show, Generic)
+type Conf = Record
+  '[ "directoryFile"    >: String
+   , "directorySpec"    >: [Text]
+   , "hihoSpec"         >: [Text]
+   , "kumiaiSpec"       >: [Text]
+   , "officeSpec"       >: [Text]
+   , "kumiaiOfficeSpec" >: [Text]
+   , "fileTree"         >: String
+   , "kumiaiFile"       >: String
+   , "officeFile"       >: String
+   , "kumiaiOfficeFile" >: String
+   , "hihoFile"         >: String
+   , "kumiaiDB"         >: String
+   , "officeDB"         >: String
+   , "kumiaiOfficeDB"   >: String
+   , "hihoDB"           >: String
+   ]
 
-instance FromJSON Config
+type PathGetter = Getting FilePath Conf FilePath
 
-type PathGetter = Config -> FilePath
+readConf :: (MonadThrow m, MonadIO m) => m Conf
+readConf = readYaml "d:/home/matchConfig.yaml"
 
-readConfig :: (MonadThrow m, MonadIO m) => m Config
-readConfig = readYaml "d:/home/matchConfig.yaml"
-
-safeReadConfig :: (MonadCatch m, MonadIO m) => m Config
-safeReadConfig =
-  readConfig `catch`
+safeReadConf :: (MonadCatch m, MonadIO m) => m Conf
+safeReadConf =
+  readConf `catch`
     (\(SomeException a) -> do liftIO $ print a
-                              return defaultConfig)
+                              return defaultConf)
 
-sendCSVFileName :: (MonadCatch m, MonadIO m) => m FilePath
-sendCSVFileName = directoryFile <$> safeReadConfig
-
-fileTreeDirectory :: (MonadCatch m, MonadIO m) => m FilePath
-fileTreeDirectory = fileTree <$> safeReadConfig
+sendCSVFileName, fileTreeDirectory :: (MonadCatch m, MonadIO m) => m FilePath
+sendCSVFileName   = (^. #directoryFile) <$> safeReadConf
+fileTreeDirectory = (^. #fileTree) <$> safeReadConf
 
 directorySpecF, hihoSpecF, kumiaiSpecF, officeSpecF, kumiaiOfficeSpecF
   :: (MonadCatch m, MonadIO m) => m [Text]
-directorySpecF    = directorySpec    <$> safeReadConfig
-hihoSpecF         = hihoSpec         <$> safeReadConfig
-kumiaiSpecF       = kumiaiSpec       <$> safeReadConfig
-officeSpecF       = officeSpec       <$> safeReadConfig
-kumiaiOfficeSpecF = kumiaiOfficeSpec <$> safeReadConfig
+directorySpecF    = (^. #directorySpec)    <$> safeReadConf
+hihoSpecF         = (^. #hihoSpec)         <$> safeReadConf
+kumiaiSpecF       = (^. #kumiaiSpec)       <$> safeReadConf
+officeSpecF       = (^. #officeSpec)       <$> safeReadConf
+kumiaiOfficeSpecF = (^. #kumiaiOfficeSpec) <$> safeReadConf
 
-defaultConfig :: Config
-defaultConfig =
-  Config { directoryFile    = "d:/送信案件一覧.csv"
-         , directorySpec    = [ "事業所コード"
-                              , "事業所名"
-                              , "手続名"
-                              , "被保険者名"
-                              , "現在状況"
-                              , "社労士"
-                              ]
-         , hihoSpec         = []
-         , kumiaiSpec       = []
-         , officeSpec       = []
-         , kumiaiOfficeSpec = []
-         , fileTree         = "y:/労働保険事務組合/電子申請e-Gov"
-         , kumiaiFile       = ""
-         , officeFile       = ""
-         , kumiaiOfficeFile = ""
-         , hihoFile         = ""
-         , kumiaiDB         = ""
-         , officeDB         = ""
-         , kumiaiOfficeDB   = ""
-         , hihoDB           = "" }
+defaultConf :: Conf
+defaultConf = #directoryFile @= "d:/送信案件一覧.csv"
+              <: #directorySpec @= [ "事業所コード"
+                                   , "事業所名"
+                                   , "手続名"
+                                   , "被保険者名"
+                                   , "現在状況"
+                                   , "社労士"]
+              <: #hihoSpec         @= []
+              <: #kumiaiSpec       @= []
+              <: #officeSpec       @= []
+              <: #kumiaiOfficeSpec @= []
+              <: #fileTree         @= "y:/労働保険事務組合/電子申請e-Gov"
+              <: #kumiaiFile       @= ""
+              <: #officeFile       @= ""
+              <: #kumiaiOfficeFile @= ""
+              <: #hihoFile         @= ""
+              <: #kumiaiDB         @= ""
+              <: #officeDB         @= ""
+              <: #kumiaiOfficeDB   @= ""
+              <: #hihoDB           @= ""
+              <: nil

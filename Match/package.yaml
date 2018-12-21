@@ -1,5 +1,5 @@
 name:                Match
-version:             0.2.0.0
+version:             0.3.0.0
 github:              "githubuser/Match"
 license:             BSD3
 author:              "Author name here"
@@ -39,6 +39,16 @@ dependencies:
   - directory
   - stm-conduit
   - heredocs
+  - extensible
+  - lens
+  - yaml
+
+default-extensions:
+  - DataKinds
+  - OverloadedLabels
+  - TypeApplications
+  - TypeOperators
+  - OverloadedStrings
 
 library:
   source-dirs: src

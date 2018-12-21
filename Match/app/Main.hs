@@ -1,8 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE TypeFamilies      #-}
 module Main where
 
 import           Control.Arrow ((>>>), (&&&))
+import           Control.Lens
 import           Control.Monad             (when, guard)
 import           Control.Monad.Except      (ExceptT, runExceptT, liftIO)
 import           Data.List                 (sortBy)
@@ -35,7 +37,7 @@ import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
 
 makeKey :: K.Kumiai -> Text
-makeKey = Tx.take 6 . B.makeKey 7 . K.kNumber
+makeKey = Tx.take 6 . B.makeKey 7 . (^. #number)
 
 toString :: Figure -> [Text]
 toString = map toText . toBuilder
@@ -57,11 +59,11 @@ run = (>> return ()) . runExceptT
 ----------------------------------------------------------------------
 jigyosyoMatchUp :: IO ()
 jigyosyoMatchUp = do
-  o  <- O.numberCMap
-  ko <- KO.numberCMap
+  o  <- O.numberMap
+  ko <- KO.numberMap
 
   (K.initializeSource                    :: Source IO K.Kumiai)
-    $= (CL.filter (isNothing . K.kLost) :: Conduit K.Kumiai IO K.Kumiai)
+    $= (CL.filter (isNothing . (^. #lost)) :: Conduit K.Kumiai IO K.Kumiai)
     $= (conduit o ko                     :: Conduit K.Kumiai IO Figure)
     $$ (figureSink                       :: Sink Figure IO ())
 ----------------------------------------------------------------------
@@ -71,8 +73,8 @@ jigyosyoMatchUp = do
         figureMaybeConduit $ do
           let key = makeKey kumiai
           Just a <- return $ key `M.lookup` o'
-          let w = K.kOffice kumiai
-          guard $ B.officeName a /= w
+          let w = kumiai ^. #office
+          guard $ (a ^. #name) /= w
           let sym | w == ""   = "Blank"
                   | otherwise = "Diff"
           return Figure { runKumiai = Just kumiai
@@ -109,16 +111,16 @@ hihoNameMatchUp :: IO ()
 hihoNameMatchUp = do
   bMap <- K.birthdayCMap
 
-  (H.initializeSource                   :: Source IO H.Hiho)
-    $= (CL.filter H.hihoNameUnfinishedP :: Conduit H.Hiho IO H.Hiho)
-    $= (conduit bMap                    :: Conduit H.Hiho IO Figure)
+  (H.initializeSource                   :: Source IO H.HihoR)
+    $= (CL.filter H.hihoNameUnfinishedP :: Conduit H.HihoR IO H.HihoR)
+    $= (conduit bMap                    :: Conduit H.HihoR IO Figure)
     $$ (figureSink                      :: Sink Figure IO ())
 ----------------------------------------------------------------------
   where
     conduit m =
       awaitForever $ \hiho ->
         figureMaybeConduit $ do
-          Just xs <- return $ H.hihoBirthday hiho `M.lookup` m
+          Just xs <- return $ (hiho ^. #birth) `M.lookup` m
           return Figure { runKumiai = Nothing
                         , runOffice = Nothing
                         , runHiho   = Just hiho
@@ -135,18 +137,17 @@ hihoNameStrictMatchUp :: IO ()
 hihoNameStrictMatchUp = do
   bMap <- K.birthdayNameCMap
 
-  (H.initializeSource                   :: Source IO H.Hiho)
-    $= (CL.filter H.hihoNameUnfinishedP :: Conduit H.Hiho IO H.Hiho)
-    $= (conduit bMap                    :: Conduit H.Hiho IO Figure)
+  (H.initializeSource                   :: Source IO H.HihoR)
+    $= (CL.filter H.hihoNameUnfinishedP :: Conduit H.HihoR IO H.HihoR)
+    $= (conduit bMap                    :: Conduit H.HihoR IO Figure)
     $$ (figureSink                      :: Sink Figure IO ())
 ----------------------------------------------------------------------
   where
     conduit m =
       awaitForever $ \hiho ->
         figureMaybeConduit $ do
-          let birth = H.hihoBirthday hiho
-          let kana  = B.killBlanks $ H.hihoKana hiho
-          Just xs <- return $ (kana, birth) `M.lookup` m
+          let kana  = B.killBlanks $ hiho ^. #kana
+          Just xs <- return $ (kana, hiho ^. #birth) `M.lookup` m
           return Figure { runKumiai = Nothing
                         , runOffice = Nothing
                         , runHiho   = Just hiho
@@ -162,19 +163,18 @@ hihoAddressMatchUp :: IO ()
 hihoAddressMatchUp = do
   bMap <- K.birthdayNameCMap
 
-  (H.initializeSource :: Source IO H.Hiho)
+  (H.initializeSource :: Source IO H.HihoR)
     $= (CL.filter H.hihoAddressBlankP
-                      :: Conduit H.Hiho IO H.Hiho)
-    $= (conduit bMap  :: Conduit H.Hiho IO Figure)
+                      :: Conduit H.HihoR IO H.HihoR)
+    $= (conduit bMap  :: Conduit H.HihoR IO Figure)
     $$ (figureSink    :: Sink Figure IO ())
 ----------------------------------------------------------------------
   where
     conduit m =
       awaitForever $ \hiho ->
         figureMaybeConduit $ do
-          let birth = H.hihoBirthday hiho
-          let kana  = B.killBlanks $ H.hihoKana hiho
-          Just xs <- return $ (kana, birth) `M.lookup` m
+          let kana  = B.killBlanks $ hiho ^. #kana
+          Just xs <- return $ (kana, hiho ^. #birth) `M.lookup` m
           return Figure { runKumiai = Just $ head xs
                         , runOffice = Nothing
                         , runHiho   = Just hiho
@@ -191,13 +191,18 @@ kumiaiOfficeBlankMatchUp = do
 
   let mapSearch l m = case l `M.lookup` m of Just x -> x; Nothing -> []
   let tp t = Tx.pack (fromMaybe "" $ show <$> t)
-  let funcs = [K.kShibu, K.kBunkai, K.kHan
-              , K.kNumber, K.kName, tp . K.kGot, tp . K.kLost]
+  let funcs = [ (^. #shibu)
+              , (^. #bunkai)
+              , (^. #han)
+              , (^. #number)
+              , (^. #name)
+              , (^. #got) >>> tp
+              , (^. #lost) >>> tp]
   let kumiaiInfo k = map ($ k) funcs
   runConduit
     $ KO.initializeSource
-    .| CL.filter ((=="") . KO.koOwnerName)
-    .| CL.map (id &&& (KO.koCode >>> (`mapSearch` kMap)))
+    .| CL.filter ((^. #ownerName) >>> (== ""))
+    .| CL.map (id &&& ((^. #code) >>> (`mapSearch` kMap)))
     .| CL.filter (\(_, l) -> not (null l))
     .| CL.map (\(ko, l) -> (map toText (KO.stringList ko), l))
     .| CL.map (\(ko, l) -> map (kumiaiInfo >>> (ko++) >>> Tx.intercalate ",") l)
@@ -206,7 +211,7 @@ kumiaiOfficeBlankMatchUp = do
 shibuMatchUp :: Text -> IO ()
 shibuMatchUp s = do
   kMap <- K.birthdayNameCMap
-  oMap <- O.numberCMap
+  oMap <- O.numberMap
 
   joinPrint [ "支部コード"
             , "記号"
@@ -221,20 +226,20 @@ shibuMatchUp s = do
             , "雇用保険取得日"
             , "雇用保険喪失日" ]
 
-  (H.initializeSource     :: Source IO H.Hiho)
+  (H.initializeSource     :: Source IO H.HihoR)
     $= (CL.filter (\h -> (H.hihoAliveP h) && (H.hihoOfficeAliveP h)))
-    $= (CL.filter (\h -> H.hihoShibu h == Just s))
-    $= (conduit kMap oMap :: Conduit H.Hiho IO Figure)
+    $= (CL.filter (\h -> h ^. #shibu == Just s))
+    $= (conduit kMap oMap :: Conduit H.HihoR IO Figure)
     $$ (figureSink        :: Sink Figure IO ())
 ----------------------------------------------------------------------
   where
     conduit k o =
       awaitForever $ \hiho ->
         figureMaybeConduit $ do
-          Just offi <- return $ H.hihoOfficeCode hiho `M.lookup` o
-          let kMatch = (H.hihoKana hiho, H.hihoBirthday hiho) `M.lookup` k
+          Just offi <- return $ (hiho ^. #officeCode) `M.lookup` o
+          let kMatch = (hiho ^. #kana, hiho ^. #birth) `M.lookup` k
           let kumiai = head <$> kMatch
-          let sym = case (kumiai, K.kLost =<< kumiai , B.officeLost offi) of
+          let sym = case (kumiai, (^. #lost) =<< kumiai , offi ^. #lost) of
                       (Just _, Nothing, Nothing) -> "現組"
                       (Just _, Just _, Nothing)  -> "元組"
                       _                  -> ""
@@ -260,7 +265,7 @@ kumiaiinMatchUp = do
   ko <- KO.numberCMap
 
   (K.initializeSource  :: Source IO K.Kumiai)
-    $= (CL.filter (\k -> (isNothing (K.kLost k) && (K.kOffice k == "")))
+    $= (CL.filter (\k -> (isNothing (k ^. #lost) && (k ^. #office == "")))
                        :: Conduit K.Kumiai IO K.Kumiai)
     $= (conduit kb ko  :: Conduit K.Kumiai IO Figure)
     $$ (figureSink     :: Sink Figure IO ())
@@ -273,8 +278,8 @@ kumiaiinMatchUp = do
           let alive = filter H.hihoAliveP offi
           guard (not $ Prelude.null alive)
           let hiho  = head alive
-          let ocode = case H.hihoOfficeCode hiho `M.lookup` o of
-                        Just xl -> KO.koCode xl
+          let ocode = case (hiho ^. #officeCode) `M.lookup` o of
+                        Just xl -> xl ^. #code
                         Nothing -> ""
           return Figure { runKumiai = Just kumiai
                         , runOffice = Nothing
@@ -294,11 +299,11 @@ kumiaiinMatchUp = do
 ----------------------------------------------------------------------
 kumiaiOfficeMatchUp :: IO ()
 kumiaiOfficeMatchUp = do
-  telMap <- O.telCMap
+  telMap <- O.telMap
   numMap <- K.numberCMap
 
   (KO.initializeSource        :: Source IO KO.KumiaiOffice)
-    $= (CL.filter (KO.koIDnumber >>> (==""))
+    $= (CL.filter ((^. #idNumber) >>> (==""))
                               :: Conduit KO.KumiaiOffice IO KO.KumiaiOffice)
     $= (conduit telMap numMap :: Conduit KO.KumiaiOffice IO Figure)
     $$ (figureSink            :: Sink Figure IO ())
@@ -307,8 +312,8 @@ kumiaiOfficeMatchUp = do
     conduit t n =
       awaitForever $ \koffice ->
         figureMaybeConduit $ do
-          Just o   <- return $ KO.koTel koffice `M.lookup` t
-          Just hit <- return $ B.officeCode o `M.lookup` n
+          Just o   <- return $ (koffice ^. #tel) `M.lookup` t
+          Just hit <- return $ (o ^. #code) `M.lookup` n
           return Figure { runKumiai = Just hit
                         , runOffice = Just o
                         , runHiho   = Nothing
@@ -345,7 +350,7 @@ yakuOutput =
   K.initializeSource
     -- $= CL.filter (K.kShibuCode >>> (=="18"))
     -- $= CL.filter (K.kBunkaiCode >>> (=="03"))
-    $= CL.filter (K.kHonbuY >>> isJust)
+    $= CL.filter ((^. #honbuY) >>> isJust)
     $= conduit
     $$ sink
   where

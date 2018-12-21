@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes #-}
 module Match.TreeMake (
   sortCRF
   , listToRT
@@ -12,6 +14,7 @@ module Match.TreeMake (
   , KNumberMap) where
 
 import           Control.Arrow                      ((>>>))
+import           Control.Lens
 import           Control.Monad                      (foldM, when)
 import           Control.Monad.Trans                (lift)
 import           Control.Monad.Trans.Writer.Strict  (Writer, WriterT
@@ -24,6 +27,7 @@ import qualified Data.Map.Strict                    as M
 import           Data.Text                          (Text, unpack)
 import qualified Data.Text                          as Tx
 import           Match.Kumiai                       (Kumiai (..))
+import           Text.Heredoc              (heredoc)
 
 type OyakataMap  = M.Map Text (Text, Text)
 type KNumberMap  = M.Map Text Kumiai
@@ -44,7 +48,7 @@ data ErrorType =
 
 instance Show a => Show (RelTree a) where
   show N = "_"
-  show (Node a l r) = "(" ++ str ++ ")"
+  show (Node a l r) = [heredoc|(${str})|]
     where
       lis = [show a, show l, show r]
       str = unwords lis
@@ -66,7 +70,7 @@ regularN :: Text -> Text
 regularN = Tx.justifyRight 7 '0'
 
 rknum :: Kumiai -> Text
-rknum = regularN . kNumber
+rknum = regularN . (^. #number)
 
 -- 新たに単独を追加する場合
 -- testcase2の場合で、A・Eの後にFを追加する
@@ -83,8 +87,8 @@ append new (Node a l r) = Node a l (append new r)
 sameHanP :: RTK -> RTK -> Bool
 sameHanP new oya = (bc new == bc oya) && (h new == h oya)
   where
-    bc = kBunkaiCode . runK
-    h  = kHan . runK
+    bc = (^. #bunkaiCode) . runK
+    h  = (^. #han) . runK
 
 hasTree :: Eq a => a -> RelTree a -> Bool
 hasTree x rt = or ((==x) <$> rt)
@@ -103,10 +107,12 @@ addR oya (Node a l r) new
 newtype RTK = RTK { runK :: Kumiai }
 
 instance Eq RTK where
-  rk1 == rk2 = kNumber (runK rk1) == kNumber (runK rk2)
+  rk1 == rk2 = (runK rk1) ^. #number == (runK rk2) ^. #number
 
 instance Show RTK where
-  show rtk = unpack $ "R(" <> kNumber (runK rtk) <> ")"
+  show rtk = Tx.unpack [heredoc|R(${num})|]
+    where
+      num = (runK rtk) ^. #number
 
 hasPendingItem :: Text -> [(Text, RTK)] -> [RTK]
 hasPendingItem tx = filter (fst >>> (== tx)) >>> map snd
@@ -132,20 +138,20 @@ insertRT om km rt x = do
                 Just oyakata -> do
                   let rtko = RTK oyakata
                   case (hasTree rtko rt, sameHanP rtkx rtko) of
-		    -- 親方と子方の分会または班が異なる場合。エラーと判断し、
-		    -- OyakataHanUnMatchを発行したうえで、子方のノードを最後尾に
-		    -- 配置する。
+                    -- 親方と子方の分会または班が異なる場合。エラーと判断し、
+                    -- OyakataHanUnMatchを発行したうえで、子方のノードを最後尾に
+                    -- 配置する。
                     (_, False) -> do
-		      tell' [OyakataHanUnMatch rtkx rtko]
-		      return $ append rtkx rt
+                      tell' [OyakataHanUnMatch rtkx rtko]
+                      return $ append rtkx rt
                     -- RelTreeの中にすでに親方が入っており、親方と子方が
                     -- 同じ分会・班である場合。問題がないので、親方につける
-		    -- ように配置する。
+                    -- ように配置する。
                     (True, True)  -> lift $ addR rtko rt rtkx
-		    -- 親方はまだRelTreeの中に入っていないが、分会・班が同じの
-		    -- 場合。いったん、RelTreeには入れず
-		    -- Stateに保管し、親方がRelTreeに入るタイミングで付け足していく。
-  		    (False, True) -> do
+                    -- 親方はまだRelTreeの中に入っていないが、分会・班が同じの
+                    -- 場合。いったん、RelTreeには入れず
+                    -- Stateに保管し、親方がRelTreeに入るタイミングで付け足していく。
+                    (False, True) -> do
                       tell' [RevOrder rtkx (regularN oyakataN)]
                       put $ (oyakataN, rtkx) : state
                       return rt

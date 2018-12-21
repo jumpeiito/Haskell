@@ -1,12 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE QuasiQuotes #-}
--- module Ukyo.Main where
 module Main where
 
 import           Control.Arrow             ((>>>), (&&&))
+import           Control.Lens
 import           Control.Exception.Safe    (MonadThrow, throwM)
 import           Control.Monad             (forM_, when)
 import           Control.Monad.Trans       (MonadIO, liftIO, lift)
@@ -40,7 +39,6 @@ import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
 import           System.IO.Unsafe          (unsafePerformIO)
 import           Text.Heredoc              (heredoc)
--- import           Text.Printf               (printf)
 import           Util.Exception            (FileNotExistException (..))
 import           Util.Strdt                (todayDay, howOld)
 import           Util.Yaml                 (readYaml)
@@ -67,11 +65,16 @@ type WorkMap = M.Map Text Text
 kumiaiComp :: Kumiai -> Text
 kumiaiComp k = s k <> b k <> h k <> pt k
   where
-    s  = kShibuCode
-    b  = kBunkaiCode
-    h  = kHan
-    pr = (* 1000) . fromJust . kPrintOrder
-    pt = Tx.justifyRight 5 '0' . Tx.takeWhile (/= '.') . Tx.pack . show . pr
+    s  = (^. #shibuCode)
+    b  = (^. #bunkaiCode)
+    h  = (^. #han)
+    pt = (^. #printOrder)
+         >>> fromJust
+         >>> (* 1000)
+         >>> show
+         >>> Tx.pack
+         >>> Tx.takeWhile (/= '.')
+         >>> Tx.justifyRight 5 '0'
 
 readConfig :: (MonadThrow m, MonadIO m) => FilePath -> m Config
 readConfig = readYaml
@@ -153,39 +156,39 @@ data Direction =
   deriving (Show, Read, Generic)
 
 translate :: Direction -> Kumiai -> Text
-translate ShibuCode        k = kShibuCode k
-translate Shibu            k = kShibu k
-translate BunkaiCode       k = kBunkaiCode k
-translate Bunkai           k = kBunkai k
-translate Han              k = kHan k
-translate KName            k = kName k
-translate KNumber          k = kNumber k
-translate KKana            k = kKana k
-translate KSex             k = kSex k
-translate KAddress         k = kAddress k
-translate KPostal          k = kPostal k
-translate KPhone           k = kPhone k
-translate KCellPhone       k = kCellPhone k
-translate KFax             k = kFax k
-translate KKind            k = kKind k
-translate KKyousai         k = kKyousai k
-translate KHonbuY          k = (>>->>) $ hyToString <$> kHonbuY k
-translate KShibuY          k = (>>->>) $ syToString <$> kShibuY k
-translate KBunkaiY         k = (>>->>) $ byToString <$> kBunkaiY k
-translate KHanY            k = (>>->>) . kHanY $ k
-translate KWork            k = kWork k
-translate KOffice          k = kOffice k
-translate KPrintOrder      k = (>>->>) $ Tx.pack . show <$> kPrintOrder k
-translate KGot             k = maybeString $ kGot k
-translate KLost            k = maybeString $ kLost k
-translate KBirthday        k = maybeString $ kBirthday k
-translate HowOld           k = makeHowOld (kBirthday k)
-translate KKokuhoGet       k = maybeString $ kKokuhoGet k
-translate KKokuhoLost      k = maybeString $ kKokuhoLost k
+translate ShibuCode        k = k ^. #shibuCode
+translate Shibu            k = k ^. #shibu
+translate BunkaiCode       k = k ^. #bunkaiCode
+translate Bunkai           k = k ^. #bunkai
+translate Han              k = k ^. #han
+translate KName            k = k ^. #name
+translate KNumber          k = k ^. #number
+translate KKana            k = k ^. #kana
+translate KSex             k = k ^. #sex
+translate KAddress         k = k ^. #address
+translate KPostal          k = k ^. #postal
+translate KPhone           k = k ^. #phone
+translate KCellPhone       k = k ^. #cellPhone
+translate KFax             k = k ^. #fax
+translate KKind            k = k ^. #kind
+translate KKyousai         k = k ^. #kyousai
+translate KWork            k = k ^. #work
+translate KOffice          k = k ^. #office
+translate KHonbuY          k = (>>->>) $ hyToString <$> k ^. #honbuY
+translate KShibuY          k = (>>->>) $ syToString <$> k ^. #shibuY
+translate KBunkaiY         k = (>>->>) $ byToString <$> k ^. #bunkaiY
+translate KHanY            k = (>>->>) $ k ^. #hanY
+translate KPrintOrder      k = (>>->>) $ Tx.pack . show <$> k ^. #printOrder
+translate KGot             k = maybeString $ k ^. #got
+translate KLost            k = maybeString $ k ^. #lost
+translate KBirthday        k = maybeString $ k ^. #birth
+translate HowOld           k = makeHowOld  $ k ^. #birth
+translate KKokuhoGet       k = maybeString $ k ^. #kokuhoGet
+translate KKokuhoLost      k = maybeString $ k ^. #kokuhoLost
 translate Owner            _ = ""
-translate BunkaichoMark    k = makeBCMark $ byToString <$> kBunkaiY k
-translate BunkaiKaikeiMark k = makeBKMark $ byToString <$> kBunkaiY k
-translate HanchoMark       k = makeHMark $ kHanY k
+translate BunkaichoMark    k = makeBCMark $ byToString <$> k ^. #bunkaiY
+translate BunkaiKaikeiMark k = makeBKMark $ byToString <$> k ^. #bunkaiY
+translate HanchoMark       k = makeHMark $ k ^. #hanY
 translate KokuhoMark       k = makeKokuhoMark k
 translate Relational       _ = ""
 translate Explanation      k = makeExplanation k
@@ -212,7 +215,7 @@ contains :: Text -> Text -> Bool
 contains t s = s `elem` Tx.splitOn "・" t
 
 makeMark :: Text -> String -> String -> String
-makeMark target part ret = if target `contains` Tx.pack part
+makeMark target part ret = if target `Main.contains` Tx.pack part
                            then ret
                            else ""
 
@@ -230,13 +233,13 @@ makeHowOld (Just d) = Tx.pack . show $ d `howOld` unsafePerformIO todayDay
 
 makeKokuhoMark :: Kumiai -> Text
 makeKokuhoMark k =
-  case (kKokuhoGet k, kKokuhoLost k) of
+  case (k ^. #kokuhoGet, k ^. #kokuhoLost) of
     (_, Just _)        -> "未"
     (Nothing, Nothing) -> "未"
     _                  -> ""
 
 makeExplanation :: Kumiai -> Text
-makeExplanation k = case (makeKokuhoMark k, relational k) of
+makeExplanation k = case (makeKokuhoMark k, k ^. #relational) of
                       ("未", Just r)  -> "未・" <> r
                       (""  , Just r)  -> r
                       ("未", Nothing) -> "未"
@@ -259,11 +262,10 @@ kNumberMap :: UnderConfigT IO KNumberMap
 kNumberMap = do
   csvName <- dataCSVFileName <$> ask
 
-  let source = parseCSVSource spec csvName
   gen <- lift $
-         source
+         parseCSVSource spec csvName
          $=& CL.map makeKumiai
-         $=& CL.map ((regularN . kNumber) &&& id)
+         $=& CL.map ((regularN . (^. #number)) &&& id)
          $$& CL.consume
   return $ M.fromList gen
 ---addRelational----------------------------------
@@ -291,9 +293,9 @@ relationalNotAliveCheck kmap = do
 
 addRelationaltoKumiai :: OyakataMap -> Kumiai -> Kumiai
 addRelationaltoKumiai m k =
-  let key = regularN $ kNumber k in
+  let key = regularN $ (k ^. #number) in
   case key `M.lookup` m of
-    Just (o, _)  -> k { relational = Just o }
+    Just (o, _)  -> k & #relational .~ Just o
     Nothing      -> k
 
 addRelationConduit :: OyakataMap -> Conduit Kumiai IO Kumiai
@@ -319,8 +321,9 @@ repairKumiai k = do
   removeAddress <- addressRemove <$> ask
   repMap        <- workReplaceMap
 
-  return $ k { kWork    = workReplace repMap (kWork k)
-             , kAddress = repairAddress removeAddress (kAddress k)}
+  let k1 = k  & #work .~ (workReplace repMap (k ^. #work))
+  let k2 = k1 & #address .~ (repairAddress removeAddress (k ^. #address))
+  return k2
 --------------------------------------------------
 errorPrinterCore :: MonadIO m => Text -> m ()
 errorPrinterCore = liftIO . Tx.hPutStrLn I.stderr
@@ -348,13 +351,15 @@ childNotFoundConduit =
       _ -> return ()
 
 oyakataNotFoundConduit :: Conduit ErrorType IO Text
-oyakataNotFoundConduit =
-  awaitForever $ \e ->
+oyakataNotFoundConduit = do
+  awaitForever $ \e -> do
     case e of
       OyakataNotFound k oN -> do
         let oNT  = [heredoc|指定されている親方番号： ${oN}|]
-        let num  = [heredoc|組合員番号： ${kNumber (runK k)}|]
-        let name = [heredoc|組合員氏名： ${kName (runK k)}|]
+        let knum = runK k ^. #number
+        let knam = runK k ^. #name
+        let num  = [heredoc|組合員番号： ${knum}|]
+        let name = [heredoc|組合員氏名： ${knam}|]
         yield $ Tx.intercalate ", " [num, name, oNT]
       _ -> return ()
 
@@ -364,8 +369,10 @@ revOrderConduit =
     case e of
       RevOrder k oN -> do
         let oNT  = [heredoc|指定されている親方番号： ${oN}|]
-        let num  = [heredoc|組合員番号： ${kNumber (runK k)}|]
-        let name = [heredoc|組合員氏名： ${kName (runK k)}|]
+        let knum = runK k ^. #number
+        let knam = runK k ^. #name
+        let num  = [heredoc|組合員番号： ${knum}|]
+        let name = [heredoc|組合員氏名： ${knam}|]
         yield $ Tx.intercalate ", " [num, name, oNT]
       _ -> return ()
 
@@ -376,9 +383,9 @@ hanUnmatchConduit =
       OyakataHanUnMatch k o -> do
         let node = runK k
         let oyak = runK o
-        let kB = Tx.unpack . kBunkai
-        let kH = Tx.unpack . kHan
-        let kN = Tx.unpack . kName
+        let kB = Tx.unpack . (^. #bunkai)
+        let kH = Tx.unpack . (^. #han)
+        let kN = Tx.unpack . (^. #name)
         let k' = [heredoc|組合員：${kN node}(${kB node}分会・${kH node}班)|]
         let o' = [heredoc|親方：${kN oyak}(${kB oyak}分会・${kH oyak}班)|]
         yield $ Tx.pack $ intercalate ", " [k', o']

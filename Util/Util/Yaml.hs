@@ -6,13 +6,12 @@ import           Util.Exception
 import           Data.Aeson
 import qualified Data.ByteString.Char8     as BS
 import qualified Data.Yaml                 as Y
-import           GHC.Generics
 import           System.Directory          (doesFileExist)
 
 readYaml ::
-  (Show a, Generic a, FromJSON a)
-  => (MonadThrow m, MonadIO m)
-  => FilePath -> m a
+  (FromJSON a) =>
+  (MonadThrow m, MonadIO m) =>
+  FilePath -> m a
 readYaml yamlFile = do
   p <- liftIO $ doesFileExist yamlFile
   if p

@@ -1,10 +1,8 @@
-{-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
 module Match.Base ( Office (..)
                   , BaseInfo (..)
+                  , BaseInfoRecord (..)
                   , killBlanks
                   , killShibu
                   , killBunkai
@@ -19,6 +17,7 @@ module Match.Base ( Office (..)
                   ) where
 
 import           Control.Applicative
+import           Data.Extensible
 import           Data.Attoparsec.Text
 import qualified Data.Attoparsec.Text       as Atp
 import qualified Data.Map.Strict            as M
@@ -29,29 +28,37 @@ import           Data.Time                  (Day (..))
 import           Data.Tuple                 (swap)
 import           GHC.Generics
 
-data Office =
-  O { owner        :: ! Text
-    , officePostal :: ! Text
-    , officeAd     :: ! Text
-    , officeAd1    :: ! Text
-    , officeAd2    :: ! Text
-    , officeTel    :: ! Text
-    , officeFax    :: ! Text
-    , officeGot    :: Maybe Day
-    , officeLost   :: Maybe Day
-    , officeCode   :: ! Text
-    , officeName   :: ! Text
-    , shibu        :: ! Text
-    , officeType   :: ! Text
-    , rosaiCode    :: ! Text
-    , rosaiNumber  :: ! Text
-    , koyouNumber  :: ! Text } deriving (Show, Generic, Eq)
+type Office = Record
+  '[ "owner"       >: Text
+   , "postal"      >: Text
+   , "address"     >: Text
+   , "address1"    >: Text
+   , "address2"    >: Text
+   , "tel"         >: Text
+   , "fax"         >: Text
+   , "got"         >: Maybe Day
+   , "lost"        >: Maybe Day
+   , "code"        >: Text
+   , "name"        >: Text
+   , "shibu"       >: Text
+   , "otype"       >: Text
+   , "rosaiCode"   >: Text
+   , "rosaiNumber" >: Text
+   , "koyouNumber" >: Text
+   ]
 
 data BaseInfo =
   B { infoName  :: ! Text
     , infoKana  :: ! Text
     , infoBirth :: Maybe Day
     , rawBirth  :: Text } deriving (Show, Generic, Eq)
+
+type BaseInfoRecord = Record
+  '[ "name"     >: Text
+   , "kana"     >: Text
+   , "birth"    >: Maybe Day
+   , "rawBirth" >: Text
+   ]
 
 -- $setup
 -- >>> let pack = Tx.pack

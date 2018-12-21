@@ -11,3 +11,4 @@ extra-deps:
 - attoparsec-csv-0.1.1.0
 - safe-exceptions-0.1.7.0
 - heredocs-0.1.4
+- extensible-0.4.9

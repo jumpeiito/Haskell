@@ -1,25 +1,23 @@
 -- -*- coding: utf-8 -*-
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 module Match.Kumiai where
 
-import           Control.Arrow
+import           Control.Arrow               ((&&&))
+import           Control.Lens                ((^.))
 import           Control.Parallel.Strategies (parMap, rseq)
 import qualified Data.Map.Strict             as M
 import           Data.List                   (foldl')
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
+import           Data.Extensible
 import           Data.Monoid                 ((<>))
 import           Data.Text                   hiding (foldl', map)
 import qualified Data.Text                   as Tx
 import           Data.Time                   (Day (..))
 import           GHC.Generics
-import           Match.Config                ( Config (..)
-                                             , kumiaiSpecF)
-import           Match.SQL                   ( fetchSQL
-                                             , fetchSQLSource)
+import           Match.Config                (kumiaiSpecF)
+import           Match.SQL                   (fetchSQLSource)
 import           Match.Base                  (killBlanks, killBunkai
                                              , killShibu, makeKey
                                              , officeTypeRegularize
@@ -130,51 +128,46 @@ makeHC _ = Nothing
 hcToString :: HC -> Text
 hcToString _ = "班長"
 
-data Kumiai = K {
-  kShibuCode    :: ! Text
-  , kShibu      :: ! Text
-  , kBunkaiCode :: ! Text
-  , kBunkai     :: ! Text
-  , kHan        :: ! Text
-  , kNumber     :: ! Text
-  , kName       :: ! Text
-  , kKana       :: ! Text
-  , kSex        :: ! Text
-  , kGot        :: Maybe Day
-  , kLost       :: Maybe Day
-  , kBirthday   :: Maybe Day
-  , kWork       :: ! Text
-  , kOffice     :: ! Text
-  , kOfficeCode :: ! Text
-  , kPrintOrder :: Maybe Double
-  , kPhone      :: ! Text
-  , kCellPhone  :: ! Text
-  , kFax        :: ! Text
-  , kPostal     :: ! Text
-  , kAddress    :: ! Text
-  , kKind       :: ! Text
-  , kKyousai    :: ! Text
-  , kHonbuY     :: Maybe HY
-  , kShibuY     :: Maybe [SY]
-  , kBunkaiY    :: Maybe [BY]
-  , kHanY       :: Maybe Text
-  , kKokuhoGet  :: Maybe Day
-  , kKokuhoLost :: Maybe Day
-  , relational  :: Maybe Text
-  } deriving (Show, Generic, Eq)
-
-initializeCSVData :: IO [[Text]]
-initializeCSVData = do
-  spec <- kumiaiSpecF
-  fetchSQL kumiaiFile spec kumiaiDB
+type Kumiai = Record
+  '[ "shibuCode"  >: Text
+   , "shibu"      >: Text
+   , "bunkaiCode" >: Text
+   , "bunkai"     >: Text
+   , "han"        >: Text
+   , "number"     >: Text
+   , "name"       >: Text
+   , "kana"       >: Text
+   , "sex"        >: Text
+   , "got"        >: Maybe Day
+   , "lost"       >: Maybe Day
+   , "birth"      >: Maybe Day
+   , "work"       >: Text
+   , "office"     >: Text
+   , "officeCode" >: Text
+   , "printOrder" >: Maybe Double
+   , "phone"      >: Text
+   , "cellPhone"  >: Text
+   , "fax"        >: Text
+   , "postal"     >: Text
+   , "address"    >: Text
+   , "kind"       >: Text
+   , "kyousai"    >: Text
+   , "honbuY"     >: Maybe HY
+   , "shibuY"     >: Maybe [SY]
+   , "bunkaiY"    >: Maybe [BY]
+   , "hanY"       >: Maybe Text
+   , "kokuhoGet"  >: Maybe Day
+   , "kokuhoLost" >: Maybe Day
+   , "relational" >: Maybe Text
+   ]
 
 initializeCSVSource :: Source IO [Text]
 initializeCSVSource = do
   spec <- kumiaiSpecF
-  fetchSQLSource kumiaiFile spec kumiaiDB
+  fetchSQLSource #kumiaiFile spec #kumiaiDB
 
 kanaBirthKey :: Kumiai -> (Text, Maybe Day)
-kanaBirthKey k = (killBlanks $ kKana k, kBirthday k)
+kanaBirthKey k = (killBlanks (k ^. #kana), k ^. #birth)
 
 makeKumiai :: [Text] -> Kumiai
 makeKumiai record = case record of
@@ -208,37 +201,37 @@ makeKumiai record = case record of
     , _kokuhoGet                -- 資格取得日
     , _kokuhoLost               -- 資格喪失日
     ]
-    -> K { kShibuCode  = _sc
-         , kShibu      = killShibu _s
-         , kBunkaiCode = _bc
-         , kBunkai     = killBunkai _b
-         , kHan        = _h
-         , kNumber     = makeKey 7 _num
-         , kName       = _name
-         , kKana       = regularize $ killBlanks _kana
-         , kSex        = _sex
-         , kGot        = strdt _got
-         , kLost       = if _lost == "" then Nothing else strdt _lost
-         , kBirthday   = strdt _birth
-         , kWork       = officeTypeRegularize $ killBlanks _work
-         , kOffice     = _office
-         , kOfficeCode = _officeCode
-         , kPrintOrder = readMaybe $ Tx.unpack _printOrder
-         , kPhone      = _tel
-         , kCellPhone  = _cellphone
-         , kFax        = _fax
-         , kPostal     = _postal
-         , kAddress    = _address
-         , kKind       = _kind
-         , kKyousai    = _kyosai
-         , kHonbuY     = makeHY _honbuY
-         , kShibuY     = makeSYList _shibuY
-         , kBunkaiY    = makeBYList _bunkaiY
-         , kHanY       = blankMaybe _hanY
-         , kKokuhoGet  = strdt _kokuhoGet
-         , kKokuhoLost = strdt _kokuhoLost
-         , relational  = Nothing
-         }
+    -> #shibuCode @= _sc
+       <: #shibu      @= killShibu _s
+       <: #bunkaiCode @= _bc
+       <: #bunkai     @= killBunkai _b
+       <: #han        @= _h
+       <: #number     @= makeKey 7 _num
+       <: #name       @= _name
+       <: #kana       @= (regularize $ killBlanks _kana)
+       <: #sex        @= _sex
+       <: #got        @= strdt _got
+       <: #lost       @= (if _lost == "" then Nothing else strdt _lost)
+       <: #birth      @= strdt _birth
+       <: #work       @= (officeTypeRegularize $ killBlanks _work)
+       <: #office     @= _office
+       <: #officeCode @= _officeCode
+       <: #printOrder @= (readMaybe $ Tx.unpack _printOrder)
+       <: #phone      @= _tel
+       <: #cellPhone  @= _cellphone
+       <: #fax        @= _fax
+       <: #postal     @= _postal
+       <: #address    @= _address
+       <: #kind       @= _kind
+       <: #kyousai    @= _kyosai
+       <: #honbuY     @= makeHY _honbuY
+       <: #shibuY     @= makeSYList _shibuY
+       <: #bunkaiY    @= makeBYList _bunkaiY
+       <: #hanY       @= blankMaybe _hanY
+       <: #kokuhoGet  @= strdt _kokuhoGet
+       <: #kokuhoLost @= strdt _kokuhoLost
+       <: #relational @= Nothing
+       <: nil
   _ -> error $ "must not be happen." <> (Tx.unpack $ Tx.intercalate (Tx.pack ",") record)
 
 -- |
@@ -250,11 +243,6 @@ makeKumiai record = case record of
 blankMaybe :: Text -> Maybe Text
 blankMaybe "" = Nothing
 blankMaybe x  = Just x
-
-initializeData :: IO [Kumiai]
-initializeData = do
-  csv <- initializeCSVData
-  return $ parMap rseq makeKumiai csv
 
 initializeSource :: Source IO Kumiai
 initializeSource = initializeCSVSource $= CL.map makeKumiai
@@ -270,43 +258,43 @@ kumiaiMakeKey = Tx.take 6 . makeKey 7
 
 numberMap :: IO (M.Map Text Kumiai)
 numberMap = do
-  csv <- initializeData
+  csv <- runConduit $ initializeSource .| CL.consume
   return $
-    M.fromList $ parMap rseq ((kumiaiMakeKey . kNumber) &&& id) csv
+    M.fromList $ parMap rseq ((kumiaiMakeKey . (^. #number)) &&& id) csv
 
 birthdayMap :: IO (M.Map (Maybe Day) [Kumiai])
 birthdayMap = do
-  csv <- initializeData
+  csv <- runConduit $ initializeSource .| CL.consume
   let insert mp el =
-        M.insertWith (++) (kBirthday el) [el] mp
+        M.insertWith (++) (el ^. #birth) [el] mp
   return $ foldl' insert M.empty csv
 
 birthdayNameMap :: IO (M.Map (Text, Maybe Day) [Kumiai])
 birthdayNameMap = do
-  csv <- initializeData
+  csv <- runConduit $ initializeSource .| CL.consume
   let insert mp el =
-        let b = kBirthday el
-        in let k = killBlanks $ kKana el
+        let b = el ^. #birth
+        in let k = killBlanks $ el ^. #kana
         in M.insertWith (++) (k, b) [el] mp
   return $ foldl' insert M.empty csv
 
 numberCMap :: IO (M.Map Text Kumiai)
 numberCMap = M.fromList <$>
              (initializeSource
-              =$ CL.map ((kumiaiMakeKey . kNumber) &&& id)
+              =$ CL.map ((kumiaiMakeKey . (^. #number)) &&& id)
               $$ CL.consume)
 
 birthdayCMap :: IO (M.Map (Maybe Day) [Kumiai])
 birthdayCMap = do
   let insert mp el =
-        M.insertWith (++) (kBirthday el) [el] mp
+        M.insertWith (++) (el ^. #birth) [el] mp
   initializeSource $$ CL.fold insert M.empty
 
 birthdayNameCMap :: IO (M.Map (Text, Maybe Day) [Kumiai])
 birthdayNameCMap = do
   let insert mp el =
-        let b = kBirthday el
-        in let k = killBlanks $ kKana el
+        let b = el ^. #birth
+        in let k = killBlanks $ el ^. #kana
         in M.insertWith (++) (k, b) [el] mp
   initializeSource $$ CL.fold insert M.empty
 
@@ -316,7 +304,7 @@ officeCodeMap = do
         $ initializeSource
         .| CL.consume
   let rize = Tx.justifyRight 7 '0'
-  return $ makeListMap (rize . kOfficeCode) (:[]) ls
+  return $ makeListMap (rize . (^. #officeCode)) (:[]) ls
 
 verboseName :: Kumiai -> Text
-verboseName k = kName k <> "(" <> kKana k <> ")"
+verboseName k = k ^. #name <> "(" <> k ^. #kana <> ")"
