@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes #-}
 module Match.TreeMake (
   sortCRF
   , listToRT
@@ -25,6 +27,7 @@ import qualified Data.Map.Strict                    as M
 import           Data.Text                          (Text, unpack)
 import qualified Data.Text                          as Tx
 import           Match.Kumiai                       (Kumiai (..))
+import           Text.Heredoc              (heredoc)
 
 type OyakataMap  = M.Map Text (Text, Text)
 type KNumberMap  = M.Map Text Kumiai
@@ -45,7 +48,7 @@ data ErrorType =
 
 instance Show a => Show (RelTree a) where
   show N = "_"
-  show (Node a l r) = "(" ++ str ++ ")"
+  show (Node a l r) = [heredoc|(${str})|]
     where
       lis = [show a, show l, show r]
       str = unwords lis
@@ -107,7 +110,9 @@ instance Eq RTK where
   rk1 == rk2 = (runK rk1) ^. #number == (runK rk2) ^. #number
 
 instance Show RTK where
-  show rtk = unpack $ "R(" <> (runK rtk) ^. #number <> ")"
+  show rtk = Tx.unpack [heredoc|R(${num})|]
+    where
+      num = (runK rtk) ^. #number
 
 hasPendingItem :: Text -> [(Text, RTK)] -> [RTK]
 hasPendingItem tx = filter (fst >>> (== tx)) >>> map snd
