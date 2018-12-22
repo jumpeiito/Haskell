@@ -1,43 +1,14 @@
 {-# LANGUAGE OverloadedStrings, TypeSynonymInstances, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
--- module Util.Strbt (strdt
---                   , dtmap
---                   , Date
---                   , NendoDate
---                   , DayWeek (..)
---                   , toYear
---                   , toYearInt
---                   , toMonth
---                   , toDay
---                   , nendo
---                   , howOld
---                   , nendoEnd
---                   , today
---                   , todayDay
---                   , dayStr8
---                   , dayStr6
---                   , dayStrWithSep
---                   , getWeekDate
---                   , getWeekDateInt
---                   , getWeekDateString
---                   , japaneseDateString) where
 module Util.Strbt where
 
--- import Util           hiding ((&&&))
 import Control.Arrow
 import Control.Applicative
--- import Data.List
-import Data.Text                        hiding (count, isInfixOf)
--- import Data.Map                         hiding (map)
-import Data.Maybe
-import Data.Monoid                      ((<>))
+import Data.Text (Text)
 import Data.Time
--- import Data.Time.Calendar.WeekDate
 import Util.KanParseB
 import Data.Attoparsec.Text (count, satisfy , inClass, Parser (..), digit, try, choice, string, many1, parseOnly)
 import Text.Printf
-import Text.StringLike                  (StringLike, castString)
 import qualified Data.Text as Tx
-import Test.Hspec
 
 type Date      = (Int, Int, Int)
 type NendoDate = (Int, Int, Int, Int)

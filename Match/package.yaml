@@ -32,8 +32,11 @@ dependencies:
   - Util
   - safe-exceptions
   - doctest
+  - data-default-class
   - conduit
   - conduit-extra
+  - xml-conduit
+  - req
   - aeson
   - bytestring
   - directory
@@ -42,6 +45,8 @@ dependencies:
   - extensible
   - lens
   - yaml
+  - heterocephalus
+  - blaze-markup
 
 default-extensions:
   - DataKinds

@@ -15,7 +15,6 @@ import           Data.Monoid                 ((<>))
 import           Data.Text                   hiding (foldl', map)
 import qualified Data.Text                   as Tx
 import           Data.Time                   (Day (..))
-import           GHC.Generics
 import           Match.Config                (kumiaiSpecF)
 import           Match.SQL                   (fetchSQLSource)
 import           Match.Base                  (killBlanks, killBunkai
@@ -150,6 +149,7 @@ type Kumiai = Record
    , "fax"        >: Text
    , "postal"     >: Text
    , "address"    >: Text
+   , "rawAddress" >: Text
    , "kind"       >: Text
    , "kyousai"    >: Text
    , "honbuY"     >: Maybe HY
@@ -222,6 +222,7 @@ makeKumiai record = case record of
        <: #fax        @= _fax
        <: #postal     @= _postal
        <: #address    @= _address
+       <: #rawAddress @= killBlanks _address
        <: #kind       @= _kind
        <: #kyousai    @= _kyosai
        <: #honbuY     @= makeHY _honbuY

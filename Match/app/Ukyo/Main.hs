@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE QuasiQuotes #-}
 module Main where
 
 import           Control.Arrow             ((>>>), (&&&))
@@ -257,6 +257,15 @@ csvSource f = do
 
 regularN :: Text -> Text
 regularN = Tx.justifyRight 7 '0'
+
+test = do
+  conf    <- readConfig "app/Config.yaml"
+  csvName <- dataCSVFileName <$> ask `runReaderT` conf
+  I.hSetEncoding I.stdout I.utf8
+
+  parseCSVSource spec csvName
+    $=& CL.map makeKumiai
+    $$& CL.mapM_ ((^. #rawAddress) >>> Tx.putStrLn)
 
 kNumberMap :: UnderConfigT IO KNumberMap
 kNumberMap = do
