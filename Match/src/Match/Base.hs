@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Match.Base ( Office (..)
-                  , BaseInfo (..)
-                  , BaseInfoRecord (..)
+module Match.Base ( Office
+                  , BaseInfo
+                  , BaseInfoRecord
                   , killBlanks
                   , killShibu
                   , killBunkai

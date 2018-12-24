@@ -6,22 +6,16 @@
 module Util.Address where
 
 import           Control.Applicative ((<|>))
-import           Control.Lens ((^.))
-import           Control.Monad (forM_)
-import           Data.Conduit
-import qualified Data.Conduit.List as CL
 import           Data.Extensible
 import           Data.Monoid       ((<>))
 import qualified Data.Text as Tx
-import qualified Data.Text.IO as Tx
 import           Data.Attoparsec.Text
-import qualified System.IO as I
-import           Util.ZenkakuHankaku
 
 type Address = Record
   '[ "town"      >: Tx.Text
    , "apartment" >: Tx.Text ]
 
+oneOf, noneOf :: String -> Parser Char
 oneOf s  = satisfy (`elem` s)
 noneOf s = satisfy (`notElem` s)
 
@@ -61,12 +55,15 @@ includeBanchi3 = do
   b2 <- Tx.unpack <$> string "号"
   return $ n1 <> b1 <> n2 <> b2
 
+includeBanchi :: Parser String
 includeBanchi = includeBanchi1
                 <|> includeBanchi2
                 <|> includeBanchi3
 
+exceptNumbers :: Parser String
 exceptNumbers = many1 $ noneOf numbers
 
+parseAddress :: Parser String
 parseAddress = do
   bef <- exceptNumbers
   cho <- option "" chome
@@ -75,23 +72,11 @@ parseAddress = do
 
 makeTypeAddress :: Tx.Text -> Address
 makeTypeAddress t = case parse parseAddress t `feed` mempty of
-                      Done rest suc -> 
-		           #town @= Tx.pack suc
-			<: #apartment @= rest
-			<: nil
-		      _ -> 
-		           #town @= t
-			<: #apartment @= mempty
-			<: nil
-
-test = do
-  t <- testData
-  forM_ t $ \d -> do
-    let ad = makeTypeAddress d
-    Tx.putStrLn $ d <> "," <> ad ^. #town
-
-testData = do
-  I.withFile "c:/Users/Jumpei/Haskell/Util/Util/test.csv" I.ReadMode $ \handle -> do
-    -- enc <- I.mkTextEncoding "cp932"
-    I.hSetEncoding handle I.utf8
-    Tx.lines <$> Tx.hGetContents handle
+                      Done rest suc ->
+                           #town @= Tx.pack suc
+                        <: #apartment @= rest
+                        <: nil
+                      _ ->
+                           #town @= t
+                        <: #apartment @= mempty
+                        <: nil

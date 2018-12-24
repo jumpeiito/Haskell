@@ -170,7 +170,7 @@ kanaBirthKey :: Kumiai -> (Text, Maybe Day)
 kanaBirthKey k = (killBlanks (k ^. #kana), k ^. #birth)
 
 makeKumiai :: [Text] -> Kumiai
-makeKumiai record = case record of
+makeKumiai record' = case record' of
   [_sc                          -- 支部コード
     , _s                        -- 支部
     , _bc                       -- 分会コード
@@ -233,7 +233,7 @@ makeKumiai record = case record of
        <: #kokuhoLost @= strdt _kokuhoLost
        <: #relational @= Nothing
        <: nil
-  _ -> error $ "must not be happen." <> (Tx.unpack $ Tx.intercalate (Tx.pack ",") record)
+  _ -> error $ "must not be happen." <> (Tx.unpack $ Tx.intercalate (Tx.pack ",") record')
 
 -- |
 --

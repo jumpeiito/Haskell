@@ -3,14 +3,14 @@
 module Util where
 
 import Data.List
-import Data.Ord
+-- import Data.Ord
 import Data.IORef
 import Data.Char                        (ord, chr)
 import Control.Exception                hiding (try)
 import Control.Monad
 import Control.Monad.Writer
 import Control.Monad.State.Strict
-import Control.Arrow
+-- import Control.Arrow
 import Control.Concurrent.Async
 import System.Directory                 hiding (listDirectory)
 import System.Process
@@ -286,30 +286,30 @@ locEncoding = do
       I.hSetEncoding I.stdout sjis
     LocOther  -> I.hSetEncoding I.stdout I.utf8
 
-data ExcelCol = Column [Int] deriving Show
+-- data ExcelCol = Column [Int] deriving Show
 
-stringToColumn :: String -> ExcelCol
-stringToColumn = Column . map (\ch -> ord ch - 64) . reverse
+-- stringToColumn :: String -> ExcelCol
+-- stringToColumn = Column . map (\ch -> ord ch - 64) . reverse
 
-columnToInt :: ExcelCol -> Int
-columnToInt col = sum $ map (uncurry (*)) $ zip exp' col'
-  where Column col' = col
-        exp' = [ truncate $ 26 ** x | x <- [0..] ]
+-- columnToInt :: ExcelCol -> Int
+-- columnToInt col = sum $ map (uncurry (*)) $ zip exp' col'
+--   where Column col' = col
+--         exp' = [ truncate $ 26 ** x | x <- [0..] ]
 
-columnDivide :: Int -> (Int, Int)
-columnDivide i = case (i `mod` 26, i `div` 26) of
-                   (0, 0) -> (0, 0)
-                   (0, 1) -> (26, 0)
-                   (0, x) -> (26, x - 1)
-                   (y, d) -> (y, d)
+-- columnDivide :: Int -> (Int, Int)
+-- columnDivide i = case (i `mod` 26, i `div` 26) of
+--                    (0, 0) -> (0, 0)
+--                    (0, 1) -> (26, 0)
+--                    (0, x) -> (26, x - 1)
+--                    (y, d) -> (y, d)
 
-intToExp :: Int -> [Int]
-intToExp i = case columnDivide i of
-               (modulo, 0) -> [modulo]
-               (m, d) -> intToExp d ++ [m]
+-- intToExp :: Int -> [Int]
+-- intToExp i = case columnDivide i of
+--                (modulo, 0) -> [modulo]
+--                (m, d) -> intToExp d ++ [m]
 
-intToString :: Int -> String
-intToString i = map (\n -> chr $ n + 64) $ intToExp i
+-- intToString :: Int -> String
+-- intToString i = map (\n -> chr $ n + 64) $ intToExp i
 
 scan :: Parser a -> Parser [a]
 scan f1 = do
@@ -343,98 +343,98 @@ latexEnv envName args =
   "\\begin{" ++ envName ++ "}" ++ concatMap enclose args ++ "\\end{" ++ envName ++ "}"
   where enclose s = "{" ++ s ++ "}"
 
-data Hoken     = Ordinary | Nenkin | Kaigo deriving (Eq, Ord, Bounded, Enum)
-data HokenKind = New | Old deriving (Eq, Ord)
-type HokenKey  = (Hoken, HokenKind)
-type HokenCell = (Hoken, HokenKind, Rational)
-data HokenCalcurator = HC { initialList :: [HokenCell]
-                          , answer      :: [(Hoken, Rational)]
-                          , hokenFee    :: Int
-                          } deriving (Show, Eq)
+-- data Hoken     = Ordinary | Nenkin | Kaigo deriving (Eq, Ord, Bounded, Enum)
+-- data HokenKind = New | Old deriving (Eq, Ord)
+-- type HokenKey  = (Hoken, HokenKind)
+-- type HokenCell = (Hoken, HokenKind, Rational)
+-- data HokenCalcurator = HC { initialList :: [HokenCell]
+--                           , answer      :: [(Hoken, Rational)]
+--                           , hokenFee    :: Int
+--                           } deriving (Show, Eq)
 
-takeFeeMax :: [HokenCalcurator] -> [HokenCalcurator]
-takeFeeMax alist = filter ((==) maxFee . hokenFee) alist
-  where maxFee = maximum $ map hokenFee alist
+-- takeFeeMax :: [HokenCalcurator] -> [HokenCalcurator]
+-- takeFeeMax alist = filter ((==) maxFee . hokenFee) alist
+--   where maxFee = maximum $ map hokenFee alist
 
-takeMax :: [HokenCalcurator] -> [HokenCalcurator]
-takeMax alist = filter maxAndLeast alist
-  where maxFeeList     = takeFeeMax alist
-        maxFee         = maximum $ map hokenFee alist
-        leastSize      = minimum $ map (length . initialList) maxFeeList
-        maxAndLeast hc = maxFee == hokenFee hc && leastSize == length (initialList hc)
+-- takeMax :: [HokenCalcurator] -> [HokenCalcurator]
+-- takeMax alist = filter maxAndLeast alist
+--   where maxFeeList     = takeFeeMax alist
+--         maxFee         = maximum $ map hokenFee alist
+--         leastSize      = minimum $ map (length . initialList) maxFeeList
+--         maxAndLeast hc = maxFee == hokenFee hc && leastSize == length (initialList hc)
 
-takeNth :: Int -> [HokenCalcurator] -> [HokenCalcurator]
-takeNth n = take n . reverse . sort
+-- takeNth :: Int -> [HokenCalcurator] -> [HokenCalcurator]
+-- takeNth n = take n . reverse . sort
 
-instance Show Hoken where
-  show Ordinary = "o"
-  show Nenkin   = "n"
-  show Kaigo    = "k"
+-- instance Show Hoken where
+--   show Ordinary = "o"
+--   show Nenkin   = "n"
+--   show Kaigo    = "k"
 
-instance Show HokenKind where
-  show New = "."
-  show Old = "!"
+-- instance Show HokenKind where
+--   show New = "."
+--   show Old = "!"
 
-instance Ord HokenCalcurator where
-  hc1 `compare` hc2 = if fee' == fee''
-                      then Down length' `compare` Down length''
-                      else fee' `compare` fee''
-    where makePair = (&&&) hokenFee (length . initialList)
-          (fee', length') = makePair hc1
-          (fee'', length'') = makePair hc2
+-- instance Ord HokenCalcurator where
+--   hc1 `compare` hc2 = if fee' == fee''
+--                       then Down length' `compare` Down length''
+--                       else fee' `compare` fee''
+--     where makePair = (&&&) hokenFee (length . initialList)
+--           (fee', length') = makePair hc1
+--           (fee'', length'') = makePair hc2
 
-makeHC :: [HokenCell] -> HokenCalcurator
-makeHC hc = HC hc (sumHoken hc) (totalHoken hc)
+-- makeHC :: [HokenCell] -> HokenCalcurator
+-- makeHC hc = HC hc (sumHoken hc) (totalHoken hc)
 
-kojoCalc :: (HokenKey, Rational) -> (HokenKey, Rational)
-kojoCalc (hk, r) = (hk, kojo hk r)
+-- kojoCalc :: (HokenKey, Rational) -> (HokenKey, Rational)
+-- kojoCalc (hk, r) = (hk, kojo hk r)
 
-kojo :: HokenKey -> Rational -> Rational
-kojo (_, New) i = kojoNew i
-kojo (_, Old) i = kojoOld i
+-- kojo :: HokenKey -> Rational -> Rational
+-- kojo (_, New) i = kojoNew i
+-- kojo (_, Old) i = kojoOld i
 
-kojoNew :: Rational -> Rational
-kojoNew i | i <= 20000 = i
-          | i <= 40000 = i / 2 + 10000
-          | i <= 80000 = i / 4 + 20000
-          | otherwise   = 40000
+-- kojoNew :: Rational -> Rational
+-- kojoNew i | i <= 20000 = i
+--           | i <= 40000 = i / 2 + 10000
+--           | i <= 80000 = i / 4 + 20000
+--           | otherwise   = 40000
 
-kojoOld :: Rational -> Rational
-kojoOld i | i <= 25000 = 0
-          | i <= 50000 = i / 2 + 12500
-          | i <= 100000 = i / 4 + 25000
-          | otherwise  = 50000
+-- kojoOld :: Rational -> Rational
+-- kojoOld i | i <= 25000 = 0
+--           | i <= 50000 = i / 2 + 12500
+--           | i <= 100000 = i / 4 + 25000
+--           | otherwise  = 50000
 
-fmax :: Num a => Ord a => Maybe a -> Maybe a -> Maybe a
-Just i  `fmax` Just j  = Just i `max` Just j
-Just i  `fmax` Nothing = Just i
-Nothing `fmax` Just i  = Just i
-Nothing `fmax` Nothing = Nothing
+-- fmax :: Num a => Ord a => Maybe a -> Maybe a -> Maybe a
+-- Just i  `fmax` Just j  = Just i `max` Just j
+-- Just i  `fmax` Nothing = Just i
+-- Nothing `fmax` Just i  = Just i
+-- Nothing `fmax` Nothing = Nothing
 
-filterHoken :: HokenKey -> [(HokenKey, Rational)] -> Maybe (HokenKey, Rational)
-filterHoken key alist = case filter ((==) key . fst) alist of
-                    []  -> Nothing
-                    [x] -> Just x
-                    _   -> Nothing
+-- filterHoken :: HokenKey -> [(HokenKey, Rational)] -> Maybe (HokenKey, Rational)
+-- filterHoken key alist = case filter ((==) key . fst) alist of
+--                     []  -> Nothing
+--                     [x] -> Just x
+--                     _   -> Nothing
 
-whichLarge :: Hoken -> [(HokenKey, Rational)] -> (Hoken, Rational)
-whichLarge h alist = (h, fee)
-  where toFee kind = snd <$> filterHoken (h, kind) alist
-        fee = case toFee New `fmax` toFee Old of
-                Just x  -> x
-                Nothing -> 0
+-- whichLarge :: Hoken -> [(HokenKey, Rational)] -> (Hoken, Rational)
+-- whichLarge h alist = (h, fee)
+--   where toFee kind = snd <$> filterHoken (h, kind) alist
+--         fee = case toFee New `fmax` toFee Old of
+--                 Just x  -> x
+--                 Nothing -> 0
 
-sumHoken :: [HokenCell] -> [(Hoken, Rational)]
-sumHoken = makeTotallySum .
-           map kojoCalc .
-           Map.assocs .
-           makeSumMap ((&&&) fst3 snd3) thd3
-  where makeTotallySum x = map (flip whichLarge x) ([minBound..maxBound] :: [Hoken])
+-- sumHoken :: [HokenCell] -> [(Hoken, Rational)]
+-- sumHoken = makeTotallySum .
+--            map kojoCalc .
+--            Map.assocs .
+--            makeSumMap ((&&&) fst3 snd3) thd3
+--   where makeTotallySum x = map (flip whichLarge x) ([minBound..maxBound] :: [Hoken])
 
-totalHoken :: [HokenCell] -> Int
-totalHoken = truncate .
-             (`min` 120000) .
-             sum . map snd . sumHoken
+-- totalHoken :: [HokenCell] -> Int
+-- totalHoken = truncate .
+--              (`min` 120000) .
+--              sum . map snd . sumHoken
 
 fst3 :: (a, b, c) -> a
 snd3 :: (a, b, c) -> b
@@ -448,12 +448,12 @@ combi [] = []
 combi [x] = [[], [x]]
 combi (x:y) = (++) <$> [[], [x]] <*> combi y
 
-x :: [HokenCell]
-x = [ (Ordinary, New, 20000)
-    , (Ordinary, Old, 40000)
-    , (Ordinary, New, 62000)
-    , (Nenkin, Old, 50000)
-    , (Nenkin, New, 60000)]
+-- x :: [HokenCell]
+-- x = [ (Ordinary, New, 20000)
+--     , (Ordinary, Old, 40000)
+--     , (Ordinary, New, 62000)
+--     , (Nenkin, Old, 50000)
+--     , (Nenkin, New, 60000)]
 
 listDirectory :: FilePath -> IO [FilePath]
 listDirectory fp = do

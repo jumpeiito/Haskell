@@ -46,6 +46,7 @@ kanjiBigKetaMap = M.fromList [('万', 10000),
                               ('京', 10000000000000000),
                               ('垓', 100000000000000000000)]
 
+oneOf :: String -> Parser Char
 oneOf = satisfy . inClass
 
 kanjiParseBuilder :: M.Map Char Integer -> (Integer -> KP) -> Parser KP

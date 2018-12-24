@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveGeneric     #-}
 module Match.Geocoder
-  -- (makeJavascriptFileRapper, Bunkai, Han, MakeMap (..))
+  (makeJavascriptFileRapper, Bunkai, Han, MakeMap (..))
 where
 
 import           Control.Arrow              ((>>>))
@@ -11,7 +11,6 @@ import           Control.Concurrent         (threadDelay)
 import           Control.Lens
 import           Control.Monad              (when, foldM)
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Cont
 import           Control.Monad.Trans.Reader
 import           Data.Aeson
 import           Data.Conduit
@@ -169,6 +168,7 @@ config =    #topURL  @= https "www.geocoding.jp" /: "api"
          <: #waitSeconds @= 10
          <: nil
 
+errP :: String -> IO ()
 errP = I.hPutStrLn I.stderr
 
 contentsOf :: Node -> Text
@@ -188,9 +188,9 @@ getLatLng address = do
       Left _ -> return []
       Right x -> do
         let nameP n = (n == "lat") || (n == "lng")
-        let child   = fromDocument x $// checkName nameP
+        let child'  = fromDocument x $// checkName nameP
         let parser  = node >>> contentsOf >>> unpack >>> read
-        return (map parser (concat $ map descendant child))
+        return (map parser (concat $ map descendant child'))
 
 retryGetPoint :: Text -> IO (Maybe Point)
 retryGetPoint address = do
@@ -209,7 +209,7 @@ getPoint :: Text -> IO (Maybe Point)
 getPoint address = do
   latlng <- getLatLng address
   case latlng of
-    [lat, lng] -> return $ Just $ Point address lat lng
+    [lat', lng'] -> return $ Just $ Point address lat' lng'
     _ -> do
       let p = makeTypeAddress address
       if p ^. #town == address
@@ -221,14 +221,14 @@ insertPoint k = do
   let address' = k ^. #rawAddress
   waitS <- fromConfig #waitSeconds
   errP [heredoc|Getting geocode, ${Tx.unpack address'}|]
-  point <- getPoint address'
-  case point of
+  point' <- getPoint address'
+  case point' of
     Nothing -> do
       errP [heredoc|failed to get geocode, ${Tx.unpack address'}|]
     Just p  -> insertDB $ Just p
   errP [heredoc|${show waitS} seconds wait.|]
   threadDelay (waitS * 1000 * 1000)
-  return point
+  return point'
 
 withLookupDB :: Kumiai -> (Kumiai -> IO (Maybe Point)) -> IO (Maybe Point)
 withLookupDB k f = do
@@ -254,8 +254,8 @@ makeKumiaiTable b h = do
 
 errorAtGet :: Kumiai -> IO ()
 errorAtGet k = do
-  let name = Tx.unpack $ k ^. #name
-  putStrLn [heredoc|${name}の地図情報を入手できませんでした。|]
+  let kumiaiName = Tx.unpack $ k ^. #name
+  putStrLn [heredoc|${kumiaiName}の地図情報を入手できませんでした。|]
 
 errorAtDB :: Kumiai -> IO ()
 errorAtDB k = do
@@ -265,8 +265,8 @@ errorAtDB k = do
   putStrLn [heredoc|${b}分会 ${h}班 ${n}の地図情報がありません。|]
 
 mapTargetInsert :: Bool -> [PointK] -> Kumiai -> IO [PointK]
-mapTargetInsert doFetch pk k = do
-  let (getF, errorF) = if doFetch
+mapTargetInsert doFetchP pk k = do
+  let (getF, errorF) = if doFetchP
                           then (fetch, errorAtGet)
                           else (onlyGet, errorAtDB)
   f <- getF k
@@ -277,9 +277,9 @@ mapTargetInsert doFetch pk k = do
       return pk
 
 mapTargets :: Bool -> Bunkai -> Han -> IO [PointK]
-mapTargets fetch b h = do
+mapTargets doFetchP b h = do
   kt <- makeKumiaiTable b h
-  foldM (mapTargetInsert fetch) [] kt
+  foldM (mapTargetInsert doFetchP) [] kt
 
 data PointK = PK { lat    :: Double
                  , lng    :: Double
@@ -297,14 +297,14 @@ makePointK p k = PK { lat    = pointLat p
                     , han    = k ^. #han }
 
 makeJavascript :: Bool -> Bunkai -> Han -> IO String
-makeJavascript fetch b h = do
-  mt <- mapTargets fetch b h
+makeJavascript doFetchP b h = do
+  mt <- mapTargets doFetchP b h
   return $ renderMarkup $
     $(compileTextFile "c:/Users/Jumpei/Haskell/Match/src/Match/templateJS.txt")
 
 makeJavascriptFile :: Bool -> Bunkai -> Han -> IO ()
-makeJavascriptFile fetch b h = do
-  js   <- makeJavascript fetch b h
+makeJavascriptFile doFetchP b h = do
+  js   <- makeJavascript doFetchP b h
   file <- fromConfig #jsfile
   I.withFile file I.WriteMode $ \handle -> do
     encoding <- I.mkTextEncoding "cp932"

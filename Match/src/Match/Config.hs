@@ -1,6 +1,6 @@
 module Match.Config
   ( PathGetter
-  , Conf (..)
+  , Conf
   , readConf
   , sendCSVFileName
   , fileTreeDirectory

@@ -6,9 +6,9 @@ import Control.Applicative
 import Data.Text (Text)
 import Data.Time
 import Util.KanParseB
-import Data.Attoparsec.Text (count, satisfy , inClass, Parser (..), digit, try, choice, string, many1, parseOnly)
+import Data.Attoparsec.Text (count, satisfy , inClass, Parser, digit, try, choice, string, many1, parseOnly)
 import Text.Printf
-import qualified Data.Text as Tx
+-- import qualified Data.Text as Tx
 
 type Date      = (Int, Int, Int)
 type NendoDate = (Int, Int, Int, Int)
@@ -63,16 +63,15 @@ separatorM = "./-月"
 -- readDate y m d =
 --   fromGregorian (read y) (read m) (read d)
 -- ----------------------------------------------------------------------------------------------------
--- dateK, date8, date6, dateNormal, dateJapanese, calc :: Parser Day
+dateK, date8, date6, dateNormal, dateJapanese, calc :: Parser Day
 dateK = fromGregorian
   <$> (stringToGengouYear <$> gengouParse <*> digitToInt 2)
   <*> digitToInt 2
   <*> digitToInt 2
 
-digitToInt :: Num a => Read a => Int -> Parser a
+digitToInt :: Read a => Int -> Parser a
 digitToInt c = read <$> count c digit
 
-date8 :: Parser Day
 date8 = fromGregorian <$> digitToInt 4
                       <*> digitToInt 2
                       <*> digitToInt 2
@@ -98,11 +97,14 @@ calc = do
   <|> try dateNormal
   <|> try date6
 -- ----------------------------------------------------------------------------------------------------
+oneOf :: String -> Parser Char
 oneOf = satisfy . inClass
 -- sepYear4, sepYear, sepMonth :: Parser String
 kanParseInt :: Parser Int
 kanParseInt = fromInteger <$> kanParse
 
+sepYear4, sepYear :: Parser Integer
+sepMonth :: Parser Int
 sepYear4 = (digitToInt 4 <|> kanParse) <* oneOf separatorY
 sepYear  = (read <$> many1 digit  <|> kanParse)
            <* oneOf separatorY

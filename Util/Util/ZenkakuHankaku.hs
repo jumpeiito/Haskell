@@ -1,9 +1,7 @@
 module Util.ZenkakuHankaku where
 
 import Data.Maybe               (fromMaybe)
-import Text.Parsec
 import Test.Hspec
-import Test.QuickCheck
 import qualified Data.Map as M
 ----------------------------------------------------------------------------------------------------
 withReverse :: (String -> String) -> String -> String
@@ -20,6 +18,7 @@ preKana   = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆ�
 postKana  = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンァィゥェォッャュョ"
 -- preKana2  = "ｶﾞｷﾞｸﾞｹﾞｺﾞｻﾞｼﾞｽﾞｾﾞｿﾞﾀﾞﾁﾞﾂﾞﾃﾞﾄﾞﾊﾞﾋﾞﾌﾞﾍﾞﾎﾞﾊﾟﾋﾟﾌﾟﾍﾟﾎﾟｳﾞ"
 -- postKana2 = "ガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポヴ"
+kanaMap, kanaMap2 :: M.Map Char [Char]
 kanaMap = M.fromList [ ('ｶ', "ガ")
                      , ('ｷ', "ギ")
                      , ('ｸ', "グ")
@@ -60,6 +59,7 @@ charVerseMap = M.fromList $ zip postStr preStr
 toZenkaku, toHankaku :: String -> String
 toZenkaku = reverse . _toZenkaku . reverse
 
+_toZenkaku :: [Char] -> [Char]
 _toZenkaku "" = ""
 _toZenkaku [x] = [fromMaybe x (M.lookup x charMap)]
 _toZenkaku (x:y:xs)
