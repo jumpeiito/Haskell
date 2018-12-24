@@ -1,4 +1,15 @@
 #map {
-  width: 700px;
-  height: 500px;
+  width: 800px;
+  height: 600px;
+}
+
+.marker {
+  width: 10px !important;
+  height: 10px !important;
+  margin: -10px !important;
+  border-radius: 10px;
+  border: 3px solid #fdfdfd;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  background-color: #c43;
+  z-index: 20 !important;
 }

@@ -5,7 +5,7 @@ dataCSVFileName: "app/組合員データ活用.csv"
 
 # 「付き」を記録するCSVファイルの名前。
 # 適宜変更してください。
-relationalFileName: "Tsuki.csv"
+relationalFileName: "app/Tsuki.csv"
 
 # 「付き」を考慮した並び順に変更。
 # 例えば、B・C・XがA付、DがB付、Y・ZがC付の場合、
@@ -19,6 +19,46 @@ relationalFileName: "Tsuki.csv"
 # A→B→D→C→Y→Z→X→Eという順番に並べる。
 # 元の方がいい場合はFalseにしておいて下さい。
 sortCR: True
+
+# 地図を作成します(インターネットに接続している環境が前提)。
+# 地図を作成しない場合は、
+# mapExecute: True を
+# mapExecute: Falseに変更してください。
+# 作成の仕方は以下の通りです。
+#
+# (例)西院分会1班の地図を作成する場合。
+# makeMapCR:
+#   mapExecute: True
+#   mapBunkai: 1
+#   mapHan: 1
+#
+# (例) 京北分会12班の地図を作成する場合。
+# makeMapCR:
+#   mapExecute: True
+#   mapBunkai: 21
+#   mapHan: 12
+#
+# (例) 西院分会の地図を作成する場合。
+# makeMapCR:
+#   mapExecute: True
+#   mapBunkai: 1
+#
+# (例) 支部全体の地図を作成する場合。
+# makeMapCR:
+#   mapExecute: True
+#
+# 住所を緯度・経度に変換するサービス(https://www.geocoding.jp/api)にリクエストを
+# 投げて(住所のみを送信し、氏名など他の情報は送信しません。)、返ってきた緯度・経
+# 度の情報をデータベース(geocoder.db)に保存。データベースに保存できた住所の緯度・
+# 経度は、データベースから読み出し、前回取得に失敗した住所は、再度変換を試みます。
+#         ↓
+# データベースから読み出すなどして取得した緯度・経度は、クライエント側(支部のパ
+# ソコンなど)で氏名・分会他の情報と結びつけ、地図上に投影します。
+makeMapCR:
+  mapExecute: True
+  doFetch: False
+  # mapBunkai: 3
+  # mapHan: 1
 
 # 「京都府京都市伏見区醍醐上ノ山町〜」などと
 # 表記されても長ったらしいだけなので、「京都府」「京都市」「伏見区」は

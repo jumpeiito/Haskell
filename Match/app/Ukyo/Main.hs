@@ -35,6 +35,7 @@ import qualified Match.Base                as B
 import           Match.CSV                 (Spec, parseCSVSource)
 import           Match.Kumiai
 import           Match.TreeMake
+import           Match.Geocoder            (makeJavascriptFileRapper, MakeMap)
 import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
 import           System.IO.Unsafe          (unsafePerformIO)
@@ -45,9 +46,9 @@ import           Util.Yaml                 (readYaml)
 
 -- $setup
 -- >>> :set -XOverloadedStrings
-
 data Config = C { dataCSVFileName    :: FilePath
                 , sortCR             :: Bool
+                , makeMapCR          :: MakeMap
                 , relationalFileName :: FilePath
                 , addressRemove      :: [Text]
                 , workReplaceAlist   :: [[Text]]
@@ -480,17 +481,20 @@ main = do
       I.hSetEncoding I.stdout encoding
       I.hSetEncoding I.stderr encoding
 
-      let source = parseCSVSource spec dataName
-                   $=& CL.map makeKumiai
-                   $=& addRelationConduit rmap
-                   $=& CL.map (\k -> repairKumiai k <#> conf)
+      if makeMapC opt
+	then makeJavascriptFileRapper ((makeMapCR <$> ask) <#> conf)
+	else do let source = parseCSVSource spec dataName
+                             $=& CL.map makeKumiai
+                             $=& addRelationConduit rmap
+                             $=& CL.map (\k -> repairKumiai k <#> conf)
 
-      if figure opt
-        then  source $$& figureSink rmap kmap
-        else  source $$& (sortConsumer rmap kmap <##> conf)
+                if figure opt
+                  then  source $$& figureSink rmap kmap
+                  else  source $$& (sortConsumer rmap kmap <##> conf)
 --------------------------------------------------
 data Options = Options { yamlFile :: String
-                       , figure   :: Bool} deriving (Show)
+                       , figure   :: Bool
+		       , makeMapC :: Bool } deriving (Show)
 
 yamlFileP :: Q.Parser String
 yamlFileP = Q.strOption $ mconcat
@@ -502,6 +506,9 @@ yamlFileP = Q.strOption $ mconcat
 
 figureP :: Q.Parser Bool
 figureP = Q.switch $ Q.short 'f' <> Q.long "figure"    <> Q.help ""
+
+makeMapP :: Q.Parser Bool
+makeMapP = Q.switch $ Q.short 'm' <> Q.long "map"    <> Q.help ""
 
 myParserInfo :: Q.ParserInfo Options
 myParserInfo = Q.info optionsP $ mconcat
@@ -517,3 +524,4 @@ optionsP = (<*>) Q.helper
            $ Options
            <$> yamlFileP
            <*> figureP
+           <*> makeMapP
