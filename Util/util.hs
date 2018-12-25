@@ -3,14 +3,11 @@
 module Util where
 
 import Data.List
--- import Data.Ord
 import Data.IORef
-import Data.Char                        (ord, chr)
 import Control.Exception                hiding (try)
 import Control.Monad
 import Control.Monad.Writer
 import Control.Monad.State.Strict
--- import Control.Arrow
 import Control.Concurrent.Async
 import System.Directory                 hiding (listDirectory)
 import System.Process

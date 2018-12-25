@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveGeneric     #-}
 module Match.Geocoder
-  -- (makeJavascriptFile, Bunkai, Han, MakeMap (..))
+  (makeJavascriptFile, Bunkai, Han, MakeMap (..))
 where
 
 import           Control.Arrow              ((>>>))
@@ -13,7 +13,7 @@ import           Control.Monad              (when, foldM)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 import           Control.Monad.Trans.Reader (ask, runReaderT)
 import           Control.Monad.Trans.Cont   (ContT (..), runContT)
-import           Control.Monad.Trans.Maybe
+import           Control.Monad.Trans.Maybe  (MaybeT (..), runMaybeT)
 import           Data.Aeson                 (FromJSON)
 import           Data.Conduit               (runConduit, (.|))
 import qualified Data.Conduit.List          as CL
@@ -35,7 +35,7 @@ import           Text.Printf                (printf)
 import           Text.XML                   (Node (..), Document, parseLBS)
 import           Text.XML.Cursor            ( node, fromDocument, ($//)
                                             , descendant, checkName)
-import           Util.Address               (makeTypeAddress, Address)
+import           Util.Address               (makeTypeAddress)
 
 data MakeMap = M { mapExecute :: Bool
                  , doFetch    :: Bool
@@ -61,7 +61,6 @@ instance Filtering Han    where solver = runHan
 
 fromConfig f = (^. f) <$> ask `runReaderT` config
 
--- Database Type
 data Point = Point Text Double Double deriving (Show)
 
 pointAddress :: Point -> Text
@@ -80,7 +79,7 @@ runC :: Monad m => ContT a m a -> m a
 runC = (`runContT` return)
 
 withDB :: (FilePath -> IO a) -> IO a
-withDB f = f =<< fromConfig #dbname
+withDB = (=<< fromConfig #dbname)
 
 withDBAction :: (Connection -> IO a) -> IO a
 withDBAction f = withDB (flip withConnection f)
@@ -108,22 +107,24 @@ insertDB Nothing  = return ()
 insertDB (Just p@(Point address _ _)) = do
   withDBAction $ \conn -> do
     isRegistered <- lookupDB address
-    case isRegistered of
-      [_] -> putStrLn "already registered."
-      []  -> execute conn
-              "INSERT INTO test (address, lat, lng) VALUES (?,?,?)" p
+    if not (null isRegistered)
+      then putStrLn "already registered."
+      else execute conn
+            "INSERT INTO test (address, lat, lng) VALUES (?,?,?)" p
 
 lookupDB :: Text -> IO [Point]
 lookupDB tx = do
-  withDBAction $ \conn ->
-    queryNamed conn "SELECT * from test where address = :a" [":a" := tx]
+  runC $ do
+    conn <- ContT withDBAction
+    liftIO $
+      queryNamed conn "SELECT * from test where address = :a" [":a" := tx]
 
-withLookupDB :: Kumiai -> (Kumiai -> IO (Maybe Point)) -> IO (Maybe Point)
+withLookupDB :: Kumiai -> (Kumiai -> MaybeT IO Point) -> MaybeT IO Point
 withLookupDB k f = do
-  dbReply <- lookupDB (k ^. #rawAddress)
+  dbReply <- liftIO $ lookupDB (k ^. #rawAddress)
   if (null dbReply)
     then f k
-    else return $ Just $ head dbReply
+    else return $ head dbReply
 
 allQueryDB :: IO [Point]
 allQueryDB = withDBAction (flip query_ "SELECT * from test")
@@ -220,14 +221,14 @@ getPoint address = do
     -- みる。
     _ -> do
       -- 集合住宅部分を削除した結果、
-      -- 元の住所と同じであった場合(繰り返しの基底条件)…何もしない
-      -- 異なる場合…集合住宅部分を削除したもので再取得を試みる。
       if makeTypeAddress address ^. #town == address
+        -- 元の住所と同じであった場合(繰り返しの基底条件)…何もしない
         then MaybeT (return Nothing)
+        -- 異なる場合…集合住宅部分を削除したもので再取得を試みる。
         else retryGetPoint address
 
-insertPoint :: Kumiai -> IO (Maybe Point)
-insertPoint k = do
+insertPoint :: Kumiai -> MaybeT IO Point
+insertPoint k = MaybeT $ do
   let address' = k ^. #rawAddress
   errP [heredoc|Getting geocode, ${Tx.unpack address'}|]
   point' <- runMaybeT $ getPoint address'
@@ -239,9 +240,9 @@ insertPoint k = do
   threadDelay (waitS * 1000 * 1000)
   return point'
 
-fetch, onlyGet :: Kumiai -> IO (Maybe Point)
+fetch, onlyGet :: Kumiai -> MaybeT IO Point
 fetch k   = withLookupDB k insertPoint
-onlyGet k = withLookupDB k (return . (const Nothing))
+onlyGet k = withLookupDB k (const (MaybeT (return Nothing)))
 
 makeKumiaiTable :: Bunkai -> Han -> IO [Kumiai]
 makeKumiaiTable b h = do
@@ -271,7 +272,7 @@ mapTargetInsert doFetchP pk k = do
   let (getF, errorF) = if doFetchP
                           then (fetch, errorAtGet)
                           else (onlyGet, errorAtDB)
-  f <- getF k
+  f <- runMaybeT $ getF k
   case f of
     Just p  -> return $ makePointK p k : pk
     Nothing -> do
