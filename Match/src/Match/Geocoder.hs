@@ -3,21 +3,22 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveGeneric     #-}
 module Match.Geocoder
-  (makeJavascriptFileRapper, Bunkai, Han, MakeMap (..))
+  (makeJavascriptFile, Bunkai, Han, MakeMap (..))
 where
 
 import           Control.Arrow              ((>>>))
 import           Control.Concurrent         (threadDelay)
-import           Control.Lens
+import           Control.Lens               ((^.))
 import           Control.Monad              (when, foldM)
-import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Reader
-import           Data.Aeson
-import           Data.Conduit
+import           Control.Monad.IO.Class     (MonadIO, liftIO)
+import           Control.Monad.Trans.Reader (ask, runReaderT)
+import           Control.Monad.Trans.Cont   (ContT (..), runContT)
+import           Data.Aeson                 (FromJSON)
+import           Data.Conduit               (runConduit, (.|))
 import qualified Data.Conduit.List          as CL
 import           Data.Text                  (Text, unpack)
 import qualified Data.Text                  as Tx
-import           Data.Default.Class
+import           Data.Default.Class         (def)
 import           Data.Extensible
 import           Database.SQLite.Simple
 import           GHC.Generics               (Generic)
@@ -28,11 +29,12 @@ import           System.Directory           (doesFileExist, removeFile)
 import qualified System.IO                  as I
 import           Text.Blaze.Renderer.String (renderMarkup)
 import           Text.Heredoc
-import           Text.Heterocephalus
-import           Text.Printf
-import           Text.XML
-import           Text.XML.Cursor
-import           Util.Address
+import           Text.Heterocephalus        (compileTextFile)
+import           Text.Printf                (printf)
+import           Text.XML                   (Node (..), Document)
+import           Text.XML.Cursor            ( node, fromDocument, ($//)
+                                            , descendant, checkName)
+import           Util.Address               (makeTypeAddress, Address)
 
 data MakeMap = M { mapExecute :: Bool
                  , doFetch    :: Bool
@@ -73,27 +75,27 @@ instance FromRow Point where
 instance ToRow Point where
   toRow (Point t d1 d2) = toRow (t, d1, d2)
 
+runC :: Monad m => ContT a m a -> m a
+runC = (`runContT` return)
+
 withDB :: (FilePath -> IO a) -> IO a
 withDB f = do
   db <- fromConfig #dbname
   f db
 
 withDBAction :: (Connection -> IO a) -> IO a
-withDBAction f = do
-  withDB $ \db -> do
-    conn <- open db
-    q <- f conn
-    close conn
-    return q
+withDBAction f = withDB (flip withConnection f)
 
 makeNewDB :: IO ()
 makeNewDB = do
-  withDB $ \db -> do
-    ex <- doesFileExist db
+  let executeM_ c q = liftIO $ execute_ c q
+  runC $ do
+    db <- ContT withDB
+    ex <- liftIO $ doesFileExist db
     when (not ex) $ do
-      conn <- open db
-      execute_ conn "CREATE TABLE test (address Text, lat Double, lng Double)"
-      close conn
+      conn <- ContT $ withConnection db
+      (executeM_ conn
+       "CREATE TABLE test (address Text, lat Double, lng Double)")
 
 refreshDB :: IO ()
 refreshDB = do
@@ -106,7 +108,7 @@ refreshDB = do
 insertDB :: Maybe Point -> IO ()
 insertDB Nothing  = return ()
 insertDB (Just p) = do
-  liftIO . withDBAction $ \conn -> do
+  withDBAction $ \conn -> do
     let Point address _ _ = p
     isRegistered <- lookupDB address
     case isRegistered of
@@ -120,7 +122,7 @@ lookupDB tx = do
 
 allQueryDB :: IO [Point]
 allQueryDB = do
-  withDBAction $ \conn -> query_ conn "SELECT * from test"
+  withDBAction (flip query_ "SELECT * from test")
 
 type Config = Record
   '[ "topURL"      >: Url 'Https
@@ -133,8 +135,8 @@ type Config = Record
 
 config :: Config
 config =    #topURL  @= https "www.geocoding.jp" /: "api"
-         <: #dbname  @= "c:/Users/Jumpei/Haskell/Match/geocoder.db"
-         <: #testcsv @= "c:/Users/Jumpei/Haskell/Match/app/組合員データ活用.csv"
+         <: #dbname  @= "geocoder.db"
+         <: #testcsv @= "組合員データ活用.csv"
          <: #spec    @= [ "支部コード"
                         , "支部"
                         , "分会コード"
@@ -164,7 +166,7 @@ config =    #topURL  @= https "www.geocoding.jp" /: "api"
                         , "役職(班)"
                         , "資格取得日"
                         , "資格喪失日"]
-         <: #jsfile @= "c:/Users/Jumpei/Haskell/Match/index.js"
+         <: #jsfile @= "index.js"
          <: #waitSeconds @= 10
          <: nil
 
@@ -180,30 +182,33 @@ getRequest address = do
   url <- fromConfig #topURL
   req GET url NoReqBody lbsResponse ("q" =: address)
 
+parseXML :: Document -> [Double]
+parseXML x =
+  let nameP n = (n == "lat") || (n == "lng")
+  in let child'  = fromDocument x $// checkName nameP
+  in let parser  = node >>> contentsOf >>> unpack >>> read
+  in map parser (concat $ map descendant child')
+
 getLatLng :: Text -> IO [Double]
 getLatLng address = do
   runReq def $ do
     r <- getRequest address
     case parseLBS def (responseBody r) of
-      Left _ -> return []
-      Right x -> do
-        let nameP n = (n == "lat") || (n == "lng")
-        let child'  = fromDocument x $// checkName nameP
-        let parser  = node >>> contentsOf >>> unpack >>> read
-        return (map parser (concat $ map descendant child'))
+      Right x -> return $ parseXML x
+      Left _  -> return []
 
 retryGetPoint :: Text -> IO (Maybe Point)
 retryGetPoint address = do
-  let p = makeTypeAddress address
   w <- fromConfig #waitSeconds
   errP [heredoc|retry after ${show w} seconds.|]
   threadDelay (w * 1000 * 1000)
-  p2 <- getPoint $ p ^. #town
-  case p2 of
+  let p = makeTypeAddress address
+  town <- getPoint $ p ^. #town
+  case town of
+    Nothing              -> return Nothing
     Just (Point _ la ln) -> do
       errP [heredoc|success to retry|]
       return $ Just $ Point address la ln
-    Nothing -> return Nothing
 
 getPoint :: Text -> IO (Maybe Point)
 getPoint address = do
@@ -219,13 +224,13 @@ getPoint address = do
 insertPoint :: Kumiai -> IO (Maybe Point)
 insertPoint k = do
   let address' = k ^. #rawAddress
-  waitS <- fromConfig #waitSeconds
   errP [heredoc|Getting geocode, ${Tx.unpack address'}|]
   point' <- getPoint address'
   case point' of
     Nothing -> do
       errP [heredoc|failed to get geocode, ${Tx.unpack address'}|]
     Just p  -> insertDB $ Just p
+  waitS <- fromConfig #waitSeconds
   errP [heredoc|${show waitS} seconds wait.|]
   threadDelay (waitS * 1000 * 1000)
   return point'
@@ -300,23 +305,24 @@ makeJavascript :: Bool -> Bunkai -> Han -> IO String
 makeJavascript doFetchP b h = do
   mt <- mapTargets doFetchP b h
   return $ renderMarkup $
-    $(compileTextFile "c:/Users/Jumpei/Haskell/Match/src/Match/templateJS.txt")
+    $(compileTextFile "src/Match/templateJS.txt")
 
-makeJavascriptFile :: Bool -> Bunkai -> Han -> IO ()
-makeJavascriptFile doFetchP b h = do
-  js   <- makeJavascript doFetchP b h
-  file <- fromConfig #jsfile
-  I.withFile file I.WriteMode $ \handle -> do
-    encoding <- I.mkTextEncoding "cp932"
-    I.hSetEncoding handle encoding
-    I.hPutStrLn handle js
+javaScriptOutputToFile :: MonadIO m => String -> I.Handle -> m ()
+javaScriptOutputToFile jscript h = do
+    encoding <- liftIO $ I.mkTextEncoding "cp932"
+    liftIO $ I.hSetEncoding h encoding
+    liftIO $ I.hPutStrLn h jscript
 
-makeJavascriptFileRapper :: MakeMap -> IO ()
-makeJavascriptFileRapper mp = do
-  case mapExecute mp of
+makeJavascriptFile :: MakeMap -> IO ()
+makeJavascriptFile mm = do
+  case mapExecute mm of
     False -> return ()
     True  -> do
-      let b = Bunkai (mapBunkai mp)
-      let h = Han (mapHan mp)
-      let f = doFetch mp
-      makeJavascriptFile f b h
+      let b = Bunkai (mapBunkai mm)
+      let h = Han (mapHan mm)
+      let f = doFetch mm
+      js   <- makeJavascript f b h
+      file <- fromConfig #jsfile
+      runC $ do
+        handle <- ContT $ I.withFile file I.WriteMode
+        javaScriptOutputToFile js handle

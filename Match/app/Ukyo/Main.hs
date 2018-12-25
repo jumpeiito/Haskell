@@ -35,7 +35,7 @@ import qualified Match.Base                as B
 import           Match.CSV                 (Spec, parseCSVSource)
 import           Match.Kumiai
 import           Match.TreeMake
-import           Match.Geocoder            (makeJavascriptFileRapper, MakeMap)
+import           Match.Geocoder            (makeJavascriptFile, MakeMap)
 import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
 import           System.IO.Unsafe          (unsafePerformIO)
@@ -482,8 +482,8 @@ main = do
       I.hSetEncoding I.stderr encoding
 
       if makeMapC opt
-	then makeJavascriptFileRapper ((makeMapCR <$> ask) <#> conf)
-	else do let source = parseCSVSource spec dataName
+        then makeJavascriptFile ((makeMapCR <$> ask) <#> conf)
+        else do let source = parseCSVSource spec dataName
                              $=& CL.map makeKumiai
                              $=& addRelationConduit rmap
                              $=& CL.map (\k -> repairKumiai k <#> conf)
@@ -494,7 +494,7 @@ main = do
 --------------------------------------------------
 data Options = Options { yamlFile :: String
                        , figure   :: Bool
-		       , makeMapC :: Bool } deriving (Show)
+                       , makeMapC :: Bool } deriving (Show)
 
 yamlFileP :: Q.Parser String
 yamlFileP = Q.strOption $ mconcat

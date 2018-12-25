@@ -47,6 +47,7 @@ dependencies:
   - yaml
   - heterocephalus
   - blaze-markup
+  - template-haskell
 
 default-extensions:
   - DataKinds
