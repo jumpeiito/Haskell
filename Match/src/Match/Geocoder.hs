@@ -105,18 +105,25 @@ refreshDB = do
 
 insertDB :: Maybe Point -> IO ()
 insertDB Nothing  = return ()
-insertDB (Just p) = do
+insertDB (Just p@(Point address _ _)) = do
   withDBAction $ \conn -> do
-    let Point address _ _ = p
     isRegistered <- lookupDB address
     case isRegistered of
-      [] -> execute conn "INSERT INTO test (address, lat, lng) VALUES (?,?,?)" p
-      _  -> putStrLn "already registered."
+      [_] -> putStrLn "already registered."
+      []  -> execute conn
+              "INSERT INTO test (address, lat, lng) VALUES (?,?,?)" p
 
 lookupDB :: Text -> IO [Point]
 lookupDB tx = do
   withDBAction $ \conn ->
     queryNamed conn "SELECT * from test where address = :a" [":a" := tx]
+
+withLookupDB :: Kumiai -> (Kumiai -> IO (Maybe Point)) -> IO (Maybe Point)
+withLookupDB k f = do
+  dbReply <- lookupDB (k ^. #rawAddress)
+  if (null dbReply)
+    then f k
+    else return $ Just $ head dbReply
 
 allQueryDB :: IO [Point]
 allQueryDB = withDBAction (flip query_ "SELECT * from test")
@@ -199,6 +206,7 @@ retryGetPoint address = do
   w <- fromConfig #waitSeconds
   errP [heredoc|retry after ${show w} seconds.|]
   liftIO $ threadDelay (w * 1000 * 1000)
+  -- getPointして取得できなかった場合は,return Nothingする。
   Point _ la ln <- getPoint $ makeTypeAddress address ^. #town
   errP [heredoc|success to retry|]
   return $ Point address la ln
@@ -208,7 +216,12 @@ getPoint address = do
   latlng <- liftIO $ getLatLng address
   case latlng of
     [lat', lng'] -> return $ Point address lat' lng'
+    -- 取得できなかった場合は、住所の中の集合住宅部分を削除して再度getPointを試
+    -- みる。
     _ -> do
+      -- 集合住宅部分を削除した結果、
+      -- 元の住所と同じであった場合(繰り返しの基底条件)…何もしない
+      -- 異なる場合…集合住宅部分を削除したもので再取得を試みる。
       if makeTypeAddress address ^. #town == address
         then MaybeT (return Nothing)
         else retryGetPoint address
@@ -225,13 +238,6 @@ insertPoint k = do
   errP [heredoc|${show waitS} seconds wait.|]
   threadDelay (waitS * 1000 * 1000)
   return point'
-
-withLookupDB :: Kumiai -> (Kumiai -> IO (Maybe Point)) -> IO (Maybe Point)
-withLookupDB k f = do
-  dbReply <- lookupDB (k ^. #rawAddress)
-  if (null dbReply)
-    then f k
-    else return $ Just $ head dbReply
 
 fetch, onlyGet :: Kumiai -> IO (Maybe Point)
 fetch k   = withLookupDB k insertPoint
