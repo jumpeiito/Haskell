@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveGeneric     #-}
 module Match.Geocoder
-  (makeJavascriptFile, Bunkai, Han, MakeMap (..))
+  -- (makeJavascriptFile, Bunkai, Han, MakeMap (..))
 where
 
 import           Control.Arrow              ((>>>))
@@ -13,6 +13,7 @@ import           Control.Monad              (when, foldM)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 import           Control.Monad.Trans.Reader (ask, runReaderT)
 import           Control.Monad.Trans.Cont   (ContT (..), runContT)
+import           Control.Monad.Trans.Maybe
 import           Data.Aeson                 (FromJSON)
 import           Data.Conduit               (runConduit, (.|))
 import qualified Data.Conduit.List          as CL
@@ -31,7 +32,7 @@ import           Text.Blaze.Renderer.String (renderMarkup)
 import           Text.Heredoc
 import           Text.Heterocephalus        (compileTextFile)
 import           Text.Printf                (printf)
-import           Text.XML                   (Node (..), Document)
+import           Text.XML                   (Node (..), Document, parseLBS)
 import           Text.XML.Cursor            ( node, fromDocument, ($//)
                                             , descendant, checkName)
 import           Util.Address               (makeTypeAddress, Address)
@@ -79,22 +80,19 @@ runC :: Monad m => ContT a m a -> m a
 runC = (`runContT` return)
 
 withDB :: (FilePath -> IO a) -> IO a
-withDB f = do
-  db <- fromConfig #dbname
-  f db
+withDB f = f =<< fromConfig #dbname
 
 withDBAction :: (Connection -> IO a) -> IO a
 withDBAction f = withDB (flip withConnection f)
 
 makeNewDB :: IO ()
 makeNewDB = do
-  let executeM_ c q = liftIO $ execute_ c q
   runC $ do
     db <- ContT withDB
     ex <- liftIO $ doesFileExist db
     when (not ex) $ do
       conn <- ContT $ withConnection db
-      (executeM_ conn
+      (liftIO $ execute_ conn
        "CREATE TABLE test (address Text, lat Double, lng Double)")
 
 refreshDB :: IO ()
@@ -121,8 +119,7 @@ lookupDB tx = do
     queryNamed conn "SELECT * from test where address = :a" [":a" := tx]
 
 allQueryDB :: IO [Point]
-allQueryDB = do
-  withDBAction (flip query_ "SELECT * from test")
+allQueryDB = withDBAction (flip query_ "SELECT * from test")
 
 type Config = Record
   '[ "topURL"      >: Url 'Https
@@ -170,8 +167,8 @@ config =    #topURL  @= https "www.geocoding.jp" /: "api"
          <: #waitSeconds @= 10
          <: nil
 
-errP :: String -> IO ()
-errP = I.hPutStrLn I.stderr
+errP :: MonadIO m => String -> m ()
+errP = liftIO . I.hPutStrLn I.stderr
 
 contentsOf :: Node -> Text
 contentsOf (NodeContent x) = x
@@ -197,38 +194,32 @@ getLatLng address = do
       Right x -> return $ parseXML x
       Left _  -> return []
 
-retryGetPoint :: Text -> IO (Maybe Point)
+retryGetPoint :: Text -> MaybeT IO Point
 retryGetPoint address = do
   w <- fromConfig #waitSeconds
   errP [heredoc|retry after ${show w} seconds.|]
-  threadDelay (w * 1000 * 1000)
-  let p = makeTypeAddress address
-  town <- getPoint $ p ^. #town
-  case town of
-    Nothing              -> return Nothing
-    Just (Point _ la ln) -> do
-      errP [heredoc|success to retry|]
-      return $ Just $ Point address la ln
+  liftIO $ threadDelay (w * 1000 * 1000)
+  Point _ la ln <- getPoint $ makeTypeAddress address ^. #town
+  errP [heredoc|success to retry|]
+  return $ Point address la ln
 
-getPoint :: Text -> IO (Maybe Point)
+getPoint :: Text -> MaybeT IO Point
 getPoint address = do
-  latlng <- getLatLng address
+  latlng <- liftIO $ getLatLng address
   case latlng of
-    [lat', lng'] -> return $ Just $ Point address lat' lng'
+    [lat', lng'] -> return $ Point address lat' lng'
     _ -> do
-      let p = makeTypeAddress address
-      if p ^. #town == address
-        then return Nothing
+      if makeTypeAddress address ^. #town == address
+        then MaybeT (return Nothing)
         else retryGetPoint address
 
 insertPoint :: Kumiai -> IO (Maybe Point)
 insertPoint k = do
   let address' = k ^. #rawAddress
   errP [heredoc|Getting geocode, ${Tx.unpack address'}|]
-  point' <- getPoint address'
+  point' <- runMaybeT $ getPoint address'
   case point' of
-    Nothing -> do
-      errP [heredoc|failed to get geocode, ${Tx.unpack address'}|]
+    Nothing -> errP [heredoc|failed to get geocode, ${Tx.unpack address'}|]
     Just p  -> insertDB $ Just p
   waitS <- fromConfig #waitSeconds
   errP [heredoc|${show waitS} seconds wait.|]
@@ -309,9 +300,9 @@ makeJavascript doFetchP b h = do
 
 javaScriptOutputToFile :: MonadIO m => String -> I.Handle -> m ()
 javaScriptOutputToFile jscript h = do
-    encoding <- liftIO $ I.mkTextEncoding "cp932"
-    liftIO $ I.hSetEncoding h encoding
-    liftIO $ I.hPutStrLn h jscript
+  encoding <- liftIO $ I.mkTextEncoding "cp932"
+  liftIO $ I.hSetEncoding h encoding
+  liftIO $ I.hPutStrLn h jscript
 
 makeJavascriptFile :: MakeMap -> IO ()
 makeJavascriptFile mm = do
