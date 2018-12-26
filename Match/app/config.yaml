@@ -57,7 +57,7 @@ sortCR: True
 makeMapCR:
   mapExecute: True
   doFetch: False
-  # mapBunkai: 3
+  mapBunkai: 21
   # mapHan: 1
 
 # 「京都府京都市伏見区醍醐上ノ山町〜」などと

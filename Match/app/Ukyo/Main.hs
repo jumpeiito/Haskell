@@ -35,7 +35,7 @@ import qualified Match.Base                as B
 import           Match.CSV                 (Spec, parseCSVSource)
 import           Match.Kumiai
 import           Match.TreeMake
-import           Match.Geocoder            (makeJavascriptFile, MakeMap)
+import           Match.Geocoder            (makeJavascriptFileKumiai, MakeMap)
 import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
 import           System.IO.Unsafe          (unsafePerformIO)
@@ -482,7 +482,7 @@ main = do
       I.hSetEncoding I.stderr encoding
 
       if makeMapC opt
-        then makeJavascriptFile ((makeMapCR <$> ask) <#> conf)
+        then makeJavascriptFileKumiai ((makeMapCR <$> ask) <#> conf)
         else do let source = parseCSVSource spec dataName
                              $=& CL.map makeKumiai
                              $=& addRelationConduit rmap

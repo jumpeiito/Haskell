@@ -1,15 +1,19 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE TypeFamilies     #-}
 module Match.Geocoder
-  (makeJavascriptFile, Bunkai, Han, MakeMap (..))
+  (makeJavascriptFileKumiai
+   , makeJavascriptFromCSV
+   , makeJavascriptFileContents
+   ,Bunkai, Han, MakeMap (..))
 where
 
 import           Control.Arrow              ((>>>))
 import           Control.Concurrent         (threadDelay)
 import           Control.Lens               ((^.))
-import           Control.Monad              (when, foldM)
+import           Control.Monad              (when, foldM, guard)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 import           Control.Monad.Trans.Reader (ask, runReaderT)
 import           Control.Monad.Trans.Cont   (ContT (..), runContT)
@@ -21,6 +25,7 @@ import           Data.Text                  (Text, unpack)
 import qualified Data.Text                  as Tx
 import           Data.Default.Class         (def)
 import           Data.Extensible
+import           Data.Monoid                ((<>))
 import           Database.SQLite.Simple
 import           GHC.Generics               (Generic)
 import           Match.CSV                  (Spec, parseCSVSource)
@@ -63,7 +68,7 @@ fromConfig f = (^. f) <$> ask `runReaderT` config
 
 data Point = Point Text Double Double deriving (Show)
 
-pointAddress :: Point -> Text
+pointAddress       :: Point -> Text
 pointLat, pointLng :: Point -> Double
 pointAddress (Point t _ _) = t
 pointLat (Point _ t _)     = t
@@ -118,13 +123,6 @@ lookupDB tx = do
     conn <- ContT withDBAction
     liftIO $
       queryNamed conn "SELECT * from test where address = :a" [":a" := tx]
-
-withLookupDB :: Kumiai -> (Kumiai -> MaybeT IO Point) -> MaybeT IO Point
-withLookupDB k f = do
-  dbReply <- liftIO $ lookupDB (k ^. #rawAddress)
-  if (null dbReply)
-    then f k
-    else return $ head dbReply
 
 allQueryDB :: IO [Point]
 allQueryDB = withDBAction (flip query_ "SELECT * from test")
@@ -189,9 +187,9 @@ getRequest address = do
 
 parseXML :: Document -> [Double]
 parseXML x =
-  let nameP n = (n == "lat") || (n == "lng")
-  in let child'  = fromDocument x $// checkName nameP
-  in let parser  = node >>> contentsOf >>> unpack >>> read
+  let nameP n   = (n == "lat") || (n == "lng")
+  in let child' = fromDocument x $// checkName nameP
+  in let parser = node >>> contentsOf >>> unpack >>> read
   in map parser (concat $ map descendant child')
 
 getLatLng :: Text -> IO [Double]
@@ -226,25 +224,19 @@ getPoint address = do
         then MaybeT (return Nothing)
         -- 異なる場合…集合住宅部分を削除したもので再取得を試みる。
         else retryGetPoint address
+--------------------------------------------------
+makeLabel :: Kumiai -> Label
+makeLabel k =
+  let exp = [ (k ^. #bunkai) <> "分会"
+            , (k ^. #han) <> "班"
+            , k ^. #name]
+  in let ad = k ^. #rawAddress
+  in let doc = Tx.intercalate " " exp
+  in #address @= ad
+     <: #explanation @= doc
+     <: nil
 
-insertPoint :: Kumiai -> MaybeT IO Point
-insertPoint k = MaybeT $ do
-  let address' = k ^. #rawAddress
-  errP [heredoc|Getting geocode, ${Tx.unpack address'}|]
-  point' <- runMaybeT $ getPoint address'
-  case point' of
-    Nothing -> errP [heredoc|failed to get geocode, ${Tx.unpack address'}|]
-    Just p  -> insertDB $ Just p
-  waitS <- fromConfig #waitSeconds
-  errP [heredoc|${show waitS} seconds wait.|]
-  threadDelay (waitS * 1000 * 1000)
-  return point'
-
-fetch, onlyGet :: Kumiai -> MaybeT IO Point
-fetch k   = withLookupDB k insertPoint
-onlyGet k = withLookupDB k (const (MaybeT (return Nothing)))
-
-makeKumiaiTable :: Bunkai -> Han -> IO [Kumiai]
+makeKumiaiTable :: Bunkai -> Han -> IO [Label]
 makeKumiaiTable b h = do
   csv  <- fromConfig #testcsv
   spec <- fromConfig #spec
@@ -253,74 +245,130 @@ makeKumiaiTable b h = do
     .| CL.map makeKumiai
     .| CL.filter ((^. #bunkaiCode) >>> (toFilter b))
     .| CL.filter ((^. #han) >>> (toFilter h))
+    .| CL.map makeLabel
     .| CL.consume
 
-errorAtGet :: Kumiai -> IO ()
-errorAtGet k = do
-  let kumiaiName = Tx.unpack $ k ^. #name
-  putStrLn [heredoc|${kumiaiName}の地図情報を入手できませんでした。|]
+javascriptOutputToFile :: MonadIO m => String -> I.Handle -> m ()
+javascriptOutputToFile jscript h = liftIO $ do
+  encoding <- I.mkTextEncoding "cp932"
+  I.hSetEncoding h encoding
+  I.hPutStrLn h jscript
 
-errorAtDB :: Kumiai -> IO ()
-errorAtDB k = do
-  let b = Tx.unpack $ k ^. #bunkai
-  let h = Tx.unpack $ k ^. #han
-  let n = Tx.unpack $ k ^. #name
-  putStrLn [heredoc|${b}分会 ${h}班 ${n}の地図情報がありません。|]
+withLookupDB :: Label -> (Label -> MaybeT IO Point)
+  -> MaybeT IO Point
+withLookupDB l f = do
+  let a = l ^. #address
+  dbReply <- liftIO $ lookupDB a
+  if (null dbReply)
+    then f l
+    else return $ head dbReply
 
-mapTargetInsert :: Bool -> [PointK] -> Kumiai -> IO [PointK]
-mapTargetInsert doFetchP pk k = do
+errorAtGet :: Label -> IO ()
+errorAtGet label = do
+  let pre = label `fromLabelText` #explanation
+  let ad  = label `fromLabelText` #address
+  putStrLn
+    [heredoc|${pre} ${ad}の地図情報を入手できませんでした。|]
+
+errorAtDB :: Label -> IO ()
+errorAtDB label = do
+  let pre = label `fromLabelText` #explanation
+  let ad  = label `fromLabelText` #address
+  putStrLn
+    [heredoc|${pre} ${ad}の地図情報がありません。|]
+
+mapTargetInsert :: Bool -> [JSUnit]
+  -> Label -> IO [JSUnit]
+mapTargetInsert doFetchP pk label = do
   let (getF, errorF) = if doFetchP
                           then (fetch, errorAtGet)
                           else (onlyGet, errorAtDB)
-  f <- runMaybeT $ getF k
+  f <- runMaybeT $ getF label
   case f of
-    Just p  -> return $ makePointK p k : pk
+    Just (Point _ la ln)  -> do
+      let jsu =  #latitude  @= la
+              <: #longitude @= ln
+              <: #label     @= label
+              <: nil
+      return $ jsu : pk
     Nothing -> do
-      errorF k
+      errorF label
       return pk
 
-mapTargets :: Bool -> Bunkai -> Han -> IO [PointK]
-mapTargets doFetchP b h = do
-  kt <- makeKumiaiTable b h
-  foldM (mapTargetInsert doFetchP) [] kt
+insertPoint :: Label -> MaybeT IO Point
+insertPoint label = MaybeT $ do
+  let p = label `fromLabelText` #explanation
+  let a = label `fromLabelText` #address
+  errP [heredoc|Getting geocode, ${p} ${a}|]
+  point' <- runMaybeT $ getPoint $ label ^. #address
+  case point' of
+    Nothing -> do
+      errP [heredoc|failed to get geocode, ${p} ${a}|]
+    Just p  -> insertDB $ Just p
+  waitS <- fromConfig #waitSeconds
+  errP [heredoc|${show waitS} seconds wait.|]
+  threadDelay (waitS * 1000 * 1000)
+  return point'
 
-data PointK = PK { lat    :: Double
-                 , lng    :: Double
-                 , point  :: Point
-                 , name   :: Text
-                 , bunkai :: Text
-                 , han    :: Text } deriving (Show)
+fetch, onlyGet :: Label -> MaybeT IO Point
+fetch k   = withLookupDB k insertPoint
+onlyGet k = withLookupDB k (const (MaybeT (return Nothing)))
 
-makePointK :: Point -> Kumiai -> PointK
-makePointK p k = PK { lat    = pointLat p
-                    , lng    = pointLng p
-                    , point  = p
-                    , name   = k ^. #name
-                    , bunkai = k ^. #bunkai
-                    , han    = k ^. #han }
+mapTargets :: Bool -> [Label] -> IO [JSUnit]
+mapTargets doFetch labels = do
+  foldM (mapTargetInsert doFetch) [] labels
 
-makeJavascript :: Bool -> Bunkai -> Han -> IO String
-makeJavascript doFetchP b h = do
-  mt <- mapTargets doFetchP b h
+makeJavascript :: [JSUnit] -> IO String
+makeJavascript jsunits = do
+  let contents = map (\j -> ( j ^. #latitude
+                            , j ^. #longitude
+                            , toString (j ^. #label))) jsunits
   return $ renderMarkup $
-    $(compileTextFile "src/Match/templateJS.txt")
+    $(compileTextFile "src/Match/templateJS2.txt")
 
-javaScriptOutputToFile :: MonadIO m => String -> I.Handle -> m ()
-javaScriptOutputToFile jscript h = do
-  encoding <- liftIO $ I.mkTextEncoding "cp932"
-  liftIO $ I.hSetEncoding h encoding
-  liftIO $ I.hPutStrLn h jscript
+makeJavascriptFileContents :: Bool -> [Label] -> IO ()
+makeJavascriptFileContents doFetchP labels = do
+  cp   <- mapTargets doFetchP labels
+  js   <- makeJavascript cp
+  file <- fromConfig #jsfile
+  runC $ do
+    handle <- ContT $ I.withFile file I.WriteMode
+    javascriptOutputToFile js handle
 
-makeJavascriptFile :: MakeMap -> IO ()
-makeJavascriptFile mm = do
-  case mapExecute mm of
-    False -> return ()
-    True  -> do
-      let b = Bunkai (mapBunkai mm)
-      let h = Han (mapHan mm)
-      let f = doFetch mm
-      js   <- makeJavascript f b h
-      file <- fromConfig #jsfile
-      runC $ do
-        handle <- ContT $ I.withFile file I.WriteMode
-        javaScriptOutputToFile js handle
+type Label = Record
+  '[ "address"     >: Text
+   , "explanation" >: Text]
+
+toString :: Label -> Text
+toString l = l ^. #explanation <> l ^. #address
+
+fromLabelText l sym = Tx.unpack $ l ^. sym
+
+type JSUnit = Record
+  '[ "latitude"  >: Double
+   , "longitude" >: Double
+   , "label"     >: Label]
+
+labelListFromCSV :: FilePath -> IO [Label]
+labelListFromCSV fp = do
+  let spec   = ["住所", "備考"]
+  runConduit
+    $  parseCSVSource spec fp
+    .| CL.map (\[ad, ex] ->
+                 #address @= ad <: #explanation @= ex <: nil)
+    .| CL.consume
+
+makeJavascriptFromCSV :: Bool -> FilePath -> IO ()
+makeJavascriptFromCSV doFetch fp = do
+  labels <- labelListFromCSV fp
+  makeJavascriptFileContents doFetch labels
+
+makeJavascriptFileKumiai :: MakeMap -> IO ()
+makeJavascriptFileKumiai mm = do
+  guard $ mapExecute mm
+  let b = mapBunkai mm
+  let h = mapHan mm
+  c <- makeKumiaiTable (Bunkai b) (Han h)
+  makeJavascriptFileContents (doFetch mm) c
+
+testMM = M True False Nothing Nothing
