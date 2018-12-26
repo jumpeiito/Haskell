@@ -1,11 +1,11 @@
 # #のあとはプログラムに関係しません。
 
 # 組合員基幹情報ファイル
-dataCSVFileName: "組合員データ活用.csv"
+dataCSVFileName: "app/組合員データ活用.csv"
 
 # 「付き」を記録するCSVファイルの名前。
 # 適宜変更してください。
-relationalFileName: "Tsuki.csv"
+relationalFileName: "app/Tsuki.csv"
 
 # 「付き」を考慮した並び順に変更。
 # 例えば、B・C・XがA付、DがB付、Y・ZがC付の場合、
@@ -21,39 +21,55 @@ relationalFileName: "Tsuki.csv"
 sortCR: True
 
 # 地図を作成します(インターネットに接続している環境が前提)。
-# 地図を作成しない場合は、
-# mapExecute: True を
-# mapExecute: Falseに変更してください。
-# 作成の仕方は以下の通りです。
-#
-# (例)西院分会1班の地図を作成する場合。
-# makeMapCR:
-#   mapExecute: True
-#   mapBunkai: 1
-#   mapHan: 1
-#
-# (例) 京北分会12班の地図を作成する場合。
-# makeMapCR:
-#   mapExecute: True
-#   mapBunkai: 21
-#   mapHan: 12
-#
-# (例) 西院分会の地図を作成する場合。
-# makeMapCR:
-#   mapExecute: True
-#   mapBunkai: 1
-#
-# (例) 支部全体の地図を作成する場合。
-# makeMapCR:
-#   mapExecute: True
-#
-# 住所を緯度・経度に変換するサービス(https://www.geocoding.jp/api)にリクエストを
-# 投げて(住所のみを送信し、氏名など他の情報は送信しません。)、返ってきた緯度・経
-# 度の情報をデータベース(geocoder.db)に保存。データベースに保存できた住所の緯度・
-# 経度は、データベースから読み出し、前回取得に失敗した住所は、再度変換を試みます。
+# 【地図作成の仕組み】
+# 住所を緯度・経度に変換するサービス(https://www.geocoding.jp/api)があります。
+# このサービスにリクエストを送信し(住所のみ。氏名など他の情報は送信しません。)、
+# 返ってきた緯度・経度の情報をデータベース(geocoder.db)に保存。データベースに保
+# 存できた住所の緯度・経度は、データベースから読み出し、前回取得に失敗した住所は、
+# 再度変換を試みます。
 #         ↓
 # データベースから読み出すなどして取得した緯度・経度は、クライエント側(支部のパ
 # ソコンなど)で氏名・分会他の情報と結びつけ、地図上に投影します。
+#         ↓
+# Internet ExplorerなどのWebブラウザで、フォルダー内のindex.html上を開いてくださ
+# い。このとき、地図を正しく表示するために、JavascriptをOnにしてください。
+
+# ただし、上記サービスの利用規約上、5秒に1件以上のリクエストを送信できない(現在
+# のプログラムでは10秒に1件送信)ので、新加入者や転入者が多数いるなど、データベー
+# ス上に保存されていない住所が多数存在する状況では、地図作成に一定の時間がかかっ
+# てしまいます。
+
+# 下記の設定値doFetchがTrueの場合、データベースに保存されていない住所については、
+# サービスにリクエストを送信して(再)変換を試みます。
+# Falseの場合、データベースに保存されている住所のみで、地図を作成します。
+
+# 作成の仕方は以下の通りです。
+#
+# (例)西院分会1班の地図を作成する(送信あり)場合。
+# makeMapCR:
+#   mapExecute: True
+#   doFetch: True
+#   mapBunkai: 1
+#   mapHan: 1
+#
+# (例) 京北分会12班の地図を作成する(送信なし)場合。
+# makeMapCR:
+#   mapExecute: True
+#   doFetch: False
+#   mapBunkai: 21
+#   mapHan: 12
+#
+# (例) 西院分会の地図を作成する(送信あり)場合。
+# makeMapCR:
+#   mapExecute: True
+#   doFetch: True
+#   mapBunkai: 1
+#
+# (例) 支部全体の地図を作成する(送信なし)場合。
+# makeMapCR:
+#   mapExecute: True
+#   doFetch: False
+#
 makeMapCR:
   mapExecute: True
   doFetch: False

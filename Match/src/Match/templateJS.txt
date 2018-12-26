@@ -6,8 +6,8 @@ L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
 mymap.setView([35.006878, 135.731344], 13);
 
 var markerArray = [
-%{ forall p <- mt }
-  [#{lat p}, #{lng p}, "#{bunkai p}分会#{han p}班　#{name p}　#{pointAddress (point p)}"],
+%{ forall (lat, lng, label) <- contents }
+  [#{lat}, #{lng}, "#{label}"],
 %{ endforall }
  []
 ];

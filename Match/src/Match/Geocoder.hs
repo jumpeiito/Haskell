@@ -42,28 +42,6 @@ import           Text.XML.Cursor            ( node, fromDocument, ($//)
                                             , descendant, checkName)
 import           Util.Address               (makeTypeAddress)
 
-data MakeMap = M { mapExecute :: Bool
-                 , doFetch    :: Bool
-                 , mapBunkai  :: Maybe Int
-                 , mapHan     :: Maybe Int }
-  deriving (Show, Read, Generic)
-
-instance FromJSON MakeMap
-
-newtype Bunkai = Bunkai { runBunkai :: Maybe Int }
-newtype Han    = Han    { runHan :: Maybe Int }
-
-class Filtering a where
-  solver   :: a -> Maybe Int
-  toFilter :: a -> (Text -> Bool)
-
-  toFilter b = case solver b of
-                 Nothing -> const True
-                 Just i  -> (== Tx.pack (printf "%02d" i))
-
-instance Filtering Bunkai where solver = runBunkai
-instance Filtering Han    where solver = runHan
-
 fromConfig f = (^. f) <$> ask `runReaderT` config
 
 data Point = Point Text Double Double deriving (Show)
@@ -139,7 +117,7 @@ type Config = Record
 config :: Config
 config =    #topURL  @= https "www.geocoding.jp" /: "api"
          <: #dbname  @= "geocoder.db"
-         <: #testcsv @= "組合員データ活用.csv"
+         <: #testcsv @= "app/組合員データ活用.csv"
          <: #spec    @= [ "支部コード"
                         , "支部"
                         , "分会コード"
@@ -225,13 +203,35 @@ getPoint address = do
         -- 異なる場合…集合住宅部分を削除したもので再取得を試みる。
         else retryGetPoint address
 --------------------------------------------------
+data MakeMap = M { mapExecute :: Bool
+                 , doFetch    :: Bool
+                 , mapBunkai  :: Maybe Int
+                 , mapHan     :: Maybe Int }
+  deriving (Show, Read, Generic)
+
+instance FromJSON MakeMap
+
+newtype Bunkai = Bunkai { runBunkai :: Maybe Int }
+newtype Han    = Han    { runHan :: Maybe Int }
+
+class Filtering a where
+  solver   :: a -> Maybe Int
+  toFilter :: a -> (Text -> Bool)
+
+  toFilter b = case solver b of
+                 Nothing -> const True
+                 Just i  -> (== Tx.pack (printf "%02d" i))
+
+instance Filtering Bunkai where solver = runBunkai
+instance Filtering Han    where solver = runHan
+
 makeLabel :: Kumiai -> Label
 makeLabel k =
   let exp = [ (k ^. #bunkai) <> "分会"
             , (k ^. #han) <> "班"
             , k ^. #name]
   in let ad = k ^. #rawAddress
-  in let doc = Tx.intercalate " " exp
+  in let doc = Tx.intercalate "/" exp
   in #address @= ad
      <: #explanation @= doc
      <: nil
@@ -340,7 +340,7 @@ type Label = Record
    , "explanation" >: Text]
 
 toString :: Label -> Text
-toString l = l ^. #explanation <> l ^. #address
+toString l = l ^. #explanation <> "/" <> l ^. #address
 
 fromLabelText l sym = Tx.unpack $ l ^. sym
 
