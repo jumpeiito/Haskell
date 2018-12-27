@@ -16,7 +16,7 @@ import           Control.Lens               ((^.))
 import           Control.Lens.Getter        (Getting)
 import           Control.Monad              (when, foldM, guard)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
-import           Control.Monad.Trans.Reader (ask, runReaderT, runReader)
+import           Control.Monad.Trans.Reader (ask, runReaderT)
 import           Control.Monad.Trans.Cont   (ContT (..), runContT)
 import           Control.Monad.Trans.Maybe  (MaybeT (..), runMaybeT)
 import           Data.Aeson                 (FromJSON)
@@ -50,12 +50,6 @@ setting f = liftIO $ do
   ((^. f) <$> ask) `runReaderT` c
 
 data Point = Point Text Double Double deriving (Show)
-
-pointAddress       :: Point -> Text
-pointLat, pointLng :: Point -> Double
-pointAddress (Point t _ _) = t
-pointLat (Point _ t _)     = t
-pointLng (Point _ _ t)     = t
 
 instance FromRow Point where
   fromRow = Point <$> field <*> field <*> field
@@ -132,7 +126,6 @@ contentsOf _               = mempty
 
 getRequest :: Text -> IO (Req LbsResponse)
 getRequest address = do
-  c <- conf
   host <- setting #topURLhost
   rest <- setting #topURLrest
   let url = https host /: rest
@@ -147,12 +140,12 @@ parseXML x =
 
 getLatLng :: Text -> IO [Double]
 getLatLng address = do
-  ioaddress <- getRequest address
+  ioaddress <- getRequest address -- IO (Req LbsResponse) -> Req LbsResponse
   runReq def $ do
-    r <- ioaddress
+    r <- ioaddress                -- Req LbsResponse -> LbsResponse
     case parseLBS def (responseBody r) of
       Right x -> return $ parseXML x
-      Left _  -> return []
+      Left _  -> return mempty
 
 retryGetPoint :: Text -> MaybeT IO Point
 retryGetPoint address = do
@@ -203,11 +196,11 @@ instance Filtering Han    where solver = runHan
 
 makeLabel :: Kumiai -> Label
 makeLabel k =
-  let exp = [ (k ^. #bunkai) <> "分会"
+  let doc = Tx.intercalate "/"
+            [ (k ^. #bunkai) <> "分会"
             , (k ^. #han) <> "班"
             , k ^. #name]
   in let ad = k ^. #rawAddress
-  in let doc = Tx.intercalate "/" exp
   in    #address @= ad
      <: #explanation @= doc
      <: nil
@@ -226,15 +219,13 @@ makeKumiaiTable b h = do
 
 javascriptOutputToFile :: MonadIO m => String -> I.Handle -> m ()
 javascriptOutputToFile jscript h = liftIO $ do
-  encoding <- I.mkTextEncoding "cp932"
-  I.hSetEncoding h encoding
+  I.hSetEncoding h I.utf8
   I.hPutStrLn h jscript
 
 withLookupDB :: Label -> (Label -> MaybeT IO Point)
   -> MaybeT IO Point
 withLookupDB l f = do
-  let a = l ^. #address
-  dbReply <- liftIO $ lookupDB a
+  dbReply <- liftIO $ lookupDB (l ^. #address)
   if (null dbReply)
     then f l
     else return $ head dbReply
@@ -273,13 +264,13 @@ mapTargetInsert doFetchP pk label = do
 
 insertPoint :: Label -> MaybeT IO Point
 insertPoint label = MaybeT $ do
-  let p = label `fromLabelText` #explanation
+  let e = label `fromLabelText` #explanation
   let a = label `fromLabelText` #address
-  errP [heredoc|Getting geocode, ${p} ${a}|]
+  errP [heredoc|Getting geocode, ${e} ${a}|]
   point' <- runMaybeT $ getPoint $ label ^. #address
   case point' of
     Nothing -> do
-      errP [heredoc|failed to get geocode, ${p} ${a}|]
+      errP [heredoc|failed to get geocode, ${e} ${a}|]
     Just p  -> insertDB $ Just p
   waitS <- setting #waitSeconds
   errP [heredoc|${show waitS} seconds wait.|]
@@ -291,8 +282,8 @@ fetch k   = withLookupDB k insertPoint
 onlyGet k = withLookupDB k (const (MaybeT (return Nothing)))
 
 mapTargets :: Bool -> [Label] -> IO [JSUnit]
-mapTargets doFetch labels = do
-  foldM (mapTargetInsert doFetch) [] labels
+mapTargets doFetchP labels = do
+  foldM (mapTargetInsert doFetchP) [] labels
 
 makeJavascript :: [JSUnit] -> IO String
 makeJavascript jsunits = do
@@ -318,6 +309,7 @@ type Label = Record
 toString :: Label -> Text
 toString l = l ^. #explanation <> "/" <> l ^. #address
 
+fromLabelText :: s -> Getting Text s Text -> String
 fromLabelText l sym = Tx.unpack $ l ^. sym
 
 type JSUnit = Record
@@ -335,9 +327,9 @@ labelListFromCSV fp = do
     .| CL.consume
 
 makeJavascriptFromCSV :: Bool -> FilePath -> IO ()
-makeJavascriptFromCSV doFetch fp = do
+makeJavascriptFromCSV doFetchP fp = do
   labels <- labelListFromCSV fp
-  makeJavascriptFileContents doFetch labels
+  makeJavascriptFileContents doFetchP labels
 
 makeJavascriptFileKumiai :: MakeMap -> IO ()
 makeJavascriptFileKumiai mm = do
@@ -347,4 +339,5 @@ makeJavascriptFileKumiai mm = do
   c <- makeKumiaiTable (Bunkai b) (Han h)
   makeJavascriptFileContents (doFetch mm) c
 
+testMM :: MakeMap
 testMM = M True False Nothing Nothing
