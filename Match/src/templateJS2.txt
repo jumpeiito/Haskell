@@ -1,0 +1,22 @@
+var mymap = L.map('map');
+L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">国土地理院</a>', }).addTo(mymap);
+
+mymap.setView([35.006878, 135.731344], 13);
+
+var markerArray = [
+%{ forall (lat, lng, label) <- contents }
+  [#{lat}, #{lng}, "#{label}"],
+%{ endforall }
+ []
+];
+
+
+for (var i = 0, len = markerArray.length; i < len; ++i) {
+    var name = markerArray[i][2];
+    var lat  = markerArray[i][0];
+    var lng  = markerArray[i][1];
+    marker = L.marker([lat, lng]).addTo(mymap);
+    marker.bindPopup(name);
+}

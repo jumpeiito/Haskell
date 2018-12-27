@@ -13,9 +13,10 @@ where
 import           Control.Arrow              ((>>>))
 import           Control.Concurrent         (threadDelay)
 import           Control.Lens               ((^.))
+import           Control.Lens.Getter        (Getting)
 import           Control.Monad              (when, foldM, guard)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
-import           Control.Monad.Trans.Reader (ask, runReaderT)
+import           Control.Monad.Trans.Reader (ask, runReaderT, runReader)
 import           Control.Monad.Trans.Cont   (ContT (..), runContT)
 import           Control.Monad.Trans.Maybe  (MaybeT (..), runMaybeT)
 import           Data.Aeson                 (FromJSON)
@@ -41,8 +42,12 @@ import           Text.XML                   (Node (..), Document, parseLBS)
 import           Text.XML.Cursor            ( node, fromDocument, ($//)
                                             , descendant, checkName)
 import           Util.Address               (makeTypeAddress)
+import           Util.Yaml
 
-fromConfig f = (^. f) <$> ask `runReaderT` config
+setting :: MonadIO m => Getting b Config b -> m b
+setting f = liftIO $ do
+  c <- conf
+  ((^. f) <$> ask) `runReaderT` c
 
 data Point = Point Text Double Double deriving (Show)
 
@@ -62,7 +67,7 @@ runC :: Monad m => ContT a m a -> m a
 runC = (`runContT` return)
 
 withDB :: (FilePath -> IO a) -> IO a
-withDB = (=<< fromConfig #dbname)
+withDB f = setting #dbname >>= f
 
 withDBAction :: (Connection -> IO a) -> IO a
 withDBAction f = withDB (flip withConnection f)
@@ -106,7 +111,8 @@ allQueryDB :: IO [Point]
 allQueryDB = withDBAction (flip query_ "SELECT * from test")
 
 type Config = Record
-  '[ "topURL"      >: Url 'Https
+  '[ "topURLhost"  >: Text
+   , "topURLrest"  >: Text
    , "dbname"      >: FilePath
    , "testcsv"     >: FilePath
    , "spec"        >: Spec
@@ -114,42 +120,8 @@ type Config = Record
    , "waitSeconds" >: Int
    ]
 
-config :: Config
-config =    #topURL  @= https "www.geocoding.jp" /: "api"
-         <: #dbname  @= "geocoder.db"
-         <: #testcsv @= "app/組合員データ活用.csv"
-         <: #spec    @= [ "支部コード"
-                        , "支部"
-                        , "分会コード"
-                        , "分会"
-                        , "班"
-                        , "組合員番号"
-                        , "氏名"
-                        , "氏名カナ"
-                        , "性別"
-                        , "生年月日"
-                        , "加入日"
-                        , "脱退日"
-                        , "職種"
-                        , "就労先"
-                        , "就労先コード"
-                        , "台帳表示順"
-                        , "電話番号"
-                        , "携帯番号"
-                        , "FAX"
-                        , "郵便番号"
-                        , "住所"
-                        , "組合種別"
-                        , "共済区分"
-                        , "役職(本部)"
-                        , "役職(支部)"
-                        , "役職(分会)"
-                        , "役職(班)"
-                        , "資格取得日"
-                        , "資格喪失日"]
-         <: #jsfile @= "index.js"
-         <: #waitSeconds @= 10
-         <: nil
+conf :: IO Config
+conf = readYaml "src/mapConfig.yaml"
 
 errP :: MonadIO m => String -> m ()
 errP = liftIO . I.hPutStrLn I.stderr
@@ -158,10 +130,13 @@ contentsOf :: Node -> Text
 contentsOf (NodeContent x) = x
 contentsOf _               = mempty
 
-getRequest :: Text -> Req LbsResponse
+getRequest :: Text -> IO (Req LbsResponse)
 getRequest address = do
-  url <- fromConfig #topURL
-  req GET url NoReqBody lbsResponse ("q" =: address)
+  c <- conf
+  host <- setting #topURLhost
+  rest <- setting #topURLrest
+  let url = https host /: rest
+  return $ req GET url NoReqBody lbsResponse ("q" =: address)
 
 parseXML :: Document -> [Double]
 parseXML x =
@@ -172,15 +147,16 @@ parseXML x =
 
 getLatLng :: Text -> IO [Double]
 getLatLng address = do
+  ioaddress <- getRequest address
   runReq def $ do
-    r <- getRequest address
+    r <- ioaddress
     case parseLBS def (responseBody r) of
       Right x -> return $ parseXML x
       Left _  -> return []
 
 retryGetPoint :: Text -> MaybeT IO Point
 retryGetPoint address = do
-  w <- fromConfig #waitSeconds
+  w <- setting #waitSeconds
   errP [heredoc|retry after ${show w} seconds.|]
   liftIO $ threadDelay (w * 1000 * 1000)
   -- getPointして取得できなかった場合は,return Nothingする。
@@ -232,14 +208,14 @@ makeLabel k =
             , k ^. #name]
   in let ad = k ^. #rawAddress
   in let doc = Tx.intercalate "/" exp
-  in #address @= ad
+  in    #address @= ad
      <: #explanation @= doc
      <: nil
 
 makeKumiaiTable :: Bunkai -> Han -> IO [Label]
 makeKumiaiTable b h = do
-  csv  <- fromConfig #testcsv
-  spec <- fromConfig #spec
+  csv  <- setting #testcsv
+  spec <- setting #spec
   runConduit
     $ parseCSVSource spec csv
     .| CL.map makeKumiai
@@ -305,7 +281,7 @@ insertPoint label = MaybeT $ do
     Nothing -> do
       errP [heredoc|failed to get geocode, ${p} ${a}|]
     Just p  -> insertDB $ Just p
-  waitS <- fromConfig #waitSeconds
+  waitS <- setting #waitSeconds
   errP [heredoc|${show waitS} seconds wait.|]
   threadDelay (waitS * 1000 * 1000)
   return point'
@@ -324,13 +300,13 @@ makeJavascript jsunits = do
                             , j ^. #longitude
                             , toString (j ^. #label))) jsunits
   return $ renderMarkup $
-    $(compileTextFile "src/Match/templateJS2.txt")
+    $(compileTextFile "src/templateJS2.txt")
 
 makeJavascriptFileContents :: Bool -> [Label] -> IO ()
 makeJavascriptFileContents doFetchP labels = do
   cp   <- mapTargets doFetchP labels
   js   <- makeJavascript cp
-  file <- fromConfig #jsfile
+  file <- setting #jsfile
   runC $ do
     handle <- ContT $ I.withFile file I.WriteMode
     javascriptOutputToFile js handle
