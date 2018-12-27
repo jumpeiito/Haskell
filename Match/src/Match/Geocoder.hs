@@ -43,12 +43,7 @@ import           Text.XML.Cursor            ( node, fromDocument, ($//)
                                             , descendant, checkName)
 import           Util.Address               (makeTypeAddress)
 import           Util.Yaml
-
-setting :: MonadIO m => Getting b Config b -> m b
-setting f = liftIO $ do
-  c <- conf
-  ((^. f) <$> ask) `runReaderT` c
-
+--- data definitions -----------------------------
 data Point = Point Text Double Double deriving (Show)
 
 instance FromRow Point where
@@ -57,9 +52,60 @@ instance FromRow Point where
 instance ToRow Point where
   toRow (Point t d1 d2) = toRow (t, d1, d2)
 
+type JSUnit = Record
+  '[ "latitude"  >: Double
+   , "longitude" >: Double
+   , "label"     >: Label]
+
+type Label = Record
+  '[ "address"     >: Text
+   , "explanation" >: Text]
+
+type Config = Record
+  '[ "topURLhost"  >: Text
+   , "topURLrest"  >: Text
+   , "dbname"      >: FilePath
+   , "testcsv"     >: FilePath
+   , "spec"        >: Spec
+   , "jsfile"      >: FilePath
+   , "waitSeconds" >: Int ]
+
+data MakeMap = M { mapExecute :: Bool
+                 , doFetch    :: Bool
+                 , mapBunkai  :: Maybe Int
+                 , mapHan     :: Maybe Int }
+  deriving (Show, Read, Generic)
+
+instance FromJSON MakeMap
+
+newtype Bunkai = Bunkai { runBunkai :: Maybe Int }
+newtype Han    = Han    { runHan :: Maybe Int }
+
+class Filtering a where
+  solver   :: a -> Maybe Int
+  toFilter :: a -> (Text -> Bool)
+
+  toFilter b = case solver b of
+                 Nothing -> const True
+                 Just i  -> (== Tx.pack (printf "%02d" i))
+
+instance Filtering Bunkai where solver = runBunkai
+instance Filtering Han    where solver = runHan
+--- Utilities ------------------------------------
+conf :: IO Config
+conf = readYaml "src/mapConfig.yaml"
+
+setting :: MonadIO m => Getting b Config b -> m b
+setting f = liftIO $ do
+  c <- conf
+  ((^. f) <$> ask) `runReaderT` c
+
 runC :: Monad m => ContT a m a -> m a
 runC = (`runContT` return)
 
+errP :: MonadIO m => String -> m ()
+errP = liftIO . I.hPutStrLn I.stderr
+--- Database Manupilation ------------------------
 withDB :: (FilePath -> IO a) -> IO a
 withDB f = setting #dbname >>= f
 
@@ -101,35 +147,27 @@ lookupDB tx = do
     liftIO $
       queryNamed conn "SELECT * from test where address = :a" [":a" := tx]
 
+withLookupDB :: Label -> (Label -> MaybeT IO Point)
+  -> MaybeT IO Point
+withLookupDB l f = do
+  dbReply <- liftIO $ lookupDB (l ^. #address)
+  if (null dbReply)
+    then f l
+    else return $ head dbReply
+
 allQueryDB :: IO [Point]
 allQueryDB = withDBAction (flip query_ "SELECT * from test")
-
-type Config = Record
-  '[ "topURLhost"  >: Text
-   , "topURLrest"  >: Text
-   , "dbname"      >: FilePath
-   , "testcsv"     >: FilePath
-   , "spec"        >: Spec
-   , "jsfile"      >: FilePath
-   , "waitSeconds" >: Int
-   ]
-
-conf :: IO Config
-conf = readYaml "src/mapConfig.yaml"
-
-errP :: MonadIO m => String -> m ()
-errP = liftIO . I.hPutStrLn I.stderr
-
+--- Throw query and parse ------------------------
 contentsOf :: Node -> Text
 contentsOf (NodeContent x) = x
 contentsOf _               = mempty
 
-getRequest :: Text -> IO (Req LbsResponse)
+getRequest :: Text -> Req LbsResponse
 getRequest address = do
   host <- setting #topURLhost
   rest <- setting #topURLrest
   let url = https host /: rest
-  return $ req GET url NoReqBody lbsResponse ("q" =: address)
+  req GET url NoReqBody lbsResponse ("q" =: address)
 
 parseXML :: Document -> [Double]
 parseXML x =
@@ -140,9 +178,8 @@ parseXML x =
 
 getLatLng :: Text -> IO [Double]
 getLatLng address = do
-  ioaddress <- getRequest address -- IO (Req LbsResponse) -> Req LbsResponse
   runReq def $ do
-    r <- ioaddress                -- Req LbsResponse -> LbsResponse
+    r <- getRequest address
     case parseLBS def (responseBody r) of
       Right x -> return $ parseXML x
       Left _  -> return mempty
@@ -171,29 +208,7 @@ getPoint address = do
         then MaybeT (return Nothing)
         -- 異なる場合…集合住宅部分を削除したもので再取得を試みる。
         else retryGetPoint address
---------------------------------------------------
-data MakeMap = M { mapExecute :: Bool
-                 , doFetch    :: Bool
-                 , mapBunkai  :: Maybe Int
-                 , mapHan     :: Maybe Int }
-  deriving (Show, Read, Generic)
-
-instance FromJSON MakeMap
-
-newtype Bunkai = Bunkai { runBunkai :: Maybe Int }
-newtype Han    = Han    { runHan :: Maybe Int }
-
-class Filtering a where
-  solver   :: a -> Maybe Int
-  toFilter :: a -> (Text -> Bool)
-
-  toFilter b = case solver b of
-                 Nothing -> const True
-                 Just i  -> (== Tx.pack (printf "%02d" i))
-
-instance Filtering Bunkai where solver = runBunkai
-instance Filtering Han    where solver = runHan
-
+--- For Kumiai's sake ----------------------------
 makeLabel :: Kumiai -> Label
 makeLabel k =
   let doc = Tx.intercalate "/"
@@ -217,18 +232,30 @@ makeKumiaiTable b h = do
     .| CL.map makeLabel
     .| CL.consume
 
-javascriptOutputToFile :: MonadIO m => String -> I.Handle -> m ()
-javascriptOutputToFile jscript h = liftIO $ do
-  I.hSetEncoding h I.utf8
-  I.hPutStrLn h jscript
+insertPoint :: Label -> MaybeT IO Point
+insertPoint label = MaybeT $ do
+  let e = label `fromLabelText` #explanation
+  let a = label `fromLabelText` #address
+  errP [heredoc|Getting geocode, ${e} ${a}|]
+  point' <- runMaybeT $ getPoint $ label ^. #address
+  case point' of
+    Nothing -> do
+      errP [heredoc|failed to get geocode, ${e} ${a}|]
+    Just p  -> insertDB $ Just p
+  waitS <- setting #waitSeconds
+  errP [heredoc|${show waitS} seconds wait.|]
+  threadDelay (waitS * 1000 * 1000)
+  return point'
 
-withLookupDB :: Label -> (Label -> MaybeT IO Point)
-  -> MaybeT IO Point
-withLookupDB l f = do
-  dbReply <- liftIO $ lookupDB (l ^. #address)
-  if (null dbReply)
-    then f l
-    else return $ head dbReply
+toString :: Label -> Text
+toString l = l ^. #explanation <> "/" <> l ^. #address
+
+fromLabelText :: s -> Getting Text s Text -> String
+fromLabelText l sym = Tx.unpack $ l ^. sym
+
+fetch, onlyGet :: Label -> MaybeT IO Point
+fetch k   = withLookupDB k insertPoint
+onlyGet k = withLookupDB k (const (MaybeT (return Nothing)))
 
 errorAtGet :: Label -> IO ()
 errorAtGet label = do
@@ -262,25 +289,6 @@ mapTargetInsert doFetchP pk label = do
       errorF label
       return pk
 
-insertPoint :: Label -> MaybeT IO Point
-insertPoint label = MaybeT $ do
-  let e = label `fromLabelText` #explanation
-  let a = label `fromLabelText` #address
-  errP [heredoc|Getting geocode, ${e} ${a}|]
-  point' <- runMaybeT $ getPoint $ label ^. #address
-  case point' of
-    Nothing -> do
-      errP [heredoc|failed to get geocode, ${e} ${a}|]
-    Just p  -> insertDB $ Just p
-  waitS <- setting #waitSeconds
-  errP [heredoc|${show waitS} seconds wait.|]
-  threadDelay (waitS * 1000 * 1000)
-  return point'
-
-fetch, onlyGet :: Label -> MaybeT IO Point
-fetch k   = withLookupDB k insertPoint
-onlyGet k = withLookupDB k (const (MaybeT (return Nothing)))
-
 mapTargets :: Bool -> [Label] -> IO [JSUnit]
 mapTargets doFetchP labels = do
   foldM (mapTargetInsert doFetchP) [] labels
@@ -293,6 +301,11 @@ makeJavascript jsunits = do
   return $ renderMarkup $
     $(compileTextFile "src/templateJS2.txt")
 
+javascriptOutputToFile :: MonadIO m => String -> I.Handle -> m ()
+javascriptOutputToFile jscript h = liftIO $ do
+  I.hSetEncoding h I.utf8
+  I.hPutStrLn h jscript
+
 makeJavascriptFileContents :: Bool -> [Label] -> IO ()
 makeJavascriptFileContents doFetchP labels = do
   cp   <- mapTargets doFetchP labels
@@ -302,20 +315,13 @@ makeJavascriptFileContents doFetchP labels = do
     handle <- ContT $ I.withFile file I.WriteMode
     javascriptOutputToFile js handle
 
-type Label = Record
-  '[ "address"     >: Text
-   , "explanation" >: Text]
-
-toString :: Label -> Text
-toString l = l ^. #explanation <> "/" <> l ^. #address
-
-fromLabelText :: s -> Getting Text s Text -> String
-fromLabelText l sym = Tx.unpack $ l ^. sym
-
-type JSUnit = Record
-  '[ "latitude"  >: Double
-   , "longitude" >: Double
-   , "label"     >: Label]
+makeJavascriptFileKumiai :: MakeMap -> IO ()
+makeJavascriptFileKumiai mm = do
+  guard $ mapExecute mm
+  let b = mapBunkai mm
+  let h = mapHan mm
+  c <- makeKumiaiTable (Bunkai b) (Han h)
+  makeJavascriptFileContents (doFetch mm) c
 
 labelListFromCSV :: FilePath -> IO [Label]
 labelListFromCSV fp = do
@@ -330,14 +336,6 @@ makeJavascriptFromCSV :: Bool -> FilePath -> IO ()
 makeJavascriptFromCSV doFetchP fp = do
   labels <- labelListFromCSV fp
   makeJavascriptFileContents doFetchP labels
-
-makeJavascriptFileKumiai :: MakeMap -> IO ()
-makeJavascriptFileKumiai mm = do
-  guard $ mapExecute mm
-  let b = mapBunkai mm
-  let h = mapHan mm
-  c <- makeKumiaiTable (Bunkai b) (Han h)
-  makeJavascriptFileContents (doFetch mm) c
 
 testMM :: MakeMap
 testMM = M True False Nothing Nothing
