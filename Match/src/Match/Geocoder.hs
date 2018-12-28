@@ -53,9 +53,9 @@ instance ToRow Point where
   toRow (Point t d1 d2) = toRow (t, d1, d2)
 
 type JSUnit = Record
-  '[ "latitude"  >: Double
-   , "longitude" >: Double
-   , "label"     >: Label]
+  '[ "latitude"    >: Double
+   , "longitude"   >: Double
+   , "label"       >: Label]
 
 type Label = Record
   '[ "address"     >: Text
@@ -257,22 +257,15 @@ fetch, onlyGet :: Label -> MaybeT IO Point
 fetch k   = withLookupDB k insertPoint
 onlyGet k = withLookupDB k (const (MaybeT (return Nothing)))
 
-errorAtGet :: Label -> IO ()
-errorAtGet label = do
-  let pre = label `fromLabelText` #explanation
-  let ad  = label `fromLabelText` #address
-  putStrLn
-    [heredoc|${pre} ${ad}の地図情報を入手できませんでした。|]
+errorAtGet :: Text -> Text -> IO ()
+errorAtGet pre ad = putStrLn
+                    [heredoc|${pre} ${ad}の地図情報を入手できませんでした。|]
 
-errorAtDB :: Label -> IO ()
-errorAtDB label = do
-  let pre = label `fromLabelText` #explanation
-  let ad  = label `fromLabelText` #address
-  putStrLn
-    [heredoc|${pre} ${ad}の地図情報がありません。|]
+errorAtDB :: Text -> Text -> IO ()
+errorAtDB pre ad = putStrLn
+                   [heredoc|${pre} ${ad}の地図情報がありません。|]
 
-mapTargetInsert :: Bool -> [JSUnit]
-  -> Label -> IO [JSUnit]
+mapTargetInsert :: Bool -> [JSUnit] -> Label -> IO [JSUnit]
 mapTargetInsert doFetchP pk label = do
   let (getF, errorF) = if doFetchP
                           then (fetch, errorAtGet)
@@ -286,7 +279,9 @@ mapTargetInsert doFetchP pk label = do
               <: nil
       return $ jsu : pk
     Nothing -> do
-      errorF label
+      let pre = label `fromLabelText` #explanation
+      let ad  = label `fromLabelText` #address
+      errorF pre ad
       return pk
 
 mapTargets :: Bool -> [Label] -> IO [JSUnit]
