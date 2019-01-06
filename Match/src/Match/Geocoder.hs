@@ -1,27 +1,29 @@
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE QuasiQuotes       #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE TemplateHaskell  #-}
+{-# LANGUAGE QuasiQuotes      #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric    #-}
 {-# LANGUAGE TypeFamilies     #-}
 module Match.Geocoder
   (makeJavascriptFileKumiai
    , makeJavascriptFromCSV
    , makeJavascriptFileContents
-   ,Bunkai, Han, MakeMap (..))
+   , Bunkai, Han, MakeMap (..))
 where
 
 import           Control.Arrow              ((>>>))
 import           Control.Concurrent         (threadDelay)
-import           Control.Lens               ((^.))
+import           Control.Lens               ((^.), (&), (.~))
 import           Control.Lens.Getter        (Getting)
 import           Control.Monad              (when, foldM, guard)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 import           Control.Monad.Trans.Reader (ask, runReaderT)
 import           Control.Monad.Trans.Cont   (ContT (..), runContT)
 import           Control.Monad.Trans.Maybe  (MaybeT (..), runMaybeT)
+import           Control.Exception.Safe     (throwM, MonadThrow)
 import           Data.Aeson                 (FromJSON)
 import           Data.Conduit               (runConduit, (.|))
 import qualified Data.Conduit.List          as CL
+import           Data.List                  (find, isInfixOf)
 import           Data.Text                  (Text, unpack)
 import qualified Data.Text                  as Tx
 import           Data.Default.Class         (def)
@@ -41,7 +43,9 @@ import           Text.Printf                (printf)
 import           Text.XML                   (Node (..), Document, parseLBS)
 import           Text.XML.Cursor            ( node, fromDocument, ($//)
                                             , descendant, checkName)
+import           Util                       (pSearch)
 import           Util.Address               (makeTypeAddress)
+import           Util.Exception             (FileNotExistException (..))
 import           Util.Yaml
 --- data definitions -----------------------------
 data Point = Point Text Double Double deriving (Show)
@@ -59,7 +63,7 @@ type JSUnit = Record
 
 type Label = Record
   '[ "address"     >: Text
-   , "explanation" >: Text]
+   , "explanation" >: Text ]
 
 type Config = Record
   '[ "topURLhost"  >: Text
@@ -95,10 +99,22 @@ instance Filtering Han    where solver = runHan
 conf :: IO Config
 conf = readYaml "src/mapConfig.yaml"
 
+-- conf2 :: IO Config
+-- conf2 = do
+--   let hoge = #jsfile
+--   c <- readYaml "src/mapConfig.yaml"
+--   js' <- fileExistsCheck (c ^. hoge)
+--   return $ c & hoge .~ js'
+
+fileExistsCheck :: (MonadIO m, MonadThrow m) => FilePath -> m FilePath
+fileExistsCheck fp = liftIO $ do
+  relPath <- find (fp `isInfixOf`) <$> pSearch "./"
+  case relPath of
+    Just p  -> return p
+    Nothing -> throwM $ FileNotExistException fp
+
 setting :: MonadIO m => Getting b Config b -> m b
-setting f = liftIO $ do
-  c <- conf
-  ((^. f) <$> ask) `runReaderT` c
+setting f = liftIO $ (^. f) <$> conf
 
 runC :: Monad m => ContT a m a -> m a
 runC = (`runContT` return)
@@ -251,17 +267,17 @@ toString :: Label -> Text
 toString l = l ^. #explanation <> "/" <> l ^. #address
 
 fromLabelText :: s -> Getting Text s Text -> String
-fromLabelText l sym = Tx.unpack $ l ^. sym
+fromLabelText l sym = Tx.unpack $ l^.sym
 
 fetch, onlyGet :: Label -> MaybeT IO Point
 fetch k   = withLookupDB k insertPoint
 onlyGet k = withLookupDB k (const (MaybeT (return Nothing)))
 
-errorAtGet :: Text -> Text -> IO ()
+errorAtGet :: String -> String -> IO ()
 errorAtGet pre ad = putStrLn
                     [heredoc|${pre} ${ad}の地図情報を入手できませんでした。|]
 
-errorAtDB :: Text -> Text -> IO ()
+errorAtDB :: String -> String -> IO ()
 errorAtDB pre ad = putStrLn
                    [heredoc|${pre} ${ad}の地図情報がありません。|]
 

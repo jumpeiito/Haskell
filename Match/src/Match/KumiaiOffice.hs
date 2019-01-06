@@ -4,8 +4,8 @@ module Match.KumiaiOffice where
 
 import           Control.Lens
 import           Control.Parallel.Strategies (parMap, rseq)
-import           GHC.Generics
 import           Control.Arrow               ((&&&))
+import           Control.Monad.IO.Class      (liftIO)
 import           Data.Conduit
 import qualified Data.Conduit.List           as CL
 import           Data.Extensible
@@ -13,8 +13,7 @@ import qualified Data.Map.Strict             as M
 import           Data.Text                   hiding (map)
 import qualified Data.Text                   as Tx
 import qualified Data.Text.Lazy.Builder      as BB
-import           Match.Config                ( Conf (..)
-                                             , kumiaiOfficeSpecF)
+import           Match.Config                (kumiaiOfficeSpecF)
 import           Match.SQL                   (fetchSQLSource)
 import           Match.Base                  (killHyphen
                                              , makeKey
@@ -36,9 +35,9 @@ type KumiaiOffice = Record
    , "tel"        >: Text
    ]
 
-initializeCSVSource :: Source IO [Text]
+initializeCSVSource :: ConduitT () [Text] IO ()
 initializeCSVSource = do
-  spec <- kumiaiOfficeSpecF
+  spec <- liftIO kumiaiOfficeSpecF
   fetchSQLSource #kumiaiOfficeFile spec #kumiaiOfficeDB
 
 makeKumiaiOffice :: [Text] -> KumiaiOffice
@@ -74,8 +73,8 @@ stringList k = map (BB.fromText . (k ^.)) funcList
                , #postal
                , #tel]
 
-initializeSource :: Source IO KumiaiOffice
-initializeSource = initializeCSVSource $= CL.map makeKumiaiOffice
+initializeSource :: ConduitT () KumiaiOffice IO ()
+initializeSource = initializeCSVSource .| CL.map makeKumiaiOffice
 
 makeKeySimplize :: Text -> Text
 makeKeySimplize = Tx.take 6 . makeKey 6 . Tx.drop 3
@@ -94,13 +93,17 @@ nameMap = do
     M.fromList $ parMap rseq ((^. #name) &&& id) csv
 
 numberCMap :: IO (M.Map Text KumiaiOffice)
-numberCMap = M.fromList <$>
-             (initializeSource
-              =$ CL.map ((makeKeySimplize . (^. #idNumber)) &&& id)
-              $$ CL.consume)
+numberCMap = do
+  pipe <- runConduit
+            $ initializeSource
+            .| CL.map ((makeKeySimplize . (^. #idNumber)) &&& id)
+            .| CL.consume
+  return $ M.fromList pipe
 
 nameCMap :: IO (M.Map Text KumiaiOffice)
-nameCMap = M.fromList <$>
-           (initializeSource
-             =$ CL.map ((^. #name) &&& id)
-             $$ CL.consume)
+nameCMap = do
+  pipe <- runConduit
+            $ initializeSource
+            .| CL.map ((^. #name) &&& id)
+            .| CL.consume
+  return $ M.fromList pipe

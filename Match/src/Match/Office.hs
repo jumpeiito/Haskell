@@ -3,7 +3,7 @@ module Match.Office where
 
 import           Control.Arrow
 import           Control.Lens
-import           Control.Parallel.Strategies (parMap, rseq)
+import           Control.Monad.IO.Class      (liftIO)
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
 import           Data.Attoparsec.Text
@@ -13,22 +13,20 @@ import           Data.Monoid                 ((<>))
 import           Data.Text                   hiding (map)
 import qualified Data.Text                   as Tx
 import qualified Data.Text.Lazy.Builder      as BB
-import           Match.Config                ( Conf (..)
-                                             , officeSpecF)
+import           Match.Config                (officeSpecF)
 import           Match.SQL                   (fetchSQLSource)
 import           Match.Base                  (Office (..)
                                              , killBlanks
                                              , killHyphen
                                              , makeKey
                                              , officeTypeRegularize)
-import qualified Text.ParseCSV               as T
 import           Util.Strbt                  (strdt)
 
 type MaybeIO a = IO (Either String a)
 
-initializeCSVSource :: Source IO [Text]
+initializeCSVSource :: ConduitT () [Text] IO ()
 initializeCSVSource = do
-  spec <- officeSpecF
+  spec <- liftIO officeSpecF
   fetchSQLSource #officeFile spec #officeDB
 
 makeOffice :: [Text] -> Office
@@ -54,11 +52,13 @@ makeOffice record = case record of
     <: nil
   _ -> error $ Tx.unpack $ "must not be happen : " <> Tx.intercalate "," record
 
-initializeSource :: Source IO Office
-initializeSource = initializeCSVSource $= CL.map makeOffice
+initializeSource :: ConduitT () Office IO ()
+initializeSource = initializeCSVSource .| CL.map makeOffice
 
 makeMapFunc :: (Office -> (Text, Office)) -> IO (M.Map Text Office)
-makeMapFunc f = M.fromList <$> (initializeSource =$ CL.map f $$ CL.consume)
+makeMapFunc f = do
+  pipe <- runConduit (initializeSource .| CL.map f .| CL.consume)
+  return $ M.fromList pipe
 
 numberMap, telMap, posMap, nameMap :: IO (M.Map Text Office)
 numberMap = makeMapFunc (\n -> (makeKey 6 $ n ^. #code, n))

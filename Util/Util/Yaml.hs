@@ -16,7 +16,7 @@ readYaml yamlFile = do
   p <- liftIO $ doesFileExist yamlFile
   if p
     then do content <- liftIO $ BS.readFile yamlFile
-            case (Y.decode content :: FromJSON a => Maybe a) of
-              Nothing       -> throwM YamlParseFailException
-              Just yamlData -> return yamlData
+            case Y.decodeEither' content of
+              Left _         -> throwM YamlParseFailException
+              Right yamlData -> return yamlData
     else throwM $ FileNotExistException yamlFile

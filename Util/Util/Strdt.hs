@@ -24,7 +24,7 @@ module Util.Strdt (strdt
 import Util           hiding ((&&&))
 import Control.Arrow
 import Data.List
-import Data.Map                         hiding (map)
+import Data.Map                         hiding (map, take)
 import Data.Maybe
 import Data.Time
 import Data.Time.Calendar.WeekDate

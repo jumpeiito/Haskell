@@ -66,7 +66,9 @@ csvToSQL sp csv db = do
   c <- sp `parseCSV` csv
   c `writeSQLite` db
 
-readSQLiteSource :: (MonadThrow m, MonadIO m) => String -> Source m [Text]
+-- readSQLiteSource :: (MonadThrow m, MonadIO m) => String -> Source m [Text]
+readSQLiteSource ::
+  (MonadThrow m, MonadIO m) => String -> ConduitT () [Text] m ()
 readSQLiteSource dbname = do
   p <- liftIO $ doesFileExist dbname
   if p
@@ -77,7 +79,8 @@ readSQLiteSource dbname = do
     else throwM $ FileNotExistException dbname
 
 fetchSQLSource :: (MonadThrow m, MonadIO m) =>
-  PathGetter -> Spec -> PathGetter -> Source m [Text]
+  -- PathGetter -> Spec -> PathGetter -> Source m [Text]
+  PathGetter -> Spec -> PathGetter -> ConduitT () [Text] m ()
 fetchSQLSource csvf spec dbf = do
   conf <- lift readConf
   let csv = ((^. csvf) <$> ask) `runReader` conf

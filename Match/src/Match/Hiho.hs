@@ -5,6 +5,7 @@ module Match.Hiho where
 
 import           Control.Arrow               ((&&&))
 import           Control.Lens
+import           Control.Monad.IO.Class      (liftIO)
 import           Control.Parallel.Strategies (parMap, rseq)
 import           Data.Attoparsec.Text        hiding (number)
 import           Data.Conduit
@@ -77,9 +78,10 @@ stringMaybe :: Text -> Maybe Text
 stringMaybe "" = Nothing
 stringMaybe s  = Just s
 
-initializeCSVSource :: Source IO [Text]
+-- initializeCSVSource :: Source IO [Text]
+initializeCSVSource :: ConduitT () [Text] IO ()
 initializeCSVSource = do
-  spec <- hihoSpecF
+  spec <- liftIO hihoSpecF
   fetchSQLSource #hihoFile spec #hihoDB
 
 makeHiho :: [Text] -> HihoR
@@ -125,8 +127,8 @@ hihoNameUnfinishedP h =
 hihoAddressBlankP :: HihoR -> Bool
 hihoAddressBlankP h = (isNothing $ h ^. #lost) && (h ^. #address == "")
 
-initializeSource :: Source IO HihoR
-initializeSource = initializeCSVSource $= CL.map makeHiho
+initializeSource :: ConduitT () HihoR IO ()
+initializeSource = initializeCSVSource .| CL.map makeHiho
 
 kanaBirthMap :: IO (M.Map (Text, Maybe Day) [HihoR])
 kanaBirthMap = do
@@ -145,11 +147,14 @@ kanaBirthCMap :: IO (M.Map (Text, Maybe Day) [HihoR])
 kanaBirthCMap = do
   let insert mp el =
         M.insertWith (++) (killBlanks (el ^. #kana), el ^. #birth) [el] mp
-  initializeSource $$ CL.fold insert M.empty
+  runConduit
+    $ initializeSource
+    .| CL.fold insert M.empty
 
 numberCMap :: IO (M.Map Text HihoR)
 numberCMap = do
-  gen <- initializeSource
-         =$ CL.map ((^. #number) &&& id)
-         $$ CL.consume
+  gen <- runConduit
+           $ initializeSource
+           .| CL.map ((^. #number) &&& id)
+           .| CL.consume
   return $ M.fromList gen

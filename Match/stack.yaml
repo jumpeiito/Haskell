@@ -1,5 +1,6 @@
 allow-newer: true
-resolver: lts-9.21
+# resolver: lts-9.21
+resolver: lts-11.22
 
 packages:
 - .
@@ -9,7 +10,7 @@ extra-deps:
 - storable-tuple-0.0.3.3
 - storable-record-0.0.4
 - attoparsec-csv-0.1.1.0
-- safe-exceptions-0.1.7.0
+# - safe-exceptions-0.1.7.0
 - heredocs-0.1.4
 - extensible-0.4.9
 - req-1.2.1

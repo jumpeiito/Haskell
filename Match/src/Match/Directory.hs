@@ -5,8 +5,8 @@
 module Match.Directory
   (createHihoDirectory, removeBlankDirectory) where
 
-import Foreign.C.Types
-import Foreign.C.String
+-- import Foreign.C.Types
+-- import Foreign.C.String
 
 import           Control.Arrow              ((>>>))
 import           Control.Exception.Safe
@@ -130,7 +130,8 @@ fileTree = do
   contents <- getTreeDirectory (splitOn "/" >>> length >>> (>= 6))
   return $ makeTreeDirectoryMap contents
 
-sourceDescendDirectory :: FilePath -> Source IO FilePath
+-- sourceDescendDirectory :: FilePath -> Source IO FilePath
+sourceDescendDirectory :: FilePath -> ConduitT () FilePath IO ()
 sourceDescendDirectory fp = do
   directoryP <- lift $ doesDirectoryExist fp
   when directoryP $ do
@@ -219,14 +220,16 @@ officeP   d = (depth d == 5) && officeNameP (basename d)
 personalP d = (depth d == 6) && officeNameP (basename $ takeDirectory d)
 lostP     d = (depth d == 7) && ((=="喪失") $ basename d)
 
-targetDirectories :: Conduit FilePath IO FilePath
+-- targetDirectories :: Conduit FilePath IO FilePath
+targetDirectories :: ConduitT FilePath FilePath IO ()
 targetDirectories =
   awaitForever $ \dir ->
     when (personalP dir || officeP dir || lostP dir) $ do
       len <- liftIO (length <$> getDirectoryContents dir)
       when (len == 2) $ yield dir
 
-removeBlankDirectorySink :: Sink FilePath IO ()
+-- removeBlankDirectorySink :: Sink FilePath IO ()
+removeBlankDirectorySink :: ConduitT FilePath () IO ()
 removeBlankDirectorySink = do
   targets <- CL.consume
   mapM_ (liftIO . putStrLn) targets
@@ -247,10 +250,11 @@ removeBlankDirectorySink = do
 removeBlankDirectory :: IO ()
 removeBlankDirectory = do
   Right t <- runExceptT fileTreeDirectory
-  sourceDescendDirectory t
-    $= targetDirectories
+  runConduit
+    $ sourceDescendDirectory t
+    .| targetDirectories
     --- $$ removeBlankDirectorySink
-    $$ CL.mapM_ putStrLn
+    .| CL.mapM_ putStrLn
 
 duplicateOfficeCheck :: IO ()
 duplicateOfficeCheck = do
@@ -260,7 +264,7 @@ duplicateOfficeCheck = do
         let l = M.toList $ makeListMap officeNumber (:[]) xl
         mapM_ yield l
   let dupFilter =
-        awaitForever $ \(key, val) ->
+        awaitForever $ \(_, val) ->
           when (length val /= 1) $ yield val
   let dupSink = do
         xl <- CL.consume

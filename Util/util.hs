@@ -12,7 +12,7 @@ import Control.Concurrent.Async
 import System.Directory                 hiding (listDirectory)
 import System.Process
 import Text.StringLike                  (StringLike)
-import qualified Data.Map               as Map
+import qualified Data.Map.Strict        as Map
 import qualified System.IO              as I
 import qualified Data.Text              as Tx
 import qualified Data.Text.IO           as Txio
@@ -89,7 +89,7 @@ alld fp = snd <$> runWriterT (_alld fp)
 makeMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k [a]
 makeMap _ _ [] = Map.empty
 makeMap kF vF (x:xs) =
-  Map.insertWith' (++) (kF x) [vF x] $ makeMap kF vF xs
+  Map.insertWith (++) (kF x) [vF x] $ makeMap kF vF xs
 
 makeSingleMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k a
 makeSingleMap _ _ [] = Map.empty
@@ -99,17 +99,17 @@ makeSingleMap kF vF (x:xs) =
 makeCountMap :: (Num a, Ord k) => (t -> k) -> [t] -> Map.Map k a
 makeCountMap _ [] = Map.empty
 makeCountMap kF (x:xs) =
-   Map.insertWith' (+) (kF x) 1 $ makeCountMap kF xs
+   Map.insertWith (+) (kF x) 1 $ makeCountMap kF xs
 
 makeSumMap :: (Num a, Ord k) => (t -> k) -> (t -> a) -> [t] -> Map.Map k a
 makeSumMap _ _ [] = Map.empty
 makeSumMap kF vF (x:xs) =
-   Map.insertWith' (+) (kF x) (vF x) $ makeSumMap kF vF xs
+   Map.insertWith (+) (kF x) (vF x) $ makeSumMap kF vF xs
 
 makeListMap :: Ord k => (t -> k) -> (t -> [a]) -> [t] -> Map.Map k [a]
 makeListMap _ _ [] = Map.empty
 makeListMap kF vF (x:xs) =
-   Map.insertWith' (++) (kF x) (vF x) $ makeListMap kF vF xs
+   Map.insertWith (++) (kF x) (vF x) $ makeListMap kF vF xs
 
 class ReadFile a where
   readUTF8     :: FilePath -> IO a

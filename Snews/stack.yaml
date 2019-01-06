@@ -4,7 +4,9 @@ packages:
 - "../Util/"
 - '.'
 
-extra-deps: []
+extra-deps:
+- extensible-0.4.10.1@sha256:4c8678a3a69b619b38143129027610954d0f7c58d305e5547eb5f3cbfa0a9513
+- prettyprinter-1.2.1@sha256:69856d061c602917d578190265edb62b14f63a2e02bcc565adf31146f903a45b
 
 flags: {}
 

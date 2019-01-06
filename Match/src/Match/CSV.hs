@@ -73,7 +73,8 @@ parseCSV2 spec fp = do
     else throwM $ FileNotExistException fp
 
 parseCSVSource :: (MonadThrow m, MonadIO m)
-  => Spec -> FilePath -> Source m [Text]
+  -- => Spec -> FilePath -> Source m [Text]
+  => Spec -> FilePath -> ConduitT () [Text] m ()
 parseCSVSource spec fp = do
   p <- liftIO $ doesFileExist fp
   if p

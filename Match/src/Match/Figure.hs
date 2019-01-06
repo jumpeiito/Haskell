@@ -11,10 +11,10 @@ import           Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
 import qualified Match.Base                as B
 import qualified Match.Hiho                as H
 import qualified Match.Kumiai              as K
-import           Data.Extensible
+-- import           Data.Extensible
 import           Data.Ord                  (comparing)
 import           Data.Foldable             (forM_)
-import           Data.Maybe                (fromMaybe, isNothing, isJust, fromJust)
+import           Data.Maybe                (fromMaybe, fromJust)
 import           Data.Text                 (Text, pack)
 import           Data.Monoid               ((<>))
 import qualified Data.Text.Lazy.Builder    as TLB
@@ -293,11 +293,11 @@ toBuilder f = before f <> core <> after f
 figurePrint :: Figure -> IO ()
 figurePrint = joinPrint . toBuilder
 
-figureSink :: Sink Figure IO ()
+figureSink :: ConduitT Figure () IO ()
 figureSink = CL.mapM_ figurePrint
 
-figureMaybeConduit :: MaybeT (ConduitM a Figure IO) Figure
-  -> Conduit a IO Figure
+figureMaybeConduit
+  :: Monad m => MaybeT (ConduitT i o m) o -> ConduitT i o m ()
 figureMaybeConduit c = do
   fig <- runMaybeT c
   forM_ fig yield

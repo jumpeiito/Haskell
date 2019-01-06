@@ -47,7 +47,8 @@ safeReadConf =
     (\(SomeException a) -> do liftIO $ print a
                               return defaultConf)
 
-sendCSVFileName, fileTreeDirectory :: (MonadCatch m, MonadIO m) => m FilePath
+sendCSVFileName, fileTreeDirectory
+  :: (MonadCatch m, MonadIO m) => m FilePath
 sendCSVFileName   = (^. #directoryFile) <$> safeReadConf
 fileTreeDirectory = (^. #fileTree) <$> safeReadConf
 

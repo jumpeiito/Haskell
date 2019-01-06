@@ -5,6 +5,7 @@ module Match.Kumiai where
 
 import           Control.Arrow               ((&&&))
 import           Control.Lens                ((^.))
+import           Control.Monad.IO.Class      (liftIO)
 import           Control.Parallel.Strategies (parMap, rseq)
 import qualified Data.Map.Strict             as M
 import           Data.List                   (foldl')
@@ -161,9 +162,9 @@ type Kumiai = Record
    , "relational" >: Maybe Text
    ]
 
-initializeCSVSource :: Source IO [Text]
+initializeCSVSource :: ConduitT () [Text] IO ()
 initializeCSVSource = do
-  spec <- kumiaiSpecF
+  spec <- liftIO kumiaiSpecF
   fetchSQLSource #kumiaiFile spec #kumiaiDB
 
 kanaBirthKey :: Kumiai -> (Text, Maybe Day)
@@ -245,8 +246,8 @@ blankMaybe :: Text -> Maybe Text
 blankMaybe "" = Nothing
 blankMaybe x  = Just x
 
-initializeSource :: Source IO Kumiai
-initializeSource = initializeCSVSource $= CL.map makeKumiai
+initializeSource :: ConduitT () Kumiai IO ()
+initializeSource = initializeCSVSource .| CL.map makeKumiai
 
 -- |
 --
@@ -281,15 +282,18 @@ birthdayNameMap = do
 
 numberCMap :: IO (M.Map Text Kumiai)
 numberCMap = M.fromList <$>
-             (initializeSource
-              =$ CL.map ((kumiaiMakeKey . (^. #number)) &&& id)
-              $$ CL.consume)
+             runConduit
+              (initializeSource
+               .| CL.map ((kumiaiMakeKey . (^. #number)) &&& id)
+               .| CL.consume)
 
 birthdayCMap :: IO (M.Map (Maybe Day) [Kumiai])
 birthdayCMap = do
   let insert mp el =
         M.insertWith (++) (el ^. #birth) [el] mp
-  initializeSource $$ CL.fold insert M.empty
+  runConduit
+    $ initializeSource
+    .| CL.fold insert M.empty
 
 birthdayNameCMap :: IO (M.Map (Text, Maybe Day) [Kumiai])
 birthdayNameCMap = do
@@ -297,7 +301,9 @@ birthdayNameCMap = do
         let b = el ^. #birth
         in let k = killBlanks $ el ^. #kana
         in M.insertWith (++) (k, b) [el] mp
-  initializeSource $$ CL.fold insert M.empty
+  runConduit $
+    initializeSource
+    .| CL.fold insert M.empty
 
 officeCodeMap :: IO (M.Map Text [Kumiai])
 officeCodeMap = do
