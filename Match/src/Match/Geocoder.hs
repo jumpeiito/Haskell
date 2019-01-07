@@ -257,11 +257,11 @@ fetch, onlyGet :: Label -> MaybeT IO Point
 fetch k   = withLookupDB k insertPoint
 onlyGet k = withLookupDB k (const (MaybeT (return Nothing)))
 
-errorAtGet :: Text -> Text -> IO ()
+errorAtGet :: String -> String -> IO ()
 errorAtGet pre ad = putStrLn
                     [heredoc|${pre} ${ad}の地図情報を入手できませんでした。|]
 
-errorAtDB :: Text -> Text -> IO ()
+errorAtDB :: String -> String -> IO ()
 errorAtDB pre ad = putStrLn
                    [heredoc|${pre} ${ad}の地図情報がありません。|]
 
