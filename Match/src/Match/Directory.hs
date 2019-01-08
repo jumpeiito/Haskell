@@ -1,7 +1,10 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE DeriveAnyClass    #-}
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 module Match.Directory
   (createHihoDirectory, removeBlankDirectory) where
 
@@ -10,12 +13,14 @@ import Foreign.C.String
 
 import           Control.Arrow              ((>>>))
 import           Control.Exception.Safe
+import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Except
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
 import           Data.Either                (isRight)
+import           Data.Extensible
 import           Data.List.Split            (splitOn)
 import qualified Data.Map.Strict            as M
 import           Data.Maybe                 (fromJust, fromMaybe)
@@ -49,7 +54,6 @@ data Send = S { code      :: String
               , name      :: String
               , sendType  :: SendType
               , hihoName  :: String
-              , situation :: Situation
               , shibu     :: Maybe Int } deriving (Show, Eq, Ord)
 
 data TreeDirectory = TD { shibuCode :: Maybe Int
@@ -65,6 +69,30 @@ instance Ord TreeDirectory where
     | oCode x < oCode y = LT
     | otherwise         = GT
 
+type XSend = Record
+  '[ "code"      >: String
+   , "name"      >: String
+   , "type"      >: SendType
+   , "hihoName"  >: String
+   , "shibu"     >: Maybe Int ]
+
+type XTD = Record
+  [ "shibuCode" >: Maybe Int
+  , "filePath"  >: FilePath
+  , "oCode"     >: String
+  , "oName"     >: String
+  , "person"    >: String
+  , "isLost"    >: Bool ]
+
+-- instance Eq XTD where
+--   x == y = (x ^. #oCode) == (y ^. #oCode)
+
+-- instance Ord XTD where
+--   compare x y
+--     | x == y = EQ
+--     | (x ^. #oCode) > (y ^. #oCode) = GT
+--     | otherwise = LT
+
 makeSend :: [Text] -> Send
 makeSend t = case t of
   [_c, _n, _st, _hn, _si, _sh] ->
@@ -72,7 +100,6 @@ makeSend t = case t of
       , name      = unpack $ officeTypeReplace $ killBlanks _n
       , sendType  = makeSendType _st
       , hihoName  = unpack $ killBlanks _hn
-      , situation = makeSituation _si
       , shibu     = toCode $ unpack _sh }
   _ -> error "must not happen"
 
@@ -80,10 +107,6 @@ makeSendType :: Text -> SendType
 makeSendType t | "取得" `isInfixOf` t = Get
                | "喪失" `isInfixOf` t = Lost
                | otherwise           = Other
-
-makeSituation :: Text -> Situation
-makeSituation t | "手続終了" `isInfixOf` t = Done
-                | otherwise = Yet
 
 readData :: (MonadCatch m, MonadIO m) => m [Send]
 readData = do
