@@ -10,8 +10,8 @@
 module Match.Directory
   (createHihoDirectory, removeBlankDirectory) where
 
-import Foreign.C.Types
-import Foreign.C.String
+-- import Foreign.C.Types
+-- import Foreign.C.String
 
 import           Control.Arrow              ((>>>))
 import           Control.Exception.Safe
@@ -54,58 +54,93 @@ import           Text.Parsec
 import           Text.Parsec.String
 import           Text.Read                  (readMaybe)
 import           Util                       ( listDirectory
-                                            , makeListMap
-                                            , pathSearchFile)
+                                            , makeListMap )
 
 type TreeDirectoryMap = M.Map (Maybe Int) [(String, String, Bool)]
+type XTDMap = M.Map (Maybe Int) [XTD]
 
 type FP = (V.Vector FilePath, Int)
 
 data DirectoryM x where
-  Before   :: FP -> DirectoryM FP
-  After    :: FP -> DirectoryM FP
+  Up       :: FP -> DirectoryM FP
+  Down     :: FP -> DirectoryM FP
   Init     :: FP -> DirectoryM FP
+  ShibuD   :: FP -> DirectoryM FP
   OfficeD  :: FP -> DirectoryM FP
   PersonD  :: FP -> DirectoryM FP
+  Bottom   :: FP -> DirectoryM FP
+  LostP    :: FP -> DirectoryM Bool
+  Length   :: FP -> DirectoryM Int
+  Enough   :: FP -> DirectoryM Bool
+  Repeat   :: Int -> (FP -> DirectoryM FP) -> FP -> DirectoryM FP
   PWD      :: FP -> DirectoryM FilePath
   FullPath :: FP -> DirectoryM FilePath
 
 type DM = Skeleton DirectoryM
 type MonadFilePath = DM FP
 
-before  = bone . Before
-after   = bone . After
-initial = bone . Init
-pwd     = bone . PWD
-officed = bone . OfficeD
-persond = bone . PersonD
-fullp   = bone . FullPath
+up           = bone . Up
+down         = bone . Down
+initial      = bone . Init
+pwd          = bone . PWD
+shibud       = bone . ShibuD
+officed      = bone . OfficeD
+persond      = bone . PersonD
+fullp        = bone . FullPath
+bottom       = bone . Bottom
+rep i s      = bone . (Repeat i s)
+lostp        = bone . LostP
+pathLength   = bone . Length
+enoughLength = bone . Enough
 
 hoge = "y:/ro/dee-Gov/62公文書(hoge)/030306_hoge/foo"
+hogeM = monadicPath hoge
 
 runDM :: DM a -> a
-runDM m = case debone m of
-            Before (v, i) :>>= k ->
-              runDM $ k $ (v, i - 1)
-            After (v, i) :>>= k   ->
-              runDM $ k $ (v, i + 1)
-            Init (v, _) :>>= k   ->
-              runDM $ k $ (v, 0)
-            PWD (v, i) :>>= k ->
-              runDM $ k $ v ! (i - 1)
-            FullPath (v, i) :>>= k -> do
-              let xlist = map (v!) [0..i-1]
-              runDM $ k $ DL.intercalate "/" xlist
-            OfficeD ps@(_, _) :>>= k ->
-              runDM (initial ps >>= after >>= after >>= after >>= k)
-            PersonD ps@(_, _) :>>= k ->
-              runDM (initial ps >>= after >>= after >>= after >>= after >>= k)
-            Return a -> a
+runDM m =
+  case debone m of
+    Repeat 0 f fp :>>= k ->
+      runDM $ k fp
+    Repeat n f fp :>>= k ->
+      runDM $ (bone (f fp) >>= rep (n-1) f >>= k)
+    Up (v, i) :>>= k ->
+      runDM $ k $ (v, i - 1)
+    Down (v, i) :>>= k   ->
+      runDM $ k $ (v, i + 1)
+    Init (v, _) :>>= k   ->
+      runDM $ k $ (v, 0)
+    PWD (v, i) :>>= k ->
+      runDM $ k $ v ! (i - 1)
+    Bottom (v, _) :>>= k ->
+      runDM $ k $ (v, V.length v - 1)
+    FullPath (v, i) :>>= k -> do
+      let xlist = map (v!) [0..i-1]
+      runDM $ k $ DL.intercalate "/" xlist
+    Length (v, _) :>>= k ->
+      runDM $ k $ V.length v
+    LostP (v, _) :>>= k ->
+      runDM $ k $ (V.length v == 7)
+    Enough (v, _) :>>= k ->
+      runDM $ k $ (V.length v >= 6)
+    ShibuD ps@(_, _) :>>= k ->
+      runDM (initial ps >>= rep 4 Down >>= k)
+    OfficeD ps@(_, _) :>>= k ->
+      runDM (initial ps >>= rep 5 Down >>= k)
+    PersonD ps@(_, _) :>>= k ->
+      runDM (initial ps >>= rep 6 Down >>= k)
+    Return a -> a
 
 shibuCodeM :: MonadFilePath -> DM (Maybe Int)
 shibuCodeM mfp = do
-  d <- mfp >>= initial >>= after >>= after >>= after >>= pwd
+  d <- (pwd =<< shibud =<< mfp)
   return $ readMaybe $ take 2 d
+
+officePartsM :: MonadFilePath -> DM (String, String)
+officePartsM mfp = do
+  d <- (pwd =<< officed =<< mfp)
+  case splitOn "_" d of
+    [c, n] -> return (c, n)
+    _      -> return ("", "")
 
 monadicPath :: FilePath -> MonadFilePath
 monadicPath fp = return $ (V.fromList $ splitOn "/" fp, 0)
@@ -145,15 +180,6 @@ type XTD = Record
    , "oName"     >: String
    , "person"    >: String
    , "isLost"    >: Bool ]
-
--- instance Eq XTD where
---   x == y = (x ^. #oCode) == (y ^. #oCode)
-
--- instance Ord XTD where
---   compare x y
---     | x == y = EQ
---     | (x ^. #oCode) > (y ^. #oCode) = GT
---     | otherwise = LT
 
 makeSend :: [Text] -> Send
 makeSend t = case t of
@@ -212,9 +238,37 @@ makeTreeDirectory fp =
             Just (oc, on) -> Just $ TD (sParse s) f oc on p b
             Nothing       -> Nothing
 
--- makeXTD :: FilePath -> Maybe TreeDirectory
--- makeXTD fp = do
---   let mfp = monadicPath fp
+makeXTD :: FilePath -> XTD
+makeXTD fp =
+  let mfp = monadicPath fp
+  in let officeParts = runDM $ officePartsM mfp
+  in #shibuCode   @= runDM (shibuCodeM mfp)
+     <: #filePath @= mfp
+     <: #oCode    @= fst officeParts
+     <: #oName    @= snd officeParts
+     <: #person   @= runDM (mfp >>= persond >>= pwd)
+     <: #isLost   @= runDM (mfp >>= lostp)
+     <: nil
+
+makeXTDMap :: [XTD] -> XTDMap
+makeXTDMap xtd =
+  let insert mp el =
+        M.insertWith (++) (el ^. #shibuCode) [el] mp
+  in foldl insert M.empty xtd
+
+getXTD :: (XTD -> Bool) -> IO [XTD]
+getXTD f = do
+  topdir <- fileTreeDirectory
+  let conduit = sourceDescendDirectory topdir
+                .| CL.map makeXTD
+                .| CL.filter f
+                .| CL.consume
+  liftIO $ runConduit conduit
+
+getXTDMap :: IO XTDMap
+getXTDMap = do
+  contents <- getXTD (\xtd -> runDM (xtd ^. #filePath >>= enoughLength))
+  return $ makeXTDMap contents
 
 makeTreeDirectoryMap :: [Maybe TreeDirectory] -> TreeDirectoryMap
 makeTreeDirectoryMap td =
@@ -264,6 +318,21 @@ hasTree tdMap send =
       let bool = sendType send /= Get
       in (code send, hihoName send, bool) `elem` shibuAlist
     Nothing         -> False
+
+sendAlreadyRegistered :: (XSend, Bool) -> [XTD] -> Bool
+sendAlreadyRegistered _ [] = False
+sendAlreadyRegistered (send, bool) (x:xs)
+  | (send ^. #shibu) == (x ^. #shibuCode) &&
+    (send ^. #hihoName) == (x ^. #person) = True
+  | otherwise = (send, bool) `sendAlreadyRegistered` xs
+
+hasTree2 :: XTDMap -> XSend -> Bool
+hasTree2 xtdm send =
+  case (send ^. #shibu) `M.lookup` xtdm of
+    Just xtds ->
+      let bool = send ^. #sendType /= Get
+      in (send, bool) `sendAlreadyRegistered` xtds
+    Nothing -> False
 
 debugPrint :: Send -> String
 debugPrint s =
@@ -379,7 +448,7 @@ duplicateOfficeCheck = do
         let l = M.toList $ makeListMap officeNumber (:[]) xl
         mapM_ yield l
   let dupFilter =
-        awaitForever $ \(key, val) ->
+        awaitForever $ \(_, val) ->
           when (length val /= 1) $ yield val
   let dupSink = do
         xl <- CL.consume
