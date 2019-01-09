@@ -48,6 +48,8 @@ dependencies:
   - heterocephalus
   - blaze-markup
   - template-haskell
+  - monad-skeleton
+  - vector
 
 default-extensions:
   - DataKinds

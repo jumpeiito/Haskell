@@ -1,10 +1,12 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GADTs                    #-}
+{-# LANGUAGE DeriveAnyClass           #-}
+{-# LANGUAGE DeriveFunctor            #-}
+{-# LANGUAGE FlexibleContexts         #-}
+{-# LANGUAGE FlexibleInstances        #-}
+{-# LANGUAGE OverloadedStrings        #-}
+{-# LANGUAGE TypeSynonymInstances     #-}
+{-# LANGUAGE TypeFamilies             #-}
 module Match.Directory
   (createHihoDirectory, removeBlankDirectory) where
 
@@ -15,17 +17,24 @@ import           Control.Arrow              ((>>>))
 import           Control.Exception.Safe
 import           Control.Lens
 import           Control.Monad
+import           Control.Monad.Skeleton
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Except
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
-import           Data.Either                (isRight)
+import           Data.Either                (isRight, lefts, rights)
 import           Data.Extensible
+import qualified Data.List                  as DL
 import           Data.List.Split            (splitOn)
 import qualified Data.Map.Strict            as M
 import           Data.Maybe                 (fromJust, fromMaybe)
 import           Data.Monoid                ((<>))
-import           Data.Text                  (Text, isInfixOf, unpack)
+import           Data.Text                  ( Text
+                                            , isInfixOf
+                                            , intercalate
+                                            , unpack)
+import           Data.Vector                ((!))
+import qualified Data.Vector                as V
 import           Match.Base                 ( killBlanks
                                             , officeTypeReplace
                                             , toCode
@@ -36,6 +45,7 @@ import           Match.Config               ( directorySpecF
 import           Match.CSV                  (parseCSV2)
 import           System.Directory           ( createDirectoryIfMissing
                                             , doesDirectoryExist
+                                            , doesFileExist
                                             , getDirectoryContents
                                             , removeDirectory)
 import           System.FilePath
@@ -43,11 +53,63 @@ import           System.IO                  (hFlush, stdout)
 import           Text.Parsec
 import           Text.Parsec.String
 import           Text.Read                  (readMaybe)
-import           Util                       (listDirectory, makeListMap)
+import           Util                       ( listDirectory
+                                            , makeListMap
+                                            , pathSearchFile)
 
 type TreeDirectoryMap = M.Map (Maybe Int) [(String, String, Bool)]
 
-data Situation = Done | Yet deriving (Eq, Ord, Show)
+type FP = (V.Vector FilePath, Int)
+
+data DirectoryM x where
+  Before   :: FP -> DirectoryM FP
+  After    :: FP -> DirectoryM FP
+  Init     :: FP -> DirectoryM FP
+  OfficeD  :: FP -> DirectoryM FP
+  PersonD  :: FP -> DirectoryM FP
+  PWD      :: FP -> DirectoryM FilePath
+  FullPath :: FP -> DirectoryM FilePath
+
+type DM = Skeleton DirectoryM
+type MonadFilePath = DM FP
+
+before  = bone . Before
+after   = bone . After
+initial = bone . Init
+pwd     = bone . PWD
+officed = bone . OfficeD
+persond = bone . PersonD
+fullp   = bone . FullPath
+
+hoge = "y:/ro/dee-Gov/62公文書(hoge)/030306_hoge/foo"
+
+runDM :: DM a -> a
+runDM m = case debone m of
+            Before (v, i) :>>= k ->
+              runDM $ k $ (v, i - 1)
+            After (v, i) :>>= k   ->
+              runDM $ k $ (v, i + 1)
+            Init (v, _) :>>= k   ->
+              runDM $ k $ (v, 0)
+            PWD (v, i) :>>= k ->
+              runDM $ k $ v ! (i - 1)
+            FullPath (v, i) :>>= k -> do
+              let xlist = map (v!) [0..i-1]
+              runDM $ k $ DL.intercalate "/" xlist
+            OfficeD ps@(_, _) :>>= k ->
+              runDM (initial ps >>= after >>= after >>= after >>= k)
+            PersonD ps@(_, _) :>>= k ->
+              runDM (initial ps >>= after >>= after >>= after >>= after >>= k)
+            Return a -> a
+
+shibuCodeM :: MonadFilePath -> DM (Maybe Int)
+shibuCodeM mfp = do
+  d <- mfp >>= initial >>= after >>= after >>= after >>= pwd
+  return $ readMaybe $ take 2 d
+
+monadicPath :: FilePath -> MonadFilePath
+monadicPath fp = return $ (V.fromList $ splitOn "/" fp, 0)
+
 data SendType  = Get  | Lost | Other deriving (Eq, Ord, Show)
 
 data Send = S { code      :: String
@@ -72,17 +134,17 @@ instance Ord TreeDirectory where
 type XSend = Record
   '[ "code"      >: String
    , "name"      >: String
-   , "type"      >: SendType
+   , "sendType"  >: SendType
    , "hihoName"  >: String
    , "shibu"     >: Maybe Int ]
 
 type XTD = Record
-  [ "shibuCode" >: Maybe Int
-  , "filePath"  >: FilePath
-  , "oCode"     >: String
-  , "oName"     >: String
-  , "person"    >: String
-  , "isLost"    >: Bool ]
+  '[ "shibuCode" >: Maybe Int
+   , "filePath"  >: MonadFilePath
+   , "oCode"     >: String
+   , "oName"     >: String
+   , "person"    >: String
+   , "isLost"    >: Bool ]
 
 -- instance Eq XTD where
 --   x == y = (x ^. #oCode) == (y ^. #oCode)
@@ -103,6 +165,18 @@ makeSend t = case t of
       , shibu     = toCode $ unpack _sh }
   _ -> error "must not happen"
 
+makeXSend :: [Text] -> Either Text XSend
+makeXSend t = case t of
+  [_c, _n, _st, _hn, _si, _sh] ->
+    Right (
+      #code        @= unpack _c
+      <: #name     @= (unpack $ officeTypeReplace $ killBlanks _n)
+      <: #sendType @= makeSendType _st
+      <: #hihoName @= (unpack $ killBlanks _hn)
+      <: #shibu    @= (toCode $ unpack _sh)
+      <: nil )
+  _ -> Left $ "parse error: " <> intercalate "," t
+
 makeSendType :: Text -> SendType
 makeSendType t | "取得" `isInfixOf` t = Get
                | "喪失" `isInfixOf` t = Lost
@@ -114,6 +188,14 @@ readData = do
   spec     <- directorySpecF
   contents <- parseCSV2 spec filename
   return $ map makeSend contents
+
+readSendFile :: IO [XSend]
+readSendFile = do
+  filename <- sendCSVFileName
+  spec     <- directorySpecF
+  contents <- map makeXSend <$> parseCSV2 spec filename
+  forM_ (lefts contents) print
+  return $ rights contents
 
 makeTreeDirectory :: FilePath -> Maybe TreeDirectory
 makeTreeDirectory fp =
@@ -129,6 +211,10 @@ makeTreeDirectory fp =
           case oParse o of
             Just (oc, on) -> Just $ TD (sParse s) f oc on p b
             Nothing       -> Nothing
+
+-- makeXTD :: FilePath -> Maybe TreeDirectory
+-- makeXTD fp = do
+--   let mfp = monadicPath fp
 
 makeTreeDirectoryMap :: [Maybe TreeDirectory] -> TreeDirectoryMap
 makeTreeDirectoryMap td =
@@ -160,6 +246,16 @@ sourceDescendDirectory fp = do
     yield fp
     dirs <- lift $ listDirectory (fp ++ "/")
     mapM_ sourceDescendDirectory dirs
+
+sourceDescendFile :: FilePath -> Source IO FilePath
+sourceDescendFile fp = do
+  directoryP <- liftIO $ doesDirectoryExist fp
+  fileP      <- liftIO $ doesFileExist fp
+  case (directoryP, fileP) of
+    (True, _) -> do
+      contents <- liftIO $ listDirectory (fp <> "/")
+      forM_ contents sourceDescendFile
+    (_, True) -> yield fp
 
 hasTree :: TreeDirectoryMap -> Send -> Bool
 hasTree tdMap send =

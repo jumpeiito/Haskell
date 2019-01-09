@@ -570,5 +570,3 @@ dSearch fp = do
       else return ()
     readIORef dirs
   return $ fromDiffList diff
-
-
