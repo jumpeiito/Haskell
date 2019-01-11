@@ -1,10 +1,11 @@
 {-# LANGUAGE GADTs                    #-}
 {-# LANGUAGE FlexibleContexts         #-}
-module Match.Directory
-  (createHihoDirectory, removeBlankDirectory) where
+module Match.Directory where
+  -- (createHihoDirectory, removeBlankDirectory) where
 
 import           Control.Lens
 import           Control.Monad
+import           Control.Monad.State
 import           Control.Monad.Trans
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
@@ -41,29 +42,47 @@ import           Util.MonadPath
 
 type XTDMap = M.Map (Maybe Int) [XTD]
 
-runDM :: DirectoryM a -> a
-runDM = runDirectoryM
+shibud, officed, persond :: MonadicPath ()
+shibud  = initialM >> repM 4 downM
+officed = initialM >> repM 5 downM
+persond = initialM >> repM 6 downM
 
-shibud, officed, persond :: FP -> MonadFilePath
-shibud  = initial >=> rep 4 Down
-officed = initial >=> rep 5 Down
-persond = initial >=> rep 6 Down
+lostp, enoughp :: MonadicPath Bool
+lostp   = isLengthp 7
+enoughp = (>= 6) <$> (V.length . fst) <$> get
 
-lostp, enoughp :: FP -> DirectoryM Bool
-lostp (v, _)   = return (V.length v == 7)
-enoughp (v, _) = return (V.length v >= 6)
-
-shibuCodeM :: MonadFilePath -> DirectoryM (Maybe Int)
-shibuCodeM mfp = do
-  d <- (pwd =<< shibud =<< mfp)
+shibuCodeM :: MonadicPath (Maybe Int)
+shibuCodeM = do
+  d <- shibud >> basenameM
   return $ readMaybe $ take 2 d
 
-officePartsM :: MonadFilePath -> DirectoryM (String, String)
-officePartsM mfp = do
-  d <- (pwd =<< officed =<< mfp)
+officePartsM :: MonadicPath (String, String)
+officePartsM = do
+  d <- officed >> basenameM
   case splitOn "_" d of
     [c, n] -> return (c, n)
     _      -> return ("", "")
+
+officeNameParser :: Parser (String, String)
+officeNameParser =
+  (,) <$> count 6 digit <* char '_' <*> many anyChar
+
+officeNameP :: FilePath -> Bool
+officeNameP = isRight . parse officeNameParser ""
+
+officeMP, personalMP, lostMP :: MonadicPath Bool
+officeMP = do
+  len <- isLengthp 5
+  bn  <- bottomM >> basenameM
+  return $ len && officeNameP bn
+personalMP = do
+  len <- isLengthp 6
+  bnu <- bottomM >> (../) >> basenameM
+  return $ len && officeNameP bnu
+lostMP = do
+  len <- isLengthp 7
+  bnu <- bottomM >> basenameM
+  return $ len && (bnu == "喪失")
 
 data SendType  = Get  | Lost | Other deriving (Eq, Ord, Show)
 
@@ -97,7 +116,7 @@ xsendDirectoryList s = basic ++ sendtype
 
 type XTD = Record
   '[ "shibuCode" >: Maybe Int
-   , "filePath"  >: MonadFilePath
+   , "filePath"  >: FilePath
    , "oCode"     >: String
    , "oName"     >: String
    , "person"    >: String
@@ -130,15 +149,19 @@ readSendFile = do
 
 makeXTD :: FilePath -> XTD
 makeXTD fp =
-  let mfp = monadicPath fp
-  in let officeParts = runDM $ officePartsM mfp
-  in #shibuCode   @= runDM (shibuCodeM mfp)
-     <: #filePath @= mfp
-     <: #oCode    @= fst officeParts
-     <: #oName    @= snd officeParts
-     <: #person   @= runDM (mfp >>= persond >>= pwd)
-     <: #isLost   @= runDM (mfp >>= lostp)
-     <: nil
+  runFileM fp $ do
+    officeParts <- officePartsM
+    shibuCode   <- shibuCodeM
+    person      <- persond >> basenameM
+    isLost      <- lostp
+    return $
+      #shibuCode   @= shibuCode
+      <: #filePath @= fp
+      <: #oCode    @= fst officeParts
+      <: #oName    @= snd officeParts
+      <: #person   @= person
+      <: #isLost   @= isLost
+      <: nil
 
 makeXTDMap :: [XTD] -> XTDMap
 makeXTDMap xtd =
@@ -157,7 +180,7 @@ getXTD f = do
 
 getXTDMap :: IO XTDMap
 getXTDMap = do
-  contents <- getXTD (\xtd -> runDM (xtd ^. #filePath >>= enoughp))
+  contents <- getXTD ((`runFileM` enoughp) . (^. #filePath))
   return $ makeXTDMap contents
 
 sourceDescendDirectory :: FilePath -> Source IO FilePath
@@ -185,8 +208,8 @@ sendAlreadyRegistered (send, bool) (x:xs)
     (send ^. #hihoName) == (x ^. #person) = True
   | otherwise = (send, bool) `sendAlreadyRegistered` xs
 
-hasTree2 :: XTDMap -> XSend -> Bool
-hasTree2 xtdm send =
+hasTree2 :: XSend -> XTDMap -> Bool
+hasTree2 send xtdm =
   case (send ^. #shibu) `M.lookup` xtdm of
     Just xtds ->
       let bool = send ^. #sendType /= Get
@@ -209,64 +232,43 @@ createHihoDirectory = do
   fp   <- fileTreeDirectory
   xmap <- getXTDMap
   xsnd <- readSendFile
-  forM_ xsnd $ \n ->
-    unless (xmap `hasTree2` n) $
+  forM_ xsnd $ \n -> do
+    print n
+    unless (n `hasTree2` xmap) $
       createDirectoryRecursive (fp <> "/") $ xsendDirectoryList n
 
-officeNameParser :: Parser (String, String)
-officeNameParser =
-  (,) <$> count 6 digit <* char '_' <*> many anyChar
+-- removeTargetDirectories :: Conduit FilePath IO FilePath
+-- removeTargetDirectories = do
+--   awaitForever $ \dir -> do
+--     let mfp = monadicPath dir
+--     let funcs = [personalMP, officeMP, lostMP]
+--     let targetP = or (map (runDM . ($ mfp)) funcs)
+--     when targetP $ do
+--       len <- liftIO (length <$> getDirectoryContents dir)
+--       when (len == 2) $ yield dir
 
-officeNameP :: FilePath -> Bool
-officeNameP = isRight . parse officeNameParser ""
+-- removeBlankDirectorySink :: Sink FilePath IO ()
+-- removeBlankDirectorySink = do
+--   targets <- CL.consume
+--   mapM_ (liftIO . putStrLn) targets
+--   liftIO $ putStrLn "Delete All Files (y/n)?"
+--   liftIO $ hFlush stdout
+--   let quiz = do
+--         c <- liftIO getChar
+--         case c of
+--           'y' -> forM_ targets $ \directory -> do
+--             liftIO $ removeDirectory directory
+--             liftIO $ putStrLn $ directory ++ " deleted."
+--           'n' -> return ()
+--           _   -> do
+--             putStrLn "answer y or n"
+--             quiz
+--   lift quiz
 
-officeMP, personalMP, lostMP :: MonadFilePath -> DirectoryM Bool
-officeMP mfp = do
-  len <- pathLength =<< mfp
-  bn  <- pwd =<< bottom =<< mfp
-  return $ (len == 5) && officeNameP bn
-personalMP mfp = do
-  len <- pathLength =<< mfp
-  bnu <- pwd =<< up =<< bottom =<< mfp
-  return $ (len == 6) && officeNameP bnu
-lostMP mfp = do
-  len <- pathLength =<< mfp
-  bnu <- pwd =<< bottom =<< mfp
-  return $ (len == 7) && (bnu == "喪失")
-
-removeTargetDirectories :: Conduit FilePath IO FilePath
-removeTargetDirectories = do
-  awaitForever $ \dir -> do
-    let mfp = monadicPath dir
-    let funcs = [personalMP, officeMP, lostMP]
-    let targetP = or (map (runDM . ($ mfp)) funcs)
-    when targetP $ do
-      len <- liftIO (length <$> getDirectoryContents dir)
-      when (len == 2) $ yield dir
-
-removeBlankDirectorySink :: Sink FilePath IO ()
-removeBlankDirectorySink = do
-  targets <- CL.consume
-  mapM_ (liftIO . putStrLn) targets
-  liftIO $ putStrLn "Delete All Files (y/n)?"
-  liftIO $ hFlush stdout
-  let quiz = do
-        c <- liftIO getChar
-        case c of
-          'y' -> forM_ targets $ \directory -> do
-            liftIO $ removeDirectory directory
-            liftIO $ putStrLn $ directory ++ " deleted."
-          'n' -> return ()
-          _   -> do
-            putStrLn "answer y or n"
-            quiz
-  lift quiz
-
-removeBlankDirectory :: IO ()
-removeBlankDirectory = do
-  topPath <- fileTreeDirectory
-  sourceDescendDirectory topPath
-    $= removeTargetDirectories
-    --- $$ removeBlankDirectorySink
-    $$ CL.mapM_ putStrLn
-
+-- removeBlankDirectory :: IO ()
+-- removeBlankDirectory = do
+--   topPath <- fileTreeDirectory
+--   sourceDescendDirectory topPath
+--     $= removeTargetDirectories
+--     --- $$ removeBlankDirectorySink
+--     $$ CL.mapM_ putStrLn

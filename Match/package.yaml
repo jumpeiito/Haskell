@@ -47,7 +47,7 @@ dependencies:
   - yaml
   - heterocephalus
   - blaze-markup
-  - template-haskell
+  # - template-haskell
   - monad-skeleton
   - vector
 
@@ -61,7 +61,7 @@ default-extensions:
 library:
   source-dirs: src
   ghc-options:
-    - -O2
+    - -O3
   dependencies:
     - aeson
     # - yaml
