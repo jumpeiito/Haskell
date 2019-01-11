@@ -4,9 +4,9 @@ module Match.Directory where
   -- (createHihoDirectory, removeBlankDirectory) where
 
 import           Control.Lens
-import           Control.Monad
-import           Control.Monad.State
-import           Control.Monad.Trans
+import           Control.Monad              (forM_, unless, when)
+import           Control.Monad.State        (get)
+import           Control.Monad.Trans        (lift, liftIO)
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
 import           Data.Either                (isRight, lefts, rights)
@@ -70,19 +70,25 @@ officeNameParser =
 officeNameP :: FilePath -> Bool
 officeNameP = isRight . parse officeNameParser ""
 
-officeMP, personalMP, lostMP :: MonadicPath Bool
+officeMP, personalMP, lostMP, targetMP :: MonadicPath Bool
 officeMP = do
   len <- isLengthp 5
   bn  <- bottomM >> basenameM
   return $ len && officeNameP bn
+
 personalMP = do
   len <- isLengthp 6
   bnu <- bottomM >> (../) >> basenameM
   return $ len && officeNameP bnu
+
 lostMP = do
   len <- isLengthp 7
   bnu <- bottomM >> basenameM
   return $ len && (bnu == "喪失")
+
+targetMP = do
+  bools <- sequence [officeMP, personalMP, lostMP]
+  return $ or bools
 
 data SendType  = Get  | Lost | Other deriving (Eq, Ord, Show)
 
@@ -237,38 +243,39 @@ createHihoDirectory = do
     unless (n `hasTree2` xmap) $
       createDirectoryRecursive (fp <> "/") $ xsendDirectoryList n
 
--- removeTargetDirectories :: Conduit FilePath IO FilePath
--- removeTargetDirectories = do
---   awaitForever $ \dir -> do
---     let mfp = monadicPath dir
---     let funcs = [personalMP, officeMP, lostMP]
---     let targetP = or (map (runDM . ($ mfp)) funcs)
---     when targetP $ do
---       len <- liftIO (length <$> getDirectoryContents dir)
---       when (len == 2) $ yield dir
+removeTargetDirectories :: Conduit FilePath IO FilePath
+removeTargetDirectories = do
+  awaitForever $ \dir -> do
+    when (dir `runFileM` targetMP) $ do
+      len <- liftIO (length <$> getDirectoryContents dir)
+      when (len == 2) $
+        yield dir
 
--- removeBlankDirectorySink :: Sink FilePath IO ()
--- removeBlankDirectorySink = do
---   targets <- CL.consume
---   mapM_ (liftIO . putStrLn) targets
---   liftIO $ putStrLn "Delete All Files (y/n)?"
---   liftIO $ hFlush stdout
---   let quiz = do
---         c <- liftIO getChar
---         case c of
---           'y' -> forM_ targets $ \directory -> do
---             liftIO $ removeDirectory directory
---             liftIO $ putStrLn $ directory ++ " deleted."
---           'n' -> return ()
---           _   -> do
---             putStrLn "answer y or n"
---             quiz
---   lift quiz
+removeBlankDirectorySink :: Sink FilePath IO ()
+removeBlankDirectorySink = do
+  targets <- CL.consume
+  mapM_ (liftIO . putStrLn) targets
+  liftIO $ putStrLn "Delete All Files (y/n)?"
+  liftIO $ hFlush stdout
+  let quiz = do
+        c <- liftIO getChar
+        case c of
+          'y' -> forM_ targets $ \directory -> do
+            liftIO $ removeDirectory directory
+            liftIO $ putStrLn $ directory ++ " deleted."
+          'n' -> return ()
+          _   -> do
+            putStrLn "answer y or n"
+            quiz
+  lift quiz
 
--- removeBlankDirectory :: IO ()
--- removeBlankDirectory = do
---   topPath <- fileTreeDirectory
---   sourceDescendDirectory topPath
---     $= removeTargetDirectories
---     --- $$ removeBlankDirectorySink
---     $$ CL.mapM_ putStrLn
+removeBlankDirectory :: IO ()
+removeBlankDirectory = do
+  topPath  <- fileTreeDirectory
+  let producer = sourceDescendDirectory topPath
+                 $= removeTargetDirectories
+  len <- producer $$ (length <$> CL.consume)
+  if len == 0
+    then return ()
+    else do producer $$ removeBlankDirectorySink
+            removeBlankDirectory
