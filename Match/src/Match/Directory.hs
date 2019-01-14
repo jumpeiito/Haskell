@@ -37,7 +37,7 @@ import           System.IO                  (hFlush, stdout)
 import           Text.Parsec
 import           Text.Parsec.String
 import           Text.Read                  (readMaybe)
-import           Util                       (listDirectory)
+import           Util
 import           Util.MonadPath
 
 type XTDMap = M.Map (Maybe Int) [XTD]
@@ -171,9 +171,7 @@ makeXTD fp =
 
 makeXTDMap :: [XTD] -> XTDMap
 makeXTDMap xtd =
-  let insert mp el =
-        M.insertWith (++) (el ^. #shibuCode) [el] mp
-  in foldl insert M.empty xtd
+  xtd ==> Key (^. #shibuCode) `MakeListMap` Value id
 
 getXTD :: (XTD -> Bool) -> IO [XTD]
 getXTD f = do

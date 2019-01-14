@@ -3,8 +3,6 @@
 module Match.KumiaiOffice where
 
 import           Control.Lens
-import           Control.Parallel.Strategies (parMap, rseq)
-import           GHC.Generics
 import           Control.Arrow               ((&&&))
 import           Data.Conduit
 import qualified Data.Conduit.List           as CL
@@ -13,12 +11,12 @@ import qualified Data.Map.Strict             as M
 import           Data.Text                   hiding (map)
 import qualified Data.Text                   as Tx
 import qualified Data.Text.Lazy.Builder      as BB
-import           Match.Config                ( Conf (..)
-                                             , kumiaiOfficeSpecF)
+import           Match.Config                (kumiaiOfficeSpecF)
 import           Match.SQL                   (fetchSQLSource)
 import           Match.Base                  (killHyphen
                                              , makeKey
                                              , officeTypeRegularize)
+import           Util
 
 type MaybeIO a = IO (Either String a)
 
@@ -84,14 +82,15 @@ numberMap :: IO (M.Map Text KumiaiOffice)
 numberMap = do
   csv <- runConduit $ initializeSource .| CL.consume
   return $
-    M.fromList $
-      parMap rseq ((makeKeySimplize . (^. #idNumber)) &&& id) csv
+    csv ==>
+      Key (makeKeySimplize . (^. #idNumber))
+        `MakeSingletonMap` Value id
 
 nameMap :: IO (M.Map Text KumiaiOffice)
 nameMap = do
   csv <- runConduit $ initializeSource .| CL.consume
   return $
-    M.fromList $ parMap rseq ((^. #name) &&& id) csv
+    csv ==> Key (^. #name) `MakeSingletonMap` Value id
 
 numberCMap :: IO (M.Map Text KumiaiOffice)
 numberCMap = M.fromList <$>

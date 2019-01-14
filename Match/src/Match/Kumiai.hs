@@ -23,7 +23,7 @@ import           Match.Base                  (killBlanks, killBunkai
                                              , regularize)
 import           Text.Read                   (readMaybe)
 import           Util.Strbt                  (strdt)
-import           Util                        (makeListMap)
+import           Util
 
 type MaybeIO a = IO (Either String a)
 
@@ -260,24 +260,22 @@ kumiaiMakeKey = Tx.take 6 . makeKey 7
 numberMap :: IO (M.Map Text Kumiai)
 numberMap = do
   csv <- runConduit $ initializeSource .| CL.consume
+  let k = kumiaiMakeKey . (^. #number)
   return $
-    M.fromList $ parMap rseq ((kumiaiMakeKey . (^. #number)) &&& id) csv
+    csv ==> Key k `MakeSingletonMap` Value id
 
 birthdayMap :: IO (M.Map (Maybe Day) [Kumiai])
 birthdayMap = do
   csv <- runConduit $ initializeSource .| CL.consume
-  let insert mp el =
-        M.insertWith (++) (el ^. #birth) [el] mp
-  return $ foldl' insert M.empty csv
+  return $
+    csv ==> Key (^. #birth) `MakeListMap` Value id
 
 birthdayNameMap :: IO (M.Map (Text, Maybe Day) [Kumiai])
 birthdayNameMap = do
   csv <- runConduit $ initializeSource .| CL.consume
-  let insert mp el =
-        let b = el ^. #birth
-        in let k = killBlanks $ el ^. #kana
-        in M.insertWith (++) (k, b) [el] mp
-  return $ foldl' insert M.empty csv
+  let toKey el = (killBlanks $ el ^. #kana, el ^. #birth)
+  return $
+    csv ==> Key toKey `MakeListMap` Value id
 
 numberCMap :: IO (M.Map Text Kumiai)
 numberCMap = M.fromList <$>
@@ -305,7 +303,8 @@ officeCodeMap = do
         $ initializeSource
         .| CL.consume
   let rize = Tx.justifyRight 7 '0'
-  return $ makeListMap (rize . (^. #officeCode)) (:[]) ls
+  return $
+    ls ==> Key (rize . (^. #officeCode)) `MakeListMap` Value id
 
 verboseName :: Kumiai -> Text
 verboseName k = k ^. #name <> "(" <> k ^. #kana <> ")"

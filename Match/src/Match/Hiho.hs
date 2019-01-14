@@ -21,6 +21,7 @@ import           Data.Time                   (Day (..))
 import           Match.Base                  (killBlanks)
 import           Match.Config                (hihoSpecF)
 import           Match.SQL                   (fetchSQLSource)
+import           Util
 import           Util.Strbt                  (strdt)
 
 type HihoR = Record
@@ -131,15 +132,14 @@ initializeSource = initializeCSVSource $= CL.map makeHiho
 kanaBirthMap :: IO (M.Map (Text, Maybe Day) [HihoR])
 kanaBirthMap = do
   csv <- runConduit $ initializeSource .| CL.consume
-  let insert mp el =
-        M.insertWith (++) (el ^. #kana, el ^. #birth) [el] mp
-  return $ foldl' insert M.empty csv
+  return $
+    csv ==> Key ((^. #kana) &&& (^. #birth)) `MakeListMap` Value id
 
 numberMap :: IO (M.Map Text HihoR)
 numberMap = do
   csv <- runConduit $ initializeSource .| CL.consume
   return $
-    M.fromList (parMap rseq ((^. #number) &&& id) csv)
+    csv ==> Key (^. #number) `MakeSingletonMap` Value id
 
 kanaBirthCMap :: IO (M.Map (Text, Maybe Day) [HihoR])
 kanaBirthCMap = do

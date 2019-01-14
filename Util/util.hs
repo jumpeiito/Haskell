@@ -1,9 +1,11 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
-
+{-# LANGUAGE GADTs, RankNTypes, FlexibleContexts, FlexibleInstances #-}
 module Util where
 
+import Control.Arrow
+import Control.Parallel.Strategies (parMap, rseq)
 import Data.List
 import Data.IORef
+import qualified Data.Vector            as V
 import Control.Exception                hiding (try)
 import Control.Monad
 import Control.Monad.Writer
@@ -12,7 +14,7 @@ import Control.Concurrent.Async
 import System.Directory                 hiding (listDirectory)
 import System.Process
 import Text.StringLike                  (StringLike)
-import qualified Data.Map               as Map
+import qualified Data.Map.Strict        as Map
 import qualified System.IO              as I
 import qualified Data.Text              as Tx
 import qualified Data.Text.IO           as Txio
@@ -89,7 +91,7 @@ alld fp = snd <$> runWriterT (_alld fp)
 makeMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k [a]
 makeMap _ _ [] = Map.empty
 makeMap kF vF (x:xs) =
-  Map.insertWith' (++) (kF x) [vF x] $ makeMap kF vF xs
+  Map.insertWith (++) (kF x) [vF x] $ makeMap kF vF xs
 
 makeSingleMap :: Ord k => (t -> k) -> (t -> a) -> [t] -> Map.Map k a
 makeSingleMap _ _ [] = Map.empty
@@ -99,17 +101,17 @@ makeSingleMap kF vF (x:xs) =
 makeCountMap :: (Num a, Ord k) => (t -> k) -> [t] -> Map.Map k a
 makeCountMap _ [] = Map.empty
 makeCountMap kF (x:xs) =
-   Map.insertWith' (+) (kF x) 1 $ makeCountMap kF xs
+   Map.insertWith (+) (kF x) 1 $ makeCountMap kF xs
 
 makeSumMap :: (Num a, Ord k) => (t -> k) -> (t -> a) -> [t] -> Map.Map k a
 makeSumMap _ _ [] = Map.empty
 makeSumMap kF vF (x:xs) =
-   Map.insertWith' (+) (kF x) (vF x) $ makeSumMap kF vF xs
+   Map.insertWith (+) (kF x) (vF x) $ makeSumMap kF vF xs
 
 makeListMap :: Ord k => (t -> k) -> (t -> [a]) -> [t] -> Map.Map k [a]
 makeListMap _ _ [] = Map.empty
 makeListMap kF vF (x:xs) =
-   Map.insertWith' (++) (kF x) (vF x) $ makeListMap kF vF xs
+   Map.insertWith (++) (kF x) (vF x) $ makeListMap kF vF xs
 
 class ReadFile a where
   readUTF8     :: FilePath -> IO a
@@ -570,3 +572,46 @@ dSearch fp = do
       else return ()
     readIORef dirs
   return $ fromDiffList diff
+
+-- data MapParts a = MapParts a
+data Conncet v = Connect (v -> v -> v)
+data Key a k = Key (a -> k)
+data Value a v = Value (a -> v)
+
+mapGenerate :: MakeMap t t1 t2 -> [t] -> Map.Map t1 t2
+mapGenerate (MakeCountMap (Key k)) =
+  let insert mp el = Map.insertWith (+) (k el) 1 mp
+  in foldl' insert Map.empty
+mapGenerate (MakeSingletonMap (Key k) (Value v)) =
+  Map.fromList . parMap rseq (k &&& v)
+mapGenerate (MakeMonoidMap (Key k) (Value v)) =
+  let insert mp el =
+        Map.insertWith mappend (k el) (v el) mp
+  in foldl' insert Map.empty
+mapGenerate (MakeListMap k (Value v)) =
+  mapGenerate (MakeMonoidMap k (Value ((:[]) . v)))
+
+(==>) = flip mapGenerate
+infixr 1 ==>
+
+data MakeMap a k v where
+  MakeMonoidMap ::
+    (Ord k , Monoid v) => (Key a k) -> (Value a v) -> MakeMap a k v
+  MakeListMap ::
+    (Ord k) => (Key a k) -> (Value a v) -> MakeMap a k [v]
+  MakeSingletonMap ::
+    (Ord k) => (Key a k) -> (Value a v) -> MakeMap a k v
+  MakeCountMap ::
+    (Ord k, Integral v) => (Key a k) -> MakeMap a k v
+
+(<<>>) :: (Ord k , Monoid v) => (Key a k) -> (Value a v) -> MakeMap a k v
+(<<>>) = MakeMonoidMap
+infixl 9 <<>>
+
+(<@@>) :: (Ord k) => (Key a k) -> (Value a v) -> MakeMap a k [v]
+(<@@>) = MakeListMap
+infixl 9 <@@>
+
+mm = Key (`mod` 3) `MakeMonoidMap` Value (:[])
+
+mm2 = Key (`mod` 3) `MakeMonoidMap` Value V.singleton
