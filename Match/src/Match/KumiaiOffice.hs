@@ -75,22 +75,22 @@ stringList k = map (BB.fromText . (k ^.)) funcList
 initializeSource :: Source IO KumiaiOffice
 initializeSource = initializeCSVSource $= CL.map makeKumiaiOffice
 
+initializeList :: IO [KumiaiOffice]
+initializeList = runConduit $ initializeSource .| CL.consume
+
 makeKeySimplize :: Text -> Text
 makeKeySimplize = Tx.take 6 . makeKey 6 . Tx.drop 3
 
 numberMap :: IO (M.Map Text KumiaiOffice)
 numberMap = do
-  csv <- runConduit $ initializeSource .| CL.consume
-  return $
-    csv ==>
-      Key (makeKeySimplize . (^. #idNumber))
-        `MakeSingletonMap` Value id
+  initializeList ===>
+    Key (makeKeySimplize . (^. #idNumber))
+      `MakeSingletonMap` Value id
 
 nameMap :: IO (M.Map Text KumiaiOffice)
-nameMap = do
-  csv <- runConduit $ initializeSource .| CL.consume
-  return $
-    csv ==> Key (^. #name) `MakeSingletonMap` Value id
+nameMap =
+  initializeList ===>
+    Key (^. #name) `MakeSingletonMap` Value id
 
 numberCMap :: IO (M.Map Text KumiaiOffice)
 numberCMap = M.fromList <$>

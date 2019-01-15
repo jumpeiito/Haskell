@@ -98,7 +98,7 @@ conf = readYaml "src/mapConfig.yaml"
 setting :: MonadIO m => Getting b Config b -> m b
 setting f = liftIO $ do
   c <- conf
-  ((^. f) <$> ask) `runReaderT` c
+  return $ c ^. f
 
 runC :: Monad m => ContT a m a -> m a
 runC = (`runContT` return)
@@ -151,7 +151,7 @@ withLookupDB :: Label -> (Label -> MaybeT IO Point)
   -> MaybeT IO Point
 withLookupDB l f = do
   dbReply <- liftIO $ lookupDB (l ^. #address)
-  if (null dbReply)
+  if null dbReply
     then f l
     else return $ head dbReply
 
@@ -180,7 +180,7 @@ getLatLng :: Text -> IO [Double]
 getLatLng address = do
   runReq def $ do
     r <- getRequest address
-    case parseLBS def (responseBody r) of
+    case def `parseLBS` responseBody r of
       Right x -> return $ parseXML x
       Left _  -> return mempty
 

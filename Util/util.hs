@@ -3,6 +3,7 @@ module Util where
 
 import Control.Arrow
 import Control.Parallel.Strategies (parMap, rseq)
+import Data.Conduit
 import Data.List
 import Data.IORef
 import qualified Data.Vector            as V
@@ -558,6 +559,14 @@ pSearch fp = do
     readIORef dirs
   return $ fromDiffList diff
 
+pSearchSource :: FilePath -> Source IO FilePath
+pSearchSource fp = do
+  p <- liftIO $ doesDirectoryExist fp
+  if p
+    then do contents <- liftIO $ listDirectory (fp <> "/")
+            forM_ contents pSearchSource
+    else yield fp
+
 dSearch :: FilePath -> IO [FilePath]
 dSearch fp = do
   diff <- do
@@ -591,8 +600,15 @@ mapGenerate (MakeMonoidMap (Key k) (Value v)) =
 mapGenerate (MakeListMap k (Value v)) =
   mapGenerate (MakeMonoidMap k (Value ((:[]) . v)))
 
+mapGenerateM :: MonadIO m => MakeMap t t1 t2 -> m [t] -> m (Map.Map t1 t2)
+mapGenerateM mm t = mapGenerate mm <$> t
+
 (==>) = flip mapGenerate
 infixr 1 ==>
+
+(===>) :: MonadIO m => m [t] -> MakeMap t t1 t2 -> m (Map.Map t1 t2)
+(===>) = flip mapGenerateM
+infixr 1 ===>
 
 data MakeMap a k v where
   MakeMonoidMap ::

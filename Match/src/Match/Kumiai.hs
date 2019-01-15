@@ -248,6 +248,9 @@ blankMaybe x  = Just x
 initializeSource :: Source IO Kumiai
 initializeSource = initializeCSVSource $= CL.map makeKumiai
 
+initializeList :: IO [Kumiai]
+initializeList = runConduit $ initializeSource .| CL.consume
+
 -- |
 --
 -- >>> Tx.unpack $ kumiaiMakeKey (Tx.pack "1234")
@@ -259,23 +262,19 @@ kumiaiMakeKey = Tx.take 6 . makeKey 7
 
 numberMap :: IO (M.Map Text Kumiai)
 numberMap = do
-  csv <- runConduit $ initializeSource .| CL.consume
   let k = kumiaiMakeKey . (^. #number)
-  return $
-    csv ==> Key k `MakeSingletonMap` Value id
+  initializeList ===> Key k `MakeSingletonMap` Value id
 
 birthdayMap :: IO (M.Map (Maybe Day) [Kumiai])
 birthdayMap = do
-  csv <- runConduit $ initializeSource .| CL.consume
-  return $
-    csv ==> Key (^. #birth) `MakeListMap` Value id
+  initializeList ===>
+    Key (^. #birth) `MakeListMap` Value id
 
 birthdayNameMap :: IO (M.Map (Text, Maybe Day) [Kumiai])
 birthdayNameMap = do
-  csv <- runConduit $ initializeSource .| CL.consume
   let toKey el = (killBlanks $ el ^. #kana, el ^. #birth)
-  return $
-    csv ==> Key toKey `MakeListMap` Value id
+  initializeList ===>
+    Key toKey `MakeListMap` Value id
 
 numberCMap :: IO (M.Map Text Kumiai)
 numberCMap = M.fromList <$>

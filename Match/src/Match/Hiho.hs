@@ -129,17 +129,18 @@ hihoAddressBlankP h = (isNothing $ h ^. #lost) && (h ^. #address == "")
 initializeSource :: Source IO HihoR
 initializeSource = initializeCSVSource $= CL.map makeHiho
 
+initializeList :: IO [HihoR]
+initializeList = runConduit $ initializeSource .| CL.consume
+
 kanaBirthMap :: IO (M.Map (Text, Maybe Day) [HihoR])
 kanaBirthMap = do
-  csv <- runConduit $ initializeSource .| CL.consume
-  return $
-    csv ==> Key ((^. #kana) &&& (^. #birth)) `MakeListMap` Value id
+  initializeList ===>
+    Key ((^. #kana) &&& (^. #birth)) `MakeListMap` Value id
 
 numberMap :: IO (M.Map Text HihoR)
 numberMap = do
-  csv <- runConduit $ initializeSource .| CL.consume
-  return $
-    csv ==> Key (^. #number) `MakeSingletonMap` Value id
+  initializeList ===>
+    Key (^. #number) `MakeSingletonMap` Value id
 
 kanaBirthCMap :: IO (M.Map (Text, Maybe Day) [HihoR])
 kanaBirthCMap = do

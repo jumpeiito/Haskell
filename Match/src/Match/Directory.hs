@@ -3,6 +3,8 @@
 module Match.Directory where
   -- (createHihoDirectory, removeBlankDirectory) where
 
+import           Control.Arrow              ((>>>))
+import           Control.Concurrent         (forkIO, killThread)
 import           Control.Lens
 import           Control.Monad              (forM_, unless, when)
 import           Control.Monad.State        (get)
@@ -19,6 +21,8 @@ import           Data.Text                  ( Text
                                             , isInfixOf
                                             , intercalate
                                             , unpack)
+import           Data.Time.Calendar
+import           Data.Time.Clock
 import qualified Data.Vector                as V
 import           Match.Base                 ( killBlanks
                                             , officeTypeReplace
@@ -32,29 +36,32 @@ import           System.Directory           ( createDirectoryIfMissing
                                             , doesDirectoryExist
                                             , doesFileExist
                                             , getDirectoryContents
+                                            , getModificationTime
                                             , removeDirectory)
 import           System.IO                  (hFlush, stdout)
+import           System.FilePath.Posix
+import           System.Process
 import           Text.Parsec
 import           Text.Parsec.String
 import           Text.Read                  (readMaybe)
 import           Util
+import           Util.Strdt
 import           Util.MonadPath
 
 type XTDMap = M.Map (Maybe Int) [XTD]
 
 shibud, officed, persond :: MonadicPath ()
-shibud  = initialM >> repM 4 downM
-officed = initialM >> repM 5 downM
-persond = initialM >> repM 6 downM
+shibud  = initialM >> 4 `repM` downM
+officed = initialM >> 5 `repM` downM
+persond = initialM >> 6 `repM` downM
 
 lostp, enoughp :: MonadicPath Bool
 lostp   = isLengthp 7
 enoughp = (>= 6) <$> (V.length . fst) <$> get
 
 shibuCodeM :: MonadicPath (Maybe Int)
-shibuCodeM = do
-  d <- shibud >> basenameM
-  return $ readMaybe $ take 2 d
+shibuCodeM =
+  readMaybe . (take 2) <$> (shibud >> basenameM)
 
 officePartsM :: MonadicPath (String, String)
 officePartsM = do
@@ -86,11 +93,9 @@ lostMP = do
   bnu <- bottomM >> basenameM
   return $ len && (bnu == "喪失")
 
-targetMP = do
-  bools <- sequence [officeMP, personalMP, lostMP]
-  return $ or bools
+targetMP = or <$> sequence [officeMP, personalMP, lostMP]
 
-data SendType  = Get  | Lost | Other deriving (Eq, Ord, Show)
+data SendType  = Get | Lost | Other deriving (Eq, Ord, Show)
 
 type XSend = Record
   '[ "code"      >: String
@@ -169,10 +174,6 @@ makeXTD fp =
       <: #isLost   @= isLost
       <: nil
 
-makeXTDMap :: [XTD] -> XTDMap
-makeXTDMap xtd =
-  xtd ==> Key (^. #shibuCode) `MakeListMap` Value id
-
 getXTD :: (XTD -> Bool) -> IO [XTD]
 getXTD f = do
   topdir <- fileTreeDirectory
@@ -184,8 +185,8 @@ getXTD f = do
 
 getXTDMap :: IO XTDMap
 getXTDMap = do
-  contents <- getXTD ((`runFileM` enoughp) . (^. #filePath))
-  return $ makeXTDMap contents
+  getXTD ((`runFileM` enoughp) . (^. #filePath)) ===>
+    Key (^. #shibuCode) `MakeListMap` Value id
 
 sourceDescendDirectory :: FilePath -> Source IO FilePath
 sourceDescendDirectory fp = do
@@ -277,3 +278,31 @@ removeBlankDirectory = do
     then return ()
     else do producer $$ removeBlankDirectorySink
             removeBlankDirectory
+
+openPDFFileCommand :: FilePath -> IO ()
+openPDFFileCommand fp = do
+  _ <- runInteractiveCommand $ "start " <> fp
+  return ()
+
+pdfSink :: Sink String IO ()
+pdfSink = do
+  awaitForever $ \pdf -> liftIO $ do
+    putStrLn pdf
+    w <- forkIO $ openPDFFileCommand pdf
+    killThread w
+
+dayFilter :: Day -> Conduit FilePath IO FilePath
+dayFilter pday = do
+  awaitForever $ \pdf -> do
+    utc <- liftIO $ getModificationTime pdf
+    when (utctDay utc == pday) $ do
+      yield pdf
+
+openPDFFile :: Day -> IO ()
+openPDFFile pday = do
+  topPath <- fileTreeDirectory
+  runConduit $
+    pSearchSource topPath
+    .| CL.filter (takeExtension >>> (== ".pdf"))
+    .| dayFilter pday
+    .| pdfSink

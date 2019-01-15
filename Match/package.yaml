@@ -47,9 +47,10 @@ dependencies:
   - yaml
   - heterocephalus
   - blaze-markup
-  # - template-haskell
+  - filepath
   - monad-skeleton
   - vector
+  - process
 
 default-extensions:
   - DataKinds
