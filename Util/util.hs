@@ -597,8 +597,14 @@ mapGenerate (MakeMonoidMap (Key k) (Value v)) =
   let insert mp el =
         Map.insertWith mappend (k el) (v el) mp
   in foldl' insert Map.empty
-mapGenerate (MakeListMap k (Value v)) =
-  mapGenerate (MakeMonoidMap k (Value ((:[]) . v)))
+mapGenerate (MakeListMap (Key k) (Value v)) =
+  let insert mp el =
+        let v' = case k el `Map.lookup` mp of
+                  Just ans -> (v el) : ans
+                  Nothing  -> [v el]
+        in Map.insert (k el) v' mp
+  in foldl' insert Map.empty
+
 
 mapGenerateM :: MonadIO m => MakeMap t t1 t2 -> m [t] -> m (Map.Map t1 t2)
 mapGenerateM mm t = mapGenerate mm <$> t
