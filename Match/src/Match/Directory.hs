@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell          #-}
+{-# LANGUAGE QuasiQuotes              #-}
 {-# LANGUAGE GADTs                    #-}
 {-# LANGUAGE FlexibleContexts         #-}
 module Match.Directory where
@@ -8,14 +10,15 @@ import           Control.Concurrent         (forkIO, killThread)
 import           Control.Lens
 import           Control.Monad              (forM_, unless, when)
 import           Control.Monad.State        (get)
-import           Control.Monad.Trans        (lift, liftIO)
+import           Control.Monad.Trans        (liftIO)
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
 import           Data.Either                (isRight, lefts, rights)
 import           Data.Extensible
+import qualified Data.List                  as DL
 import           Data.List.Split            (splitOn)
 import qualified Data.Map.Strict            as M
-import           Data.Maybe                 (fromJust)
+import           Data.Maybe                 (fromJust, fromMaybe)
 import           Data.Monoid                ((<>))
 import           Data.Text                  ( Text
                                             , isInfixOf
@@ -39,21 +42,22 @@ import           System.Directory           ( createDirectoryIfMissing
                                             , getModificationTime
                                             , removeDirectory)
 import           System.IO                  (hFlush, stdout)
-import           System.FilePath.Posix
-import           System.Process
+import           System.FilePath.Posix      (takeExtension)
+import           System.Process             (runInteractiveCommand)
+import           Text.Heredoc
 import           Text.Parsec
 import           Text.Parsec.String
 import           Text.Read                  (readMaybe)
 import           Util
-import           Util.Strdt
 import           Util.MonadPath
 
 type XTDMap = M.Map (Maybe Int) [XTD]
+type DirectoryBaseInfo = (Maybe Int, (String, String), String, Bool)
 
 shibud, officed, persond :: MonadicPath ()
-shibud  = initialM >> 4 `repM` downM
-officed = initialM >> 5 `repM` downM
-persond = initialM >> 6 `repM` downM
+shibud  = initialM >> 3 `repM` downM
+officed = initialM >> 4 `repM` downM
+persond = initialM >> 5 `repM` downM
 
 lostp, enoughp :: MonadicPath Bool
 lostp   = isLengthp 7
@@ -69,6 +73,19 @@ officePartsM = do
   case splitOn "_" d of
     [c, n] -> return (c, n)
     _      -> return ("", "")
+
+lostPDFP :: MonadicPath Bool
+lostPDFP = do
+  x <- get
+  return $ "喪失" `V.elem` fst x
+
+baseInfoM :: MonadicPath DirectoryBaseInfo
+baseInfoM = do
+  s <- shibuCodeM
+  o <- officePartsM
+  p <- persond >> basenameM
+  b <- lostPDFP
+  return (s, o, p, b)
 
 officeNameParser :: Parser (String, String)
 officeNameParser =
@@ -96,6 +113,19 @@ lostMP = do
 targetMP = or <$> sequence [officeMP, personalMP, lostMP]
 
 data SendType  = Get | Lost | Other deriving (Eq, Ord, Show)
+
+toXSend :: DirectoryBaseInfo -> XSend
+toXSend (s, (oC, oN), p, b) =
+  #code @= oC
+  <: #name @= oN
+  <: #sendType @= (if b then Lost else Get)
+  <: #hihoName @= p
+  <: #shibu @= s
+  <: nil
+
+xsendToPath :: FilePath -> XSend -> FilePath
+xsendToPath root xs =
+  root ++ (DL.intercalate "/" $ xsendDirectoryList xs)
 
 type XSend = Record
   '[ "code"      >: String
@@ -190,21 +220,22 @@ getXTDMap = do
 
 sourceDescendDirectory :: FilePath -> Source IO FilePath
 sourceDescendDirectory fp = do
-  directoryP <- lift $ doesDirectoryExist fp
+  directoryP <- liftIO $ doesDirectoryExist fp
   when directoryP $ do
     yield fp
-    dirs <- lift $ listDirectory (fp ++ "/")
+    dirs <- liftIO $ listDirectory (fp ++ "/")
     mapM_ sourceDescendDirectory dirs
 
 sourceDescendFile :: FilePath -> Source IO FilePath
 sourceDescendFile fp = do
   directoryP <- liftIO $ doesDirectoryExist fp
-  fileP      <- liftIO $ doesFileExist fp
-  case (directoryP, fileP) of
+  fileP'     <- liftIO $ doesFileExist fp
+  case (directoryP, fileP') of
     (True, _) -> do
       contents <- liftIO $ listDirectory (fp <> "/")
       forM_ contents sourceDescendFile
     (_, True) -> yield fp
+    (False, False) -> error "must not happen."
 
 sendAlreadyRegistered :: (XSend, Bool) -> [XTD] -> Bool
 sendAlreadyRegistered _ [] = False
@@ -259,14 +290,14 @@ removeBlankDirectorySink = do
   let quiz = do
         c <- liftIO getChar
         case c of
-          'y' -> forM_ targets $ \directory -> do
-            liftIO $ removeDirectory directory
-            liftIO $ putStrLn $ directory ++ " deleted."
+          'y' -> forM_ targets $ \directory -> liftIO $ do
+            removeDirectory directory
+            putStrLn $ directory ++ " deleted."
           'n' -> return ()
           _   -> do
             putStrLn "answer y or n"
             quiz
-  lift quiz
+  liftIO quiz
 
 removeBlankDirectory :: IO ()
 removeBlankDirectory = do
@@ -291,6 +322,31 @@ pdfSink = do
     w <- forkIO $ openPDFFileCommand pdf
     killThread w
 
+baseInfoMap :: [FilePath] -> M.Map DirectoryBaseInfo [FilePath]
+baseInfoMap dirs =
+  dirs ==> Key (`runFileM` baseInfoM) `MakeListMap` Value id
+
+directoryBaseInfoString :: DirectoryBaseInfo -> String
+directoryBaseInfoString dbi =
+  let (shibu, (oCode, oName), person, bool) = dbi
+  in let shibu' = show $ fromMaybe 99 shibu
+  in let pdftype = if bool then "喪失" else "取得"
+  in [heredoc|${oCode}-${oName}(${shibu'}) ${person}--${pdftype}|]
+
+pdfCollectiveSink :: Sink String IO ()
+pdfCollectiveSink = do
+  pdflist <- CL.consume
+  let infoMap = baseInfoMap pdflist
+  forM_ (M.keys infoMap) $ \info -> liftIO $ do
+    putStrLn $ directoryBaseInfoString info
+    c <- getLine
+    case c of
+      "n" -> return ()
+      _   ->
+        runConduit $
+          CL.sourceList (fromJust $ info `M.lookup` infoMap)
+          .| pdfSink
+
 dayFilter :: Day -> Conduit FilePath IO FilePath
 dayFilter pday = do
   awaitForever $ \pdf -> do
@@ -305,4 +361,4 @@ openPDFFile pday = do
     pSearchSource topPath
     .| CL.filter (takeExtension >>> (== ".pdf"))
     .| dayFilter pday
-    .| pdfSink
+    .| pdfCollectiveSink
