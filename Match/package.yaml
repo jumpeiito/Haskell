@@ -112,6 +112,14 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - Match
+  OpenPDF:
+    main:                Main.hs
+    source-dirs:
+    - app/OpenPDF
+    ghc-options:
+    - -O0
+    dependencies:
+    - Match
    
 tests:
   # Match-test:
