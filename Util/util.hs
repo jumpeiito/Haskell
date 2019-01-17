@@ -492,6 +492,9 @@ toDiffList xs = DiffList (xs++)
 fromDiffList :: DiffList a -> [a]
 fromDiffList (DiffList f) = f []
 
+instance (Show a) => Show (DiffList a) where
+  show x = "fromList " <> show (fromDiffList x)
+
 instance Monoid (DiffList a) where
     mempty = DiffList (\xs -> [] ++ xs)
     (DiffList f) `mappend` (DiffList g) = DiffList (\xs -> f (g xs))
@@ -582,33 +585,39 @@ dSearch fp = do
     readIORef dirs
   return $ fromDiffList diff
 
--- data MapParts a = MapParts a
 data Conncet v = Connect (v -> v -> v)
 data Key a k = Key (a -> k)
 data Value a v = Value (a -> v)
 
 mapGenerate :: MakeMap t t1 t2 -> [t] -> Map.Map t1 t2
 mapGenerate (MakeCountMap (Key k)) =
-  let insert mp el = Map.insertWith (+) (k el) 1 mp
-  in foldl' insert Map.empty
+  let insert'' mp el = Map.insertWith (+) (k el) 1 mp
+  in foldl' insert'' Map.empty
 mapGenerate (MakeSingletonMap (Key k) (Value v)) =
   Map.fromList . parMap rseq (k &&& v)
 mapGenerate (MakeMonoidMap (Key k) (Value v)) =
-  let insert mp el =
+  let insert'' mp el =
         Map.insertWith mappend (k el) (v el) mp
-  in foldl' insert Map.empty
+  in foldl' insert'' Map.empty
 mapGenerate (MakeListMap (Key k) (Value v)) =
-  let insert mp el =
+  let insert'' mp el =
         let v' = case k el `Map.lookup` mp of
                   Just ans -> (v el) : ans
                   Nothing  -> [v el]
         in Map.insert (k el) v' mp
-  in foldl' insert Map.empty
-
+  in foldl' insert'' Map.empty
+mapGenerate (MakeDiffListMap (Key k) (Value v)) =
+  let insert'' mp el =
+        let v' = case k el `Map.lookup` mp of
+                  Just ans -> ans <> toDiffList [v el]
+                  Nothing  -> toDiffList [v el]
+        in Map.insert (k el) v' mp
+  in foldl' insert'' Map.empty
 
 mapGenerateM :: MonadIO m => MakeMap t t1 t2 -> m [t] -> m (Map.Map t1 t2)
 mapGenerateM mm t = mapGenerate mm <$> t
 
+(==>) :: [t] -> MakeMap t t1 t2 -> Map.Map t1 t2
 (==>) = flip mapGenerate
 infixr 1 ==>
 
@@ -621,6 +630,8 @@ data MakeMap a k v where
     (Ord k , Monoid v) => (Key a k) -> (Value a v) -> MakeMap a k v
   MakeListMap ::
     (Ord k) => (Key a k) -> (Value a v) -> MakeMap a k [v]
+  MakeDiffListMap ::
+    (Ord k) => (Key a k) -> (Value a v) -> MakeMap a k (DiffList v)
   MakeSingletonMap ::
     (Ord k) => (Key a k) -> (Value a v) -> MakeMap a k v
   MakeCountMap ::
@@ -634,6 +645,8 @@ infixl 9 <<>>
 (<@@>) = MakeListMap
 infixl 9 <@@>
 
+mm :: MakeMap Integer Integer [Integer]
 mm = Key (`mod` 3) `MakeMonoidMap` Value (:[])
 
+mm2 :: MakeMap Integer Integer (V.Vector Integer)
 mm2 = Key (`mod` 3) `MakeMonoidMap` Value V.singleton

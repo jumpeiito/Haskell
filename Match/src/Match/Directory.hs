@@ -2,8 +2,10 @@
 {-# LANGUAGE QuasiQuotes              #-}
 {-# LANGUAGE GADTs                    #-}
 {-# LANGUAGE FlexibleContexts         #-}
-module Match.Directory where
-  -- (createHihoDirectory, removeBlankDirectory) where
+module Match.Directory
+  (createHihoDirectory
+  , removeBlankDirectory
+  , openPDFFileFromString) where
 
 import           Control.Arrow              ((>>>))
 import           Control.Concurrent         (forkIO, killThread)
@@ -49,6 +51,7 @@ import           Text.Parsec
 import           Text.Parsec.String
 import           Text.Read                  (readMaybe)
 import           Util
+import           Util.Strdt
 import           Util.MonadPath
 
 type XTDMap = M.Map (Maybe Int) [XTD]
@@ -310,21 +313,23 @@ removeBlankDirectory = do
     else do producer $$ removeBlankDirectorySink
             removeBlankDirectory
 
+acrord = "\"c:/Program Files/Adobe/Acrobat Reader DC/Reader/AcroRd32.exe\""
+
 openPDFFileCommand :: FilePath -> IO ()
-openPDFFileCommand fp = do
-  _ <- runInteractiveCommand $ "start " <> fp
-  return ()
+openPDFFileCommand fp =
+  runInteractiveCommand (acrord <> " " <> fp <> " &")
+    >> return ()
 
 pdfSink :: Sink String IO ()
 pdfSink = do
   awaitForever $ \pdf -> liftIO $ do
     putStrLn pdf
-    w <- forkIO $ openPDFFileCommand pdf
-    killThread w
+    openPDFFileCommand pdf
 
-baseInfoMap :: [FilePath] -> M.Map DirectoryBaseInfo [FilePath]
+baseInfoMap ::
+  [FilePath] -> M.Map DirectoryBaseInfo (DiffList FilePath)
 baseInfoMap dirs =
-  dirs ==> Key (`runFileM` baseInfoM) `MakeListMap` Value id
+  dirs ==> Key (`runFileM` baseInfoM) `MakeDiffListMap` Value id
 
 directoryBaseInfoString :: DirectoryBaseInfo -> String
 directoryBaseInfoString dbi =
@@ -339,12 +344,14 @@ pdfCollectiveSink = do
   let infoMap = baseInfoMap pdflist
   forM_ (M.keys infoMap) $ \info -> liftIO $ do
     putStrLn $ directoryBaseInfoString info
+    hFlush stdout
     c <- getLine
     case c of
       "n" -> return ()
       _   ->
         runConduit $
-          CL.sourceList (fromJust $ info `M.lookup` infoMap)
+          CL.sourceList
+            ((fromDiffList . fromJust) $ info `M.lookup` infoMap)
           .| pdfSink
 
 dayFilter :: Day -> Conduit FilePath IO FilePath
@@ -362,3 +369,14 @@ openPDFFile pday = do
     .| CL.filter (takeExtension >>> (== ".pdf"))
     .| dayFilter pday
     .| pdfCollectiveSink
+
+openPDFFileFromString :: String -> IO ()
+openPDFFileFromString dayString = do
+  case strdt dayString of
+    Just d -> openPDFFile d
+    Nothing -> return ()
+
+openPDFFileToday :: IO ()
+openPDFFileToday = do
+  today <- todayDay
+  openPDFFile today
