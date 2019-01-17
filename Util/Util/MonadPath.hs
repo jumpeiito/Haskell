@@ -8,11 +8,11 @@ import           Data.List.Split            (splitOn)
 import           Data.Vector                ((!))
 import qualified Data.Vector                as V
 
-hoge2 = "y:/ro/dee-Gov/62公文書(hoge)/030306_hoge/foo/喪失"
-hoge2F = initM hoge2
+-- hoge2 = "y:/ro/dee-Gov/62公文書(hoge)/030306_hoge/foo/喪失"
+-- hoge2F = initM hoge2
 
-hoge = "y:/ro/dee-Gov/62公文書(hoge)/030306_hoge/foo"
-hogeF = initM hoge
+-- hoge = "y:/ro/dee-Gov/62公文書(hoge)/030306_hoge/foo"
+-- hogeF = initM hoge
 
 type InnerPath = ((V.Vector String), Int)
 type MonadicPath a = State InnerPath a
@@ -32,10 +32,10 @@ downM = do
     then put (v, V.length v - 1)
     else put (v, i + 1)
 initialM = do
-  (v, i) <- get
+  (v, _) <- get
   put (v, 0)
 bottomM  = do
-  (v, i) <- get
+  (v, _) <- get
   put (v, V.length v - 1)
 
 basenameM :: MonadicPath String
