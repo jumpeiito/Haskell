@@ -1,15 +1,23 @@
-module Match.SQL (fetchSQLSource) where
+{-# LANGUAGE AllowAmbiguousTypes #-}
+module Match.SQL
+  (fetchSQLSource
+  , SQLSource (..)
+  , initializeSQLS
+  , initializeS
+  , initializeL) where
 
 import           Control.Arrow              ((>>>))
-import           Control.Lens
+import           Control.Lens               hiding (Getter)
 import           Control.Monad.Reader
 import           Control.Exception.Safe
 import           Data.Conduit
+import qualified Data.Conduit.List          as CL
 import           Data.Text                  (Text)
 import qualified Data.Text                  as Tx
 import           Database.SQLite.Simple
 import           Util.Exception             (FileNotExistException (..))
 import           Match.Config               ( PathGetter
+                                            , Getter
                                             , readConf)
 import           Match.CSV                  (parseCSV, Spec)
 import           System.Directory           ( doesFileExist
@@ -80,9 +88,37 @@ fetchSQLSource :: (MonadThrow m, MonadIO m) =>
   PathGetter -> Spec -> PathGetter -> Source m [Text]
 fetchSQLSource csvf spec dbf = do
   conf <- lift readConf
-  let csv = ((^. csvf) <$> ask) `runReader` conf
-  let db  = ((^. dbf)  <$> ask) `runReader` conf
+  let csv = conf ^. csvf
+  let db  = conf ^. dbf
 
   liftIO $ renewDB spec csv db
 
   readSQLiteSource db
+
+fetchSQLSource2 :: (MonadThrow m, MonadIO m) =>
+  PathGetter -> Getter [Text] -> PathGetter -> Source m [Text]
+fetchSQLSource2 csvf specf dbf = do
+  conf <- lift readConf
+  let csv  = conf ^. csvf
+  let db   = conf ^. dbf
+  let spec = conf ^. specf
+
+  liftIO $ renewDB spec csv db
+
+  readSQLiteSource db
+
+data SQLSource a =
+  SQLSource { specGetter    :: Getter [Text]
+            , csvPathGetter :: PathGetter
+            , dbPathGetter  :: PathGetter
+            , makeFunction  :: [Text] -> a }
+
+initializeSQLS :: SQLSource a -> Source IO [Text]
+initializeSQLS sql =
+  fetchSQLSource2 (csvPathGetter sql) (specGetter sql) (dbPathGetter sql)
+
+initializeS :: SQLSource a -> Source IO a
+initializeS sql = (initializeSQLS sql) $= CL.map (makeFunction sql)
+
+initializeL :: SQLSource a -> IO [a]
+initializeL sql = runConduit $ initializeS sql .| CL.consume

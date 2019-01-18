@@ -161,11 +161,6 @@ type Kumiai = Record
    , "relational" >: Maybe Text
    ]
 
-initializeCSVSource :: Source IO [Text]
-initializeCSVSource = do
-  spec <- kumiaiSpecF
-  fetchSQLSource #kumiaiFile spec #kumiaiDB
-
 kanaBirthKey :: Kumiai -> (Text, Maybe Day)
 kanaBirthKey k = (killBlanks (k ^. #kana), k ^. #birth)
 
@@ -244,6 +239,17 @@ makeKumiai record' = case record' of
 blankMaybe :: Text -> Maybe Text
 blankMaybe "" = Nothing
 blankMaybe x  = Just x
+
+kumiaiSQLSource :: SQLSource Kumiai
+kumiaiSQLSource = SQLSource { specGetter    = #kumiaiSpec
+                            , csvPathGetter = #kumiaiFile
+                            , dbPathGetter  = #kumiaiDB
+                            , makeFunction  = makeKumiai }
+
+initializeCSVSource :: Source IO [Text]
+initializeCSVSource = do
+  spec <- kumiaiSpecF
+  fetchSQLSource #kumiaiFile spec #kumiaiDB
 
 initializeSource :: Source IO Kumiai
 initializeSource = initializeCSVSource $= CL.map makeKumiai

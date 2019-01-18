@@ -1,5 +1,6 @@
 module Match.Config
   ( PathGetter
+  , Getter
   , Conf
   , readConf
   , sendCSVFileName
@@ -12,7 +13,7 @@ module Match.Config
 where
 
 import           Control.Exception.Safe
-import           Control.Lens
+import           Control.Lens             hiding (Getter)
 import           Control.Monad.Trans
 import           Data.Extensible
 import           Data.Text                (Text)
@@ -36,7 +37,8 @@ type Conf = Record
    , "hihoDB"           >: String
    ]
 
-type PathGetter = Getting FilePath Conf FilePath
+type Getter a = Getting a Conf a
+type PathGetter = Getter FilePath
 
 readConf :: (MonadThrow m, MonadIO m) => m Conf
 readConf = readYaml "d:/home/matchConfig.yaml"
