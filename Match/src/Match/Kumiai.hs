@@ -5,9 +5,8 @@ module Match.Kumiai where
 
 import           Control.Arrow               ((&&&))
 import           Control.Lens                ((^.))
-import           Control.Parallel.Strategies (parMap, rseq)
+import           Control.Monad.Reader        (runReader)
 import qualified Data.Map.Strict             as M
-import           Data.List                   (foldl')
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
 import           Data.Extensible
@@ -15,8 +14,7 @@ import           Data.Monoid                 ((<>))
 import           Data.Text                   hiding (foldl', map)
 import qualified Data.Text                   as Tx
 import           Data.Time                   (Day (..))
-import           Match.Config                (kumiaiSpecF)
-import           Match.SQL                   (fetchSQLSource)
+import           Match.SQL
 import           Match.Base                  (killBlanks, killBunkai
                                              , killShibu, makeKey
                                              , officeTypeRegularize
@@ -247,15 +245,11 @@ kumiaiSQLSource = SQLSource { specGetter    = #kumiaiSpec
                             , makeFunction  = makeKumiai }
 
 initializeCSVSource :: Source IO [Text]
-initializeCSVSource = do
-  spec <- kumiaiSpecF
-  fetchSQLSource #kumiaiFile spec #kumiaiDB
-
 initializeSource :: Source IO Kumiai
-initializeSource = initializeCSVSource $= CL.map makeKumiai
-
 initializeList :: IO [Kumiai]
-initializeList = runConduit $ initializeSource .| CL.consume
+initializeCSVSource = initialSQLS `runReader` kumiaiSQLSource
+initializeSource    = initialS `runReader` kumiaiSQLSource
+initializeList      = initialL `runReader` kumiaiSQLSource
 
 -- |
 --

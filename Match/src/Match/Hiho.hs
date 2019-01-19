@@ -5,11 +5,10 @@ module Match.Hiho where
 
 import           Control.Arrow               ((&&&))
 import           Control.Lens
-import           Control.Parallel.Strategies (parMap, rseq)
+import           Control.Monad.Reader        (runReader)
 import           Data.Attoparsec.Text        hiding (number)
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
-import           Data.List                   (foldl')
 import           Data.Either                 (isRight)
 import           Data.Extensible
 import qualified Data.Map.Strict             as M
@@ -19,8 +18,7 @@ import           Data.Text                   hiding (foldl', map)
 import qualified Data.Text                   as Tx
 import           Data.Time                   (Day (..))
 import           Match.Base                  (killBlanks)
-import           Match.Config                (hihoSpecF)
-import           Match.SQL                   (fetchSQLSource)
+import           Match.SQL
 import           Util
 import           Util.Strbt                  (strdt)
 
@@ -78,13 +76,8 @@ stringMaybe :: Text -> Maybe Text
 stringMaybe "" = Nothing
 stringMaybe s  = Just s
 
-initializeCSVSource :: Source IO [Text]
-initializeCSVSource = do
-  spec <- hihoSpecF
-  fetchSQLSource #hihoFile spec #hihoDB
-
 makeHiho :: [Text] -> HihoR
-makeHiho record = case record of
+makeHiho line' = case line' of
   [_code, _officename, _name, _kana, _birth, _postal,
    _ad1, _ad2, _telnum, _num, _g, _l, _rnum, _knum, _alien]
     -> #name          @= _name
@@ -126,11 +119,18 @@ hihoNameUnfinishedP h =
 hihoAddressBlankP :: HihoR -> Bool
 hihoAddressBlankP h = (isNothing $ h ^. #lost) && (h ^. #address == "")
 
-initializeSource :: Source IO HihoR
-initializeSource = initializeCSVSource $= CL.map makeHiho
+hihoSQLSource :: SQLSource HihoR
+hihoSQLSource = SQLSource { specGetter    = #hihoSpec
+                          , csvPathGetter = #hihoFile
+                          , dbPathGetter  = #hihoDB
+                          , makeFunction  = makeHiho }
 
+initializeCSVSource :: Source IO [Text]
+initializeSource :: Source IO HihoR
 initializeList :: IO [HihoR]
-initializeList = runConduit $ initializeSource .| CL.consume
+initializeCSVSource = initialSQLS `runReader` hihoSQLSource
+initializeSource = initialS `runReader` hihoSQLSource
+initializeList = initialL `runReader` hihoSQLSource
 
 kanaBirthMap :: IO (M.Map (Text, Maybe Day) [HihoR])
 kanaBirthMap = do

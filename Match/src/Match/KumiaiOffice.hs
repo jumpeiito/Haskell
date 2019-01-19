@@ -4,6 +4,7 @@ module Match.KumiaiOffice where
 
 import           Control.Lens
 import           Control.Arrow               ((&&&))
+import           Control.Monad.Reader        (runReader)
 import           Data.Conduit
 import qualified Data.Conduit.List           as CL
 import           Data.Extensible
@@ -11,8 +12,7 @@ import qualified Data.Map.Strict             as M
 import           Data.Text                   hiding (map)
 import qualified Data.Text                   as Tx
 import qualified Data.Text.Lazy.Builder      as BB
-import           Match.Config                (kumiaiOfficeSpecF)
-import           Match.SQL                   (fetchSQLSource)
+import           Match.SQL
 import           Match.Base                  (killHyphen
                                              , makeKey
                                              , officeTypeRegularize)
@@ -33,11 +33,6 @@ type KumiaiOffice = Record
    , "postal"     >: Text
    , "tel"        >: Text
    ]
-
-initializeCSVSource :: Source IO [Text]
-initializeCSVSource = do
-  spec <- kumiaiOfficeSpecF
-  fetchSQLSource #kumiaiOfficeFile spec #kumiaiOfficeDB
 
 makeKumiaiOffice :: [Text] -> KumiaiOffice
 makeKumiaiOffice s = case s of
@@ -72,11 +67,18 @@ stringList k = map (BB.fromText . (k ^.)) funcList
                , #postal
                , #tel]
 
-initializeSource :: Source IO KumiaiOffice
-initializeSource = initializeCSVSource $= CL.map makeKumiaiOffice
+koSQLSource :: SQLSource KumiaiOffice
+koSQLSource = SQLSource { specGetter    = #kumiaiOfficeSpec
+                        , csvPathGetter = #kumiaiOfficeFile
+                        , dbPathGetter  = #kumiaiOfficeDB
+                        , makeFunction  = makeKumiaiOffice }
 
+initializeCSVSource :: Source IO [Text]
+initializeSource :: Source IO KumiaiOffice
 initializeList :: IO [KumiaiOffice]
-initializeList = runConduit $ initializeSource .| CL.consume
+initializeCSVSource = initialSQLS `runReader` koSQLSource
+initializeSource = initialS `runReader` koSQLSource
+initializeList = initialL `runReader` koSQLSource
 
 makeKeySimplize :: Text -> Text
 makeKeySimplize = Tx.take 6 . makeKey 6 . Tx.drop 3

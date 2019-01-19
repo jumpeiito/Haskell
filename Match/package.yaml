@@ -49,6 +49,9 @@ dependencies:
   - blaze-markup
   - filepath
   - monad-skeleton
+  - persistent
+  - persistent-sqlite
+  - persistent-template
   - vector
   - process
 
@@ -66,7 +69,7 @@ library:
   dependencies:
     - aeson
     # - yaml
-    - sqlite-simple
+    # - sqlite-simple
     - attoparsec-csv
     - split
     - directory

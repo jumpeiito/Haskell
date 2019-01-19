@@ -1,10 +1,20 @@
+{-# LANGUAGE EmptyDataDecls             #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TemplateHaskell     #-}
 module Match.SQL
   (fetchSQLSource
   , SQLSource (..)
-  , initializeSQLS
-  , initializeS
-  , initializeL) where
+  , initialSQLS
+  , initialS
+  , initialL) where
 
 import           Control.Arrow              ((>>>))
 import           Control.Lens               hiding (Getter)
@@ -14,7 +24,9 @@ import           Data.Conduit
 import qualified Data.Conduit.List          as CL
 import           Data.Text                  (Text)
 import qualified Data.Text                  as Tx
-import           Database.SQLite.Simple
+import           Database.Persist
+import           Database.Persist.Sqlite
+import           Database.Persist.TH
 import           Util.Exception             (FileNotExistException (..))
 import           Match.Config               ( PathGetter
                                             , Getter
@@ -26,37 +38,31 @@ import           System.Directory           ( doesFileExist
 
 type ReadCSV = Either String [[Text]]
 
-data TestField = TestField Int Text deriving (Show)
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+Person
+    num Int
+    str Text
+    deriving Show
+|]
 
-instance FromRow TestField where
-  fromRow = TestField <$> field <*> field
+toText :: Person -> Text
+toText (Person _ s) = s
 
-fromString :: TestField -> Text
-fromString (TestField _ a) = a
-
-writeSQLite :: ReadCSV -> String -> IO ()
+writeSQLite :: ReadCSV -> FilePath -> IO ()
 writeSQLite csv dbname = do
-  conn <- open dbname
-  case csv of
-    Left _  -> return ()
-    Right c -> do
-      execute_ conn "CREATE TABLE test (id INTEGER PRIMARY KEY, str TEXT)"
-      execute_ conn "BEGIN TRANSACTION"
-      forM_ c $ \row ->
-        execute conn "INSERT INTO test (str) VALUES (?)"
-          (Only (Tx.intercalate "," row :: Text))
-      execute_ conn "COMMIT TRANSACTION"
-      close conn
+  runSqlite (Tx.pack dbname) $ do
+    runMigration migrateAll
 
-readSQLite :: (MonadThrow m, MonadIO m) => String -> m [[Text]]
-readSQLite dbname = do
-  p <- liftIO $ doesFileExist dbname
-  if p
-    then do conn <- liftIO $ open dbname
-            r    <- liftIO (query_ conn "SELECT * from test" :: IO [TestField])
-            liftIO $ close conn
-            return $ map (Tx.splitOn "," . fromString) r
-    else throwM $ FileNotExistException dbname
+    case csv of
+      Left _  -> return ()
+      Right c ->
+        forM_ (zip c [1..]) $ \(s, n) -> do
+          insert (Person n (Tx.intercalate "," s))
+
+csvToSQL :: Spec -> FilePath -> FilePath -> IO ()
+csvToSQL sp csv db = do
+  c <- sp `parseCSV` csv
+  c `writeSQLite` db
 
 renewDB :: Spec -> FilePath -> FilePath -> IO ()
 renewDB spec csv db = do
@@ -69,35 +75,26 @@ renewDB spec csv db = do
               csvToSQL spec csv db
     else csvToSQL spec csv db
 
-csvToSQL :: Spec -> FilePath -> FilePath -> IO ()
-csvToSQL sp csv db = do
-  c <- sp `parseCSV` csv
-  c `writeSQLite` db
-
 readSQLiteSource :: (MonadThrow m, MonadIO m) => String -> Source m [Text]
 readSQLiteSource dbname = do
   p <- liftIO $ doesFileExist dbname
   if p
-    then do conn <- liftIO $ open dbname
-            r    <- liftIO (query_ conn "SELECT * from test" :: IO [TestField])
-            liftIO $ close conn
-            mapM_ (fromString >>> Tx.splitOn "," >>> yield) r
+    then do texts <- liftIO $ readSQLiteIfExists dbname
+            mapM_ yield texts
     else throwM $ FileNotExistException dbname
 
+shrink :: ReaderT SqlBackend m a -> ReaderT SqlBackend m a
+shrink = id
+
+readSQLiteIfExists :: FilePath -> IO [[Text]]
+readSQLiteIfExists dbname = do
+  runSqlite (Tx.pack dbname) . shrink $ do
+    answer <- selectList [] []
+    return $ map (entityVal >>> toText >>> Tx.splitOn ",") answer
+
 fetchSQLSource :: (MonadThrow m, MonadIO m) =>
-  PathGetter -> Spec -> PathGetter -> Source m [Text]
-fetchSQLSource csvf spec dbf = do
-  conf <- lift readConf
-  let csv = conf ^. csvf
-  let db  = conf ^. dbf
-
-  liftIO $ renewDB spec csv db
-
-  readSQLiteSource db
-
-fetchSQLSource2 :: (MonadThrow m, MonadIO m) =>
   PathGetter -> Getter [Text] -> PathGetter -> Source m [Text]
-fetchSQLSource2 csvf specf dbf = do
+fetchSQLSource csvf specf dbf = do
   conf <- lift readConf
   let csv  = conf ^. csvf
   let db   = conf ^. dbf
@@ -113,12 +110,20 @@ data SQLSource a =
             , dbPathGetter  :: PathGetter
             , makeFunction  :: [Text] -> a }
 
-initializeSQLS :: SQLSource a -> Source IO [Text]
-initializeSQLS sql =
-  fetchSQLSource2 (csvPathGetter sql) (specGetter sql) (dbPathGetter sql)
+initialSQLS :: Reader (SQLSource a) (Source IO [Text])
+initialSQLS = do
+  csv  <- csvPathGetter <$> ask
+  db   <- dbPathGetter <$> ask
+  spec <- specGetter <$> ask
+  return $ fetchSQLSource csv spec db
 
-initializeS :: SQLSource a -> Source IO a
-initializeS sql = (initializeSQLS sql) $= CL.map (makeFunction sql)
+initialS :: Reader (SQLSource a) (Source IO a)
+initialS = do
+  maker <- makeFunction <$> ask
+  src   <- initialSQLS
+  return $ src $= CL.map maker
 
-initializeL :: SQLSource a -> IO [a]
-initializeL sql = runConduit $ initializeS sql .| CL.consume
+initialL :: Reader (SQLSource a) (IO [a])
+initialL = do
+  src <- initialS
+  return $ runConduit (src .| CL.consume)
