@@ -1,8 +1,11 @@
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE QuasiQuotes       #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE TypeFamilies     #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE TypeFamilies               #-}
 module Match.Geocoder
   (makeJavascriptFileKumiai
    , makeJavascriptFromCSV
@@ -16,7 +19,7 @@ import           Control.Lens               ((^.))
 import           Control.Lens.Getter        (Getting)
 import           Control.Monad              (when, foldM, guard)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
-import           Control.Monad.Trans.Reader (ask, runReaderT)
+import           Control.Monad.Trans.Reader (ReaderT)
 import           Control.Monad.Trans.Cont   (ContT (..), runContT)
 import           Control.Monad.Trans.Maybe  (MaybeT (..), runMaybeT)
 import           Data.Aeson                 (FromJSON)
@@ -25,9 +28,11 @@ import qualified Data.Conduit.List          as CL
 import           Data.Text                  (Text, unpack)
 import qualified Data.Text                  as Tx
 import           Data.Default.Class         (def)
-import           Data.Extensible
+import           Data.Extensible            hiding (shrink)
 import           Data.Monoid                ((<>))
-import           Database.SQLite.Simple
+import           Database.Persist
+import           Database.Persist.Sqlite
+import           Database.Persist.TH
 import           GHC.Generics               (Generic)
 import           Match.CSV                  (Spec, parseCSVSource)
 import           Match.Kumiai
@@ -44,13 +49,13 @@ import           Text.XML.Cursor            ( node, fromDocument, ($//)
 import           Util.Address               (makeTypeAddress)
 import           Util.Yaml
 --- data definitions -----------------------------
-data Point = Point Text Double Double deriving (Show)
-
-instance FromRow Point where
-  fromRow = Point <$> field <*> field <*> field
-
-instance ToRow Point where
-  toRow (Point t d1 d2) = toRow (t, d1, d2)
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+Point
+    address Text
+    latitude Double
+    longitude Double
+    deriving Show
+|]
 
 type JSUnit = Record
   '[ "latitude"    >: Double
@@ -109,18 +114,16 @@ errP = liftIO . I.hPutStrLn I.stderr
 withDB :: (FilePath -> IO a) -> IO a
 withDB f = setting #dbname >>= f
 
-withDBAction :: (Connection -> IO a) -> IO a
-withDBAction f = withDB (flip withConnection f)
+withSqlite f = do
+  db <- setting #dbname
+  runSqlite (Tx.pack db) . shrink $ f
 
 makeNewDB :: IO ()
 makeNewDB = do
-  runC $ do
-    db <- ContT withDB
-    ex <- liftIO $ doesFileExist db
-    when (not ex) $ do
-      conn <- ContT $ withConnection db
-      (liftIO $ execute_ conn
-       "CREATE TABLE test (address Text, lat Double, lng Double)")
+  withDB $ \fp -> do
+    p <- doesFileExist fp
+    when (not p) $
+      runSqlite (Tx.pack fp) $ runMigration migrateAll
 
 refreshDB :: IO ()
 refreshDB = do
@@ -133,19 +136,19 @@ refreshDB = do
 insertDB :: Maybe Point -> IO ()
 insertDB Nothing  = return ()
 insertDB (Just p@(Point address _ _)) = do
-  withDBAction $ \conn -> do
-    isRegistered <- lookupDB address
-    if not (null isRegistered)
-      then putStrLn "already registered."
-      else execute conn
-            "INSERT INTO test (address, lat, lng) VALUES (?,?,?)" p
+  isRegistered <- lookupDB address
+  if not (null isRegistered)
+    then putStrLn "already registered."
+    else withSqlite $ insert p >> return ()
+
+shrink :: ReaderT SqlBackend m a -> ReaderT SqlBackend m a
+shrink = id
 
 lookupDB :: Text -> IO [Point]
 lookupDB tx = do
-  runC $ do
-    conn <- ContT withDBAction
-    liftIO $
-      queryNamed conn "SELECT * from test where address = :a" [":a" := tx]
+  withSqlite $ do
+    ls <- selectList [PointAddress ==. tx] []
+    return $ map entityVal ls
 
 withLookupDB :: Label -> (Label -> MaybeT IO Point)
   -> MaybeT IO Point
@@ -156,7 +159,7 @@ withLookupDB l f = do
     else return $ head dbReply
 
 allQueryDB :: IO [Point]
-allQueryDB = withDBAction (flip query_ "SELECT * from test")
+allQueryDB = withSqlite $ (map entityVal <$> selectList [] [])
 --- Throw query and parse ------------------------
 contentsOf :: Node -> Text
 contentsOf (NodeContent x) = x
