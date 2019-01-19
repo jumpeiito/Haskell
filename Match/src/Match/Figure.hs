@@ -11,10 +11,10 @@ import           Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
 import qualified Match.Base                as B
 import qualified Match.Hiho                as H
 import qualified Match.Kumiai              as K
-import           Data.Extensible
+-- import           Data.Extensible
 import           Data.Ord                  (comparing)
 import           Data.Foldable             (forM_)
-import           Data.Maybe                (fromMaybe, isNothing, isJust, fromJust)
+import           Data.Maybe                (fromMaybe, fromJust)
 import           Data.Text                 (Text, pack)
 import           Data.Monoid               ((<>))
 import qualified Data.Text.Lazy.Builder    as TLB

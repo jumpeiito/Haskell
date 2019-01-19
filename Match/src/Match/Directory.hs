@@ -5,10 +5,10 @@
 module Match.Directory
   (createHihoDirectory
   , removeBlankDirectory
-  , openPDFFileFromString) where
+  , openPDFFileFromString
+  , openPDFFileToday) where
 
 import           Control.Arrow              ((>>>))
-import           Control.Concurrent         (forkIO, killThread)
 import           Control.Lens
 import           Control.Monad              (forM_, unless, when)
 import           Control.Monad.State        (get)
@@ -313,6 +313,7 @@ removeBlankDirectory = do
     else do producer $$ removeBlankDirectorySink
             removeBlankDirectory
 
+acrord :: FilePath
 acrord = "\"c:/Program Files/Adobe/Acrobat Reader DC/Reader/AcroRd32.exe\""
 
 openPDFFileCommand :: FilePath -> IO ()
@@ -378,5 +379,5 @@ openPDFFileFromString dayString = do
 
 openPDFFileToday :: IO ()
 openPDFFileToday = do
-  today <- todayDay
-  openPDFFile today
+  today' <- todayDay
+  openPDFFile today'

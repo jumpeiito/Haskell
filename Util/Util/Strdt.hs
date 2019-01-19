@@ -21,7 +21,7 @@ module Util.Strdt (strdt
                   , getWeekDateString
                   , japaneseDateString) where
 
-import Util           hiding ((&&&))
+import Util
 import Control.Arrow
 import Data.List
 import Data.Map                         hiding (map)
