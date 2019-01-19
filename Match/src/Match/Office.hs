@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE FlexibleContexts  #-}
 module Match.Office where
 
@@ -46,16 +48,11 @@ makeOffice line' = case line' of
     <: nil
   _ -> error $ Tx.unpack $ "must not be happen : " <> Tx.intercalate "," line'
 
-officeSQLSource :: SQLSource Office
-officeSQLSource = SQLSource { specGetter    = #officeSpec
-                            , csvPathGetter = #officeFile
-                            , dbPathGetter  = #officeDB
-                            , makeFunction  = makeOffice }
-
-initializeCSVSource :: Source IO [Text]
-initializeSource :: Source IO Office
-initializeCSVSource = initialSQLS `runReader` officeSQLSource
-initializeSource = initialS `runReader` officeSQLSource
+instance Sourceable Office where
+  source = SQLSource { specGetter    = #officeSpec
+                     , csvPathGetter = #officeFile
+                     , dbPathGetter  = #officeDB
+                     , makeFunction  = makeOffice }
 
 makeMapFunc :: (Office -> (Text, Office)) -> IO (M.Map Text Office)
 makeMapFunc f = M.fromList <$> (initializeSource =$ CL.map f $$ CL.consume)

@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE TypeFamilies  #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances  #-}
 module Match.KumiaiOffice where
 
 import           Control.Lens
@@ -67,18 +69,11 @@ stringList k = map (BB.fromText . (k ^.)) funcList
                , #postal
                , #tel]
 
-koSQLSource :: SQLSource KumiaiOffice
-koSQLSource = SQLSource { specGetter    = #kumiaiOfficeSpec
-                        , csvPathGetter = #kumiaiOfficeFile
-                        , dbPathGetter  = #kumiaiOfficeDB
-                        , makeFunction  = makeKumiaiOffice }
-
-initializeCSVSource :: Source IO [Text]
-initializeSource :: Source IO KumiaiOffice
-initializeList :: IO [KumiaiOffice]
-initializeCSVSource = initialSQLS `runReader` koSQLSource
-initializeSource = initialS `runReader` koSQLSource
-initializeList = initialL `runReader` koSQLSource
+instance Sourceable KumiaiOffice where
+  source = SQLSource { specGetter    = #kumiaiOfficeSpec
+                     , csvPathGetter = #kumiaiOfficeFile
+                     , dbPathGetter  = #kumiaiOfficeDB
+                     , makeFunction  = makeKumiaiOffice }
 
 makeKeySimplize :: Text -> Text
 makeKeySimplize = Tx.take 6 . makeKey 6 . Tx.drop 3

@@ -12,6 +12,7 @@
 module Match.SQL
   (fetchSQLSource
   , SQLSource (..)
+  , Sourceable (..)
   , initialSQLS
   , initialS
   , initialL) where
@@ -127,3 +128,23 @@ initialL :: Reader (SQLSource a) (IO [a])
 initialL = do
   src <- initialS
   return $ runConduit (src .| CL.consume)
+
+class Sourceable a where
+  source :: SQLSource a
+  initializeCSVSource :: Reader (SQLSource a) (Source IO [Text])
+  initializeSource    :: Source IO a
+  initializeList      :: IO [a]
+
+  initializeCSVSource = do
+    csv  <- csvPathGetter <$> ask
+    db   <- dbPathGetter <$> ask
+    spec <- specGetter <$> ask
+    return $ fetchSQLSource csv spec db
+
+  initializeSource = (`runReader` source) $ do
+    maker <- makeFunction <$> ask
+    src   <- initializeCSVSource
+    return $ src $= CL.map maker
+
+  initializeList = runConduit (initializeSource .| CL.consume)
+

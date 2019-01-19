@@ -1,6 +1,8 @@
 -- -*- coding:utf-8 -*-
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances  #-}
 module Match.Hiho where
 
 import           Control.Arrow               ((&&&))
@@ -119,18 +121,11 @@ hihoNameUnfinishedP h =
 hihoAddressBlankP :: HihoR -> Bool
 hihoAddressBlankP h = (isNothing $ h ^. #lost) && (h ^. #address == "")
 
-hihoSQLSource :: SQLSource HihoR
-hihoSQLSource = SQLSource { specGetter    = #hihoSpec
-                          , csvPathGetter = #hihoFile
-                          , dbPathGetter  = #hihoDB
-                          , makeFunction  = makeHiho }
-
-initializeCSVSource :: Source IO [Text]
-initializeSource :: Source IO HihoR
-initializeList :: IO [HihoR]
-initializeCSVSource = initialSQLS `runReader` hihoSQLSource
-initializeSource = initialS `runReader` hihoSQLSource
-initializeList = initialL `runReader` hihoSQLSource
+instance Sourceable HihoR where
+  source = SQLSource { specGetter    = #hihoSpec
+                     , csvPathGetter = #hihoFile
+                     , dbPathGetter  = #hihoDB
+                     , makeFunction  = makeHiho }
 
 kanaBirthMap :: IO (M.Map (Text, Maybe Day) [HihoR])
 kanaBirthMap = do

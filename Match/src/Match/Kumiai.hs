@@ -1,6 +1,8 @@
 -- -*- coding: utf-8 -*-
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances  #-}
 module Match.Kumiai where
 
 import           Control.Arrow               ((&&&))
@@ -238,18 +240,11 @@ blankMaybe :: Text -> Maybe Text
 blankMaybe "" = Nothing
 blankMaybe x  = Just x
 
-kumiaiSQLSource :: SQLSource Kumiai
-kumiaiSQLSource = SQLSource { specGetter    = #kumiaiSpec
-                            , csvPathGetter = #kumiaiFile
-                            , dbPathGetter  = #kumiaiDB
-                            , makeFunction  = makeKumiai }
-
-initializeCSVSource :: Source IO [Text]
-initializeSource :: Source IO Kumiai
-initializeList :: IO [Kumiai]
-initializeCSVSource = initialSQLS `runReader` kumiaiSQLSource
-initializeSource    = initialS `runReader` kumiaiSQLSource
-initializeList      = initialL `runReader` kumiaiSQLSource
+instance Sourceable Kumiai where
+  source = SQLSource { specGetter    = #kumiaiSpec
+                     , csvPathGetter = #kumiaiFile
+                     , dbPathGetter  = #kumiaiDB
+                     , makeFunction  = makeKumiai }
 
 -- |
 --
