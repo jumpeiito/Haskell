@@ -6,6 +6,7 @@ import Control.Parallel.Strategies (parMap, rseq)
 import Data.Conduit
 import Data.List
 import Data.IORef
+import qualified Data.Set               as S
 import qualified Data.Vector            as V
 import Control.Exception                hiding (try)
 import Control.Monad
@@ -25,11 +26,18 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import Text.Parsec                      hiding (State)
 import Text.Parsec.String
 ----------------------------------------------------------------------------------------------------
-uniq :: Eq a => [a] -> [a]
-uniq s = reverse . (`execState` []) $ do
-  forM_ s $ \n -> do
-    r <- get
-    when (n `notElem` r) $ put (n:r)
+uniq :: Ord a => [a] -> [a]
+uniq = fst . foldr uniq' ([], S.empty)
+  where
+    uniq' el (l, s) = if el `S.member` s
+                      then (l, s)
+                      else (el : l, el `S.insert` s)
+
+ordNub :: Ord a => [a] -> [a]
+ordNub xs = foldr (\x k s -> if S.member x s
+  then k s
+  else x : k (S.insert x s))
+  (const []) xs S.empty
 
 class StringLike a => Join a where
   joiner :: String -> [a] -> a
@@ -645,8 +653,8 @@ infixl 9 <<>>
 (<@@>) = MakeListMap
 infixl 9 <@@>
 
-mm :: MakeMap Integer Integer [Integer]
-mm = Key (`mod` 3) `MakeMonoidMap` Value (:[])
+-- mm :: MakeMap Integer Integer [Integer]
+-- mm = Key (`mod` 3) `MakeMonoidMap` Value (:[])
 
-mm2 :: MakeMap Integer Integer (V.Vector Integer)
-mm2 = Key (`mod` 3) `MakeMonoidMap` Value V.singleton
+-- mm2 :: MakeMap Integer Integer (V.Vector Integer)
+-- mm2 = Key (`mod` 3) `MakeMonoidMap` Value V.singleton
