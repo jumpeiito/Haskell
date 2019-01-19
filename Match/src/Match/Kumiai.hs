@@ -91,8 +91,8 @@ makeSY "会計監査"         = Just $ SY 7 "会計監査"
 makeSY "次世代建設委員"   = Just $ SY 8 "次世代建設委員"
 makeSY "共済運営委員"     = Just $ SY 9 "共済運営委員"
 makeSY "健康推進委員"     = Just $ SY 10 "健康推進委員"
-makeSY "顧問"     = Just $ SY 11 "顧問"
-makeSY _ = Nothing
+makeSY "顧問"             = Just $ SY 11 "顧問"
+makeSY _                  = Nothing
 
 makeSYList :: Text -> Maybe [SY]
 makeSYList = mapM makeSY . Tx.splitOn "・"

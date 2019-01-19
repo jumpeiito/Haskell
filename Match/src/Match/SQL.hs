@@ -1,21 +1,13 @@
-{-# LANGUAGE EmptyDataDecls             #-}
-{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE QuasiQuotes                #-}
-{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TemplateHaskell     #-}
 module Match.SQL
   (fetchSQLSource
   , SQLSource (..)
-  , Sourceable (..)
-  , initialSQLS
-  , initialS
-  , initialL) where
+  , Sourceable (..)) where
 
 import           Control.Arrow              ((>>>))
 import           Control.Lens               hiding (Getter)
@@ -111,26 +103,8 @@ data SQLSource a =
             , dbPathGetter  :: PathGetter
             , makeFunction  :: [Text] -> a }
 
-initialSQLS :: Reader (SQLSource a) (Source IO [Text])
-initialSQLS = do
-  csv  <- csvPathGetter <$> ask
-  db   <- dbPathGetter <$> ask
-  spec <- specGetter <$> ask
-  return $ fetchSQLSource csv spec db
-
-initialS :: Reader (SQLSource a) (Source IO a)
-initialS = do
-  maker <- makeFunction <$> ask
-  src   <- initialSQLS
-  return $ src $= CL.map maker
-
-initialL :: Reader (SQLSource a) (IO [a])
-initialL = do
-  src <- initialS
-  return $ runConduit (src .| CL.consume)
-
 class Sourceable a where
-  source :: SQLSource a
+  source              :: SQLSource a
   initializeCSVSource :: Reader (SQLSource a) (Source IO [Text])
   initializeSource    :: Source IO a
   initializeList      :: IO [a]

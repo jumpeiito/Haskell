@@ -33,6 +33,7 @@ import qualified Match.Hiho                as H
 import qualified Match.Kumiai              as K
 import qualified Match.KumiaiOffice        as KO
 import qualified Match.Office              as O
+import qualified Match.SQL                 as S
 import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
 
@@ -62,7 +63,7 @@ jigyosyoMatchUp = do
   o  <- O.numberMap
   ko <- KO.numberMap
 
-  (K.initializeSource                    :: Source IO K.Kumiai)
+  (S.initializeSource                    :: Source IO K.Kumiai)
     $= (CL.filter (isNothing . (^. #lost)) :: Conduit K.Kumiai IO K.Kumiai)
     $= (conduit o ko                     :: Conduit K.Kumiai IO Figure)
     $$ (figureSink                       :: Sink Figure IO ())
@@ -101,7 +102,7 @@ jigyosyoMatchUp = do
 ----------------------------------------------------------------------
 officeAddressMatchUp :: IO ()
 officeAddressMatchUp =
-  (O.initializeSource                   :: Source IO B.Office)
+  (S.initializeSource                   :: Source IO B.Office)
     $= (CL.filter O.numberInfixAddressP :: Conduit B.Office IO B.Office)
     $= (CL.map O.basicInfo              :: Conduit B.Office IO [Builder])
     $$ (CL.mapM_ (liftIO . joinPrint)   :: Sink [Builder] IO ())
@@ -111,7 +112,7 @@ hihoNameMatchUp :: IO ()
 hihoNameMatchUp = do
   bMap <- K.birthdayCMap
 
-  (H.initializeSource                   :: Source IO H.HihoR)
+  (S.initializeSource                   :: Source IO H.HihoR)
     $= (CL.filter H.hihoNameUnfinishedP :: Conduit H.HihoR IO H.HihoR)
     $= (conduit bMap                    :: Conduit H.HihoR IO Figure)
     $$ (figureSink                      :: Sink Figure IO ())
@@ -137,7 +138,7 @@ hihoNameStrictMatchUp :: IO ()
 hihoNameStrictMatchUp = do
   bMap <- K.birthdayNameCMap
 
-  (H.initializeSource                   :: Source IO H.HihoR)
+  (S.initializeSource                   :: Source IO H.HihoR)
     $= (CL.filter H.hihoNameUnfinishedP :: Conduit H.HihoR IO H.HihoR)
     $= (conduit bMap                    :: Conduit H.HihoR IO Figure)
     $$ (figureSink                      :: Sink Figure IO ())
@@ -163,7 +164,7 @@ hihoAddressMatchUp :: IO ()
 hihoAddressMatchUp = do
   bMap <- K.birthdayNameCMap
 
-  (H.initializeSource :: Source IO H.HihoR)
+  (S.initializeSource :: Source IO H.HihoR)
     $= (CL.filter H.hihoAddressBlankP
                       :: Conduit H.HihoR IO H.HihoR)
     $= (conduit bMap  :: Conduit H.HihoR IO Figure)
@@ -200,7 +201,7 @@ kumiaiOfficeBlankMatchUp = do
               , (^. #lost) >>> tp]
   let kumiaiInfo k = map ($ k) funcs
   runConduit
-    $ KO.initializeSource
+    $ S.initializeSource
     .| CL.filter ((^. #ownerName) >>> (== ""))
     .| CL.map (id &&& ((^. #code) >>> (`mapSearch` kMap)))
     .| CL.filter (\(_, l) -> not (null l))
@@ -226,7 +227,7 @@ shibuMatchUp s = do
             , "雇用保険取得日"
             , "雇用保険喪失日" ]
 
-  (H.initializeSource     :: Source IO H.HihoR)
+  (S.initializeSource     :: Source IO H.HihoR)
     $= (CL.filter (\h -> (H.hihoAliveP h) && (H.hihoOfficeAliveP h)))
     $= (CL.filter (\h -> h ^. #shibu == Just s))
     $= (conduit kMap oMap :: Conduit H.HihoR IO Figure)
@@ -264,7 +265,7 @@ kumiaiinMatchUp = do
   kb <- H.kanaBirthCMap
   ko <- KO.numberCMap
 
-  (K.initializeSource  :: Source IO K.Kumiai)
+  (S.initializeSource  :: Source IO K.Kumiai)
     $= (CL.filter (\k -> (isNothing (k ^. #lost) && (k ^. #office == "")))
                        :: Conduit K.Kumiai IO K.Kumiai)
     $= (conduit kb ko  :: Conduit K.Kumiai IO Figure)
@@ -302,7 +303,7 @@ kumiaiOfficeMatchUp = do
   telMap <- O.telMap
   numMap <- K.numberCMap
 
-  (KO.initializeSource        :: Source IO KO.KumiaiOffice)
+  (S.initializeSource        :: Source IO KO.KumiaiOffice)
     $= (CL.filter ((^. #idNumber) >>> (==""))
                               :: Conduit KO.KumiaiOffice IO KO.KumiaiOffice)
     $= (conduit telMap numMap :: Conduit KO.KumiaiOffice IO Figure)
@@ -335,7 +336,7 @@ kumiaiOfficeMatchUp = do
 ----------------------------------------------------------------------
 -- simpleOfficeOutput :: IO ()
 -- simpleOfficeOutput = run $ do
---   Right offi <- liftIO O.initializeData
+--   Right offi <- liftIO S.initializeData
 --   liftIO $ I.hSetEncoding I.stdout I.utf8
 
 --   _forM_ offi $ \office -> do
@@ -347,7 +348,7 @@ simpleOfficeOutput = undefined
 ----------------------------------------------------------------------
 yakuOutput :: IO ()
 yakuOutput =
-  K.initializeSource
+  S.initializeSource
     -- $= CL.filter (K.kShibuCode >>> (=="18"))
     -- $= CL.filter (K.kBunkaiCode >>> (=="03"))
     $= CL.filter ((^. #honbuY) >>> isJust)
