@@ -121,4 +121,3 @@ class Sourceable a where
     return $ src $= CL.map maker
 
   initializeList = runConduit (initializeSource .| CL.consume)
-

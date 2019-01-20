@@ -7,7 +7,6 @@ module Match.Kumiai where
 
 import           Control.Arrow               ((&&&))
 import           Control.Lens                ((^.))
-import           Control.Monad.Reader        (runReader)
 import qualified Data.Map.Strict             as M
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL

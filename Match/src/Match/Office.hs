@@ -5,7 +5,6 @@ module Match.Office where
 
 import           Control.Arrow
 import           Control.Lens
-import           Control.Monad.Reader        (runReader)
 import           Data.Conduit
 import qualified Data.Conduit.List          as CL
 import           Data.Attoparsec.Text

@@ -653,8 +653,8 @@ infixl 9 <<>>
 (<@@>) = MakeListMap
 infixl 9 <@@>
 
--- mm :: MakeMap Integer Integer [Integer]
--- mm = Key (`mod` 3) `MakeMonoidMap` Value (:[])
+mm :: MakeMap Integer Integer [Integer]
+mm = Key (`mod` 3) `MakeMonoidMap` Value (:[])
 
--- mm2 :: MakeMap Integer Integer (V.Vector Integer)
--- mm2 = Key (`mod` 3) `MakeMonoidMap` Value V.singleton
+mm2 :: MakeMap Integer Integer (V.Vector Integer)
+mm2 = Key (`mod` 3) `MakeMonoidMap` Value V.singleton
