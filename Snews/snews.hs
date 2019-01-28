@@ -22,7 +22,8 @@ import qualified Data.ByteString.Char8          as B
 ----------------------------------------------------------------------------------------------------
 data StandardOutput
 data FileOutput
-data Encoding    = UTF8 | SJIS
+data Encoding = UTF8 | SJIS
+type Output a = ReaderT (Config a) IO ()
 
 convertUTF8 :: String -> IO B.ByteString
 convertUTF8 s = do
@@ -44,7 +45,7 @@ getPageConvert, getPageNoConvert :: String -> IO [TagTree Tx.Text]
 getPageConvert = getPageContents convertUTF8
 getPageNoConvert = getPageContents noconvertUTF8
 ----------------------------------------------------------------------------------------------------
-filePrinter filename dt = 
+filePrinter filename dt =
   withAppendFile filename $ \handle ->
     Txio.hPutStrLn handle dt
 
@@ -52,6 +53,22 @@ printerCore :: Monad m => (Tx.Text -> m b) -> Config a -> a -> m ()
 printerCore outputF config page = do
   outputF $ takeTitle page `runReader` config
   mapM_ outputF $ takeText page `runReader` config
+
+printPage :: (Tx.Text -> IO b) -> Day -> a -> Output a
+printPage f date page = do
+  let printer = liftIO . f
+  printer . Tx.pack $ "* " <> show date
+  takeTitle page >>= printer
+  takeText page  >>= mapM_ printer
+
+standardOutput :: Day -> a -> Output a
+standardOutput = printPage Txio.putStrLn
+
+fileOutput :: FilePath -> Day -> a -> Output a
+fileOutput fp = printPage $ outputter fp
+  where
+    outputter fp contents =
+      withAppendFile fp $ \handle -> Txio.hPutStrLn handle contents
 
 printer :: Config a -> a -> IO ()
 printer = printerCore Txio.putStrLn
@@ -68,27 +85,28 @@ dayMaker bp td = do
   --(deciding output destination)-------------------------
   Just orgdir <- orgDirectory
   let orgFile = orgdir ++ dayStr6 td ++ ".org"
-  bool <- doesFileExist orgFile
 
-  let (trueOutput, headOutput)
-        | bp        = (printer, Txio.putStrLn)
-        | otherwise = (fPrinter orgFile, filePrinter orgFile)
-  headOutput $ Tx.pack $ "* " <> show td
+  let destination
+        | bp        = standardOutput td
+        | otherwise = fileOutput orgFile td
+  -- let (trueOutput, headOutput)
+  --       | bp        = (printer, Txio.putStrLn)
+  --       | otherwise = (fPrinter orgFile, filePrinter orgFile)
   I.putStrLn $ "Output " ++ show td ++ " article --> " ++ orgFile
   I.hFlush I.stdout
   --(make a promise)--------------------------------------
   let url = (makeURL td `runReader`)
-  cmPromise  <- async $ getPageConvert (url Cm.config)
-  urlPromise <- async $ Ak.makeNewsList <$> getPageNoConvert (url Ak.config)
+  cmPromise <- async $ getPageConvert (url Cm.config)
+  akPromise <- async $ Ak.makeNewsList <$> getPageNoConvert (url Ak.config)
   --(common parts)----------------------------------------
   cmContents <- wait cmPromise
-  forM_ (Cm.makeTree cmContents) $ trueOutput Cm.config
+  forM_ (Cm.makeTree cmContents) $ destination Cm.config
   --(akahata parts)---------------------------------------
-  urls <- wait urlPromise
+  urls <- wait akPromise
   conc <- forM urls (async . getPageNoConvert)
   forM_ conc $ \asy -> do
     promise <- wait asy
-    trueOutput Ak.config promise
+    destination Ak.config promise
 
 orgfileTagsOut :: IO ()
 orgfileTagsOut = do
