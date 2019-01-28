@@ -23,7 +23,7 @@ import           Control.Monad.Trans.Reader (ReaderT)
 import           Control.Monad.Trans.Cont   (ContT (..), runContT)
 import           Control.Monad.Trans.Maybe  (MaybeT (..), runMaybeT)
 import           Data.Aeson                 (FromJSON)
-import           Data.Conduit               (runConduit, (.|))
+import           Data.Conduit               (runConduit, (.|), Source)
 import qualified Data.Conduit.List          as CL
 import           Data.Text                  (Text, unpack)
 import qualified Data.Text                  as Tx
@@ -337,3 +337,13 @@ makeJavascriptFromCSV doFetchP fp = do
 
 testMM :: MakeMap
 testMM = M True False Nothing Nothing
+
+toPoint (a:la:lo:_) = Point a (read' la) (read' lo)
+  where
+    read' = read . Tx.unpack
+
+geoSource =
+  runConduit $
+    parseCSVSource [] "d:/SQLite/geocoder.csv"
+    .| CL.map (Just . toPoint)
+    .| CL.mapM_ insertDB

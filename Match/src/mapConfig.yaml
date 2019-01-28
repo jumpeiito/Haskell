@@ -3,7 +3,7 @@ topURLhost:
 topURLrest:
   "api"
 dbname:
-  "geocoder.db"
+  "geocoder2.db"
 testcsv:
   "組合員データ活用.csv"
 spec:

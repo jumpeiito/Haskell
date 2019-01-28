@@ -272,7 +272,6 @@ createHihoDirectory = do
   xmap <- getXTDMap
   xsnd <- readSendFile
   forM_ xsnd $ \n -> do
-    print n
     unless (n `hasTree2` xmap) $
       createDirectoryRecursive (fp <> "/") $ xsendDirectoryList n
 

@@ -78,6 +78,7 @@ parseCSVSource spec fp = do
   p <- liftIO $ doesFileExist fp
   if p
     then do contents <- liftIO $ readSJIS fp
+    -- then do contents <- liftIO $ readUTF8 fp
             case CSV.parseCSV contents of
               Left _  -> throwM $ CSVParseFailException fp
               Right c -> do
@@ -86,4 +87,3 @@ parseCSVSource spec fp = do
                   []     -> mapM_ yield' $ tail c
                   sindex -> mapM_ ((sindex `extractColumns`) >>> yield') $ tail c
     else throwM $ FileNotExistException fp
-
