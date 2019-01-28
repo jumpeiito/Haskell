@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module Snews.NewsArticle.Akahata ( config
                                  , makeNewsList
                                  ) where
@@ -5,11 +6,9 @@ module Snews.NewsArticle.Akahata ( config
 import Util.Strdt                       (strdt, nendo, dayStrWithSep)
 import Data.Time                        (Day (..))
 import Data.Maybe                       (fromJust)
-import Data.Text.Internal               (Text (..))
 import Control.Monad.Reader
 import Snews.NewsArticle.Base
 import Text.StringLike                  (StringLike, castString)
-import Text.HTML.TagSoup
 import Text.HTML.TagSoup.Tree
 import qualified Data.Text              as Tx
 
@@ -26,7 +25,7 @@ config = Con { hostName  = "http://www.jcp.or.jp/akahata/"
                            , Slash (MDay (dayStrWithSep '-'))
                            , Base]}
 
-type ConfigReader a = Reader (Config [TagTree Text]) a
+type ConfigReader a = Reader (Config [TagTree Tx.Text]) a
 
 generateURL :: Day -> String -> ConfigReader String
 generateURL d url = do
@@ -34,12 +33,11 @@ generateURL d url = do
   change `local` makeURL d
 
 makeNewsList :: StringLike a => [TagTree a] -> [String]
-makeNewsList tree = (`runReader` config) $ do
-  ak   <- rootAK   <$> ask
-  host <- hostName <$> ask
-  let extract = castString "href" <~~ ak <~ tree
-  mapM fullURL extract
-    
+makeNewsList tree =
+  (`runReader` config) $
+    ask >>= \Con {..} -> do
+      mapM fullURL (castString "href" <~~ rootAK <~ tree)
+
 fullURL :: StringLike a => a -> ConfigReader String
 fullURL url = do
   let dstr = castString url

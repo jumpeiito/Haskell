@@ -20,6 +20,10 @@ import qualified Data.Text.IO                   as Txio
 import qualified Data.Text.ICU.Convert          as C
 import qualified Data.ByteString.Char8          as B
 ----------------------------------------------------------------------------------------------------
+data StandardOutput
+data FileOutput
+data Encoding    = UTF8 | SJIS
+
 convertUTF8 :: String -> IO B.ByteString
 convertUTF8 s = do
   utf8 <- C.open "utf8" (Just False)

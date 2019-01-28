@@ -25,22 +25,23 @@ module Snews.NewsArticle.Base ( URL
                               , takeTitle
                               , takeText) where
 
--- import Util
-import Util.StrEnum
-import Data.Time                        (Day (..))
-import Data.List                        (foldl', isInfixOf, find)
-import Data.Maybe                       (fromMaybe)
-import Data.Text.Internal               (Text (..))
-import Data.Text.Encoding               (decodeUtf8)
--- import Control.Monad.State              (get, put, State, runState, execState)
-import Control.Monad.Reader
-import Control.Monad.Writer
-import Text.StringLike                  (StringLike, castString)
-import Text.HTML.TagSoup
-import Text.HTML.TagSoup.Tree
-import Text.Parsec                      hiding (State)
-import Text.Parsec.String
-import qualified Data.Text              as Tx
+import           Util.StrEnum
+import           Data.Time (Day (..))
+import           Data.List (foldl', isInfixOf, find)
+import           Data.Maybe (fromMaybe)
+import           Data.Text.Internal (Text (..))
+import           Data.Text.Encoding (decodeUtf8)
+import           Data.Conduit
+import qualified Data.Conduit.List as CL
+import           Control.Monad.Reader
+import           Control.Monad.Writer
+import           Control.Monad.Identity
+import           Text.StringLike (StringLike, castString)
+import           Text.HTML.TagSoup
+import           Text.HTML.TagSoup.Tree
+import           Text.Parsec hiding (State)
+import           Text.Parsec.String
+import qualified Data.Text as Tx
 
 type URL              = String
 type ArticleKey       = (TagElement, TagElement)
@@ -77,26 +78,28 @@ makeURL d = ask >>= \Con {..} -> do
       murl gen (Str s)   = gen ++ s
   return $ foldl' murl "" urlRecipe
 ----------------------------------------------------------------------------------------------------
-tagName :: TagTree a -> Maybe a
-tagName (TagBranch n _ _) = Just n
-tagName _ = Nothing
+tagtest = TagBranch "hoge" [("foo", "2")] [TagBranch "foo" [] [TagLeaf (TagText "Iran")], TagLeaf (TagComment "")]
 
-tagAttributes :: TagTree t -> Maybe [Attribute t]
-tagAttributes (TagBranch _ attr _) = Just attr
-tagAttributes _ = Nothing
+tagTreeSource :: StringLike a => TagTree a -> Source Identity (TagTree a)
+tagTreeSource tb@(TagBranch name _ desc) = do
+  yield tb
+  mapM_ yield desc
+tagTreeSource _ = return ()
 
-tagDescends :: TagTree t -> Maybe [TagTree t]
-tagDescends (TagBranch _ _ desc) = Just desc
-tagDescends _ = Nothing
+findConduit :: StringLike a =>
+  [ArticleKey] -> Conduit (TagTree a) Identity (TagTree a)
+findConduit ak = do
+  awaitForever $ \tagtree -> do
+    case tagtree of
+      TagLeaf _ -> return ()
+      tb@(TagBranch _ _ ys)
+        | ak `matchTree` tb -> yield tb
+        | otherwise         -> return ()
 
 findTree :: StringLike a => [ArticleKey] -> TagTree a -> [TagTree a]
-findTree akeys tb@TagBranch{} = execWriter $ find' akeys tb
-  where
-    find' _ (TagLeaf _)   = tell mempty
-    find' akeys tb@(TagBranch _ _ ys)
-      | matchTree akeys tb = tell [tb]
-      | otherwise          = forM_ ys (tell . findTree akeys)
-findTree _ _ = []
+findTree akeys tb =
+  runConduitPure $
+    tagTreeSource tb .| findConduit akeys .| CL.consume
 
 findTreeS, (<~) :: StringLike a => [ArticleKey] -> [TagTree a] -> [TagTree a]
 findTreeS ak = (findTree ak `concatMap`)
@@ -104,6 +107,26 @@ findTreeS ak = (findTree ak `concatMap`)
 
 infixr 9 <~
 infixr 9 <~~
+
+findAttributeConduit :: (Eq s, StringLike s)
+  => s -> Conduit (TagTree s) Identity s
+findAttributeConduit key = do
+  awaitForever $ \tagtree -> do
+    case tagtree of
+      TagLeaf _ -> return ()
+      TagBranch _ attr desc -> do
+        case castString key `lookup` attr of
+          Just y -> yield y
+          _ -> return ()
+
+findAttribute :: (Eq s, StringLike s) => s -> TagTree s -> [s]
+findAttribute s tb =
+  runConduitPure $
+    tagTreeSource tb .| findAttributeConduit s .| CL.consume
+
+findAttributeS, (<~~) :: (Eq s, StringLike s) => s -> [TagTree s] -> [s]
+findAttributeS key = (findAttribute key `concatMap`)
+(<~~) = findAttributeS
 
 (<&&>), (<||>) :: (a -> Bool) -> (a -> Bool) -> (a -> Bool)
 (<&&>) f1 f2 = getAll . ((All . f1) <> (All . f2))
@@ -123,25 +146,6 @@ matchAKey _ _                        = False
 
 pairF :: (t -> t1) -> (t, t) -> (t1, t1)
 pairF f (a, b) = (f a, f b)
-----------------------------------------------------------------------------------------------------
-findAttribute :: (Eq s, StringLike s) => s -> TagTree s -> [s]
-findAttribute key (TagBranch _ attr tbs) = execWriter fA
-  where fA = do
-          case assocKey (castString key) attr of
-            Just y -> tell [y]
-            _      -> tell mempty
-          forM_ tbs (tell . findAttribute key)
-findAttribute _ _ = mempty
-
-findAttributeS, (<~~) :: (Eq s, StringLike s) => s -> [TagTree s] -> [s]
-findAttributeS key = (findAttribute key `concatMap`)
-(<~~) = findAttributeS
-
-assocKey :: Eq a => a -> [(a, b)] -> Maybe b
-assocKey _ [] = Nothing
-assocKey k ((x, y):rest)
-  | k == x = Just y
-  | otherwise = assocKey k rest
 ----------------------------------------------------------------------------------------------------
 stringFoldBase :: Text -> Text
 stringFoldBase tx = Tx.pack "   " <> stringFold 33 "\n   " tx
@@ -172,15 +176,22 @@ direction direct tb =
 
 ----------------------------------------------------------------------------------------------------
 textFromTree :: (StringLike a, Monoid a) => Direction -> TagTree a -> a
-textFromTree dl = execWriter . textFromTreeWriter dl
+textFromTree dl tb =
+  runConduitPure
+    $ tagTreeSource tb
+    .| conduit
+    .| CL.fold mappend mempty
   where
-    textFromTreeWriter _ (TagLeaf (TagText s)) = tell s
-    textFromTreeWriter dl tb@(TagBranch _ _ descend) =
-      case dl `direction` tb of
-        Skip   -> tell mempty
-        Pack n -> tell $ castString n
-        Loop   -> forM_ descend (tell . textFromTree dl)
-    textFromTreeWriter _ _ = tell mempty
+    conduit = do
+      awaitForever $ \tagtree -> do
+        case tagtree of
+          TagLeaf (TagText s) -> yield s
+          TagBranch _ _ desc  ->
+            case dl `direction` tb of
+              Pack n -> yield $ castString n
+              Loop   -> yield (mconcat $ map (textFromTree dl) desc)
+              _      -> return ()
+          _ -> return ()
 ----------------------------------------------------------------------------------------------------
 strip :: StringLike a => a -> Text
 strip = tailCut . skip . (<> Tx.pack "\n") . decode
