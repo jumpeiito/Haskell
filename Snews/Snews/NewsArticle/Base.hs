@@ -1,10 +1,11 @@
 {-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Snews.NewsArticle.Base ( URL
                               , ArticleKey
                               , DirectionType
-                              , AKey (..)
-                              , WriterDirection (..)
+                              , TagElement (..)
+                              , Order (..)
                               , Config (..)
                               , URLParts (..)
                               , makeURL
@@ -16,7 +17,7 @@ module Snews.NewsArticle.Base ( URL
                               , (<~~)
                               , stringFoldBase
                               , treeText
-                              , treeTextEx
+                              , textFromTree
                               , normalDirection
                               , filterBlankLines
                               , translateTags
@@ -24,13 +25,14 @@ module Snews.NewsArticle.Base ( URL
                               , takeTitle
                               , takeText) where
 
-import Util
+-- import Util
 import Util.StrEnum
 import Data.Time                        (Day (..))
-import Data.List                        (foldl', isInfixOf)
+import Data.List                        (foldl', isInfixOf, find)
+import Data.Maybe                       (fromMaybe)
 import Data.Text.Internal               (Text (..))
 import Data.Text.Encoding               (decodeUtf8)
-import Control.Monad.State              (get, put, State, runState, execState)
+-- import Control.Monad.State              (get, put, State, runState, execState)
 import Control.Monad.Reader
 import Control.Monad.Writer
 import Text.StringLike                  (StringLike, castString)
@@ -40,14 +42,15 @@ import Text.Parsec                      hiding (State)
 import Text.Parsec.String
 import qualified Data.Text              as Tx
 
-type URL             = String
-type ArticleKey      = (AKey, AKey)
-type DirectionList   = [(AKey, AKey, WriterDirection)]
-type DirectionType a = [(TagTree a -> Bool, WriterDirection)]
+type URL              = String
+type ArticleKey       = (TagElement, TagElement)
+type DirectionElement = (TagElement, TagElement, Order)
+type Direction        = [DirectionElement]
+type DirectionType a  = [(TagTree a -> Bool, Order)]
 
-data AKey = Name String | Attr String | Always deriving (Show, Eq)
+data TagElement = Name String | Attr String | Always deriving (Show, Eq)
 
-data WriterDirection = Skip | Pack String | Loop deriving (Show, Eq)
+data Order = Skip | Pack String | Loop deriving (Show, Eq)
 
 data Config a = Con { hostName  :: String
                     , baseName  :: String
@@ -55,7 +58,7 @@ data Config a = Con { hostName  :: String
                     , titleAK   :: [ArticleKey]
                     , textAK    :: [ArticleKey]
                     , findFunc  :: [ArticleKey] -> a -> [TagTree Text]
-                    , direct    :: DirectionList
+                    , direct    :: Direction
                     , urlRecipe :: [URLParts] }
 ----------------------------------------------------------------------------------------------------
 data URLParts =
@@ -66,23 +69,33 @@ data URLParts =
   | Slash URLParts
 
 makeURL :: Day -> Reader (Config a) String
-makeURL d = do
-  recipe <- urlRecipe <$> ask
-  host   <- hostName <$> ask
-  base   <- baseName <$> ask
+makeURL d = ask >>= \Con {..} -> do
   let murl gen (Slash x) = gen ++ murl "" x ++ "/"
-      murl gen  Host     = gen ++ host
-      murl gen  Base     = gen ++ base
+      murl gen  Host     = gen ++ hostName
+      murl gen  Base     = gen ++ baseName
       murl gen (MDay f)  = gen ++ f d
       murl gen (Str s)   = gen ++ s
-  return $ foldl' murl "" recipe
+  return $ foldl' murl "" urlRecipe
 ----------------------------------------------------------------------------------------------------
+tagName :: TagTree a -> Maybe a
+tagName (TagBranch n _ _) = Just n
+tagName _ = Nothing
+
+tagAttributes :: TagTree t -> Maybe [Attribute t]
+tagAttributes (TagBranch _ attr _) = Just attr
+tagAttributes _ = Nothing
+
+tagDescends :: TagTree t -> Maybe [TagTree t]
+tagDescends (TagBranch _ _ desc) = Just desc
+tagDescends _ = Nothing
+
 findTree :: StringLike a => [ArticleKey] -> TagTree a -> [TagTree a]
 findTree akeys tb@TagBranch{} = execWriter $ find' akeys tb
-  where find' _ (TagLeaf _)   = tell mempty
-        find' akeys tb@(TagBranch _ _ ys)
-          | matchTree akeys tb = tell [tb]
-          | otherwise       = forM_ ys (tell . findTree akeys)
+  where
+    find' _ (TagLeaf _)   = tell mempty
+    find' akeys tb@(TagBranch _ _ ys)
+      | matchTree akeys tb = tell [tb]
+      | otherwise          = forM_ ys (tell . findTree akeys)
 findTree _ _ = []
 
 findTreeS, (<~) :: StringLike a => [ArticleKey] -> [TagTree a] -> [TagTree a]
@@ -92,13 +105,17 @@ findTreeS ak = (findTree ak `concatMap`)
 infixr 9 <~
 infixr 9 <~~
 
+(<&&>), (<||>) :: (a -> Bool) -> (a -> Bool) -> (a -> Bool)
+(<&&>) f1 f2 = getAll . ((All . f1) <> (All . f2))
+(<||>) f1 f2 = getAny . ((Any . f1) <> (Any . f2))
+
 matchTree :: StringLike a => [ArticleKey] -> TagTree a -> Bool
-matchTree akeys = foldl' (|||) (const False) $ map logicProduct akeys
+matchTree akeys =
+  foldl' (<||>) (const False) $ map logicProduct akeys
+  where
+    logicProduct (l, r) = matchAKey l <&&> matchAKey r
 
-logicProduct :: StringLike a => ArticleKey -> TagTree a -> Bool
-logicProduct (l, r) = matchAKey l &&& matchAKey r
-
-matchAKey :: StringLike a => AKey -> TagTree a -> Bool
+matchAKey :: StringLike a => TagElement -> TagTree a -> Bool
 matchAKey (Name a) (TagBranch n _ _) = a == castString n
 matchAKey (Attr a) (TagBranch _ l _) = [pairF castString ("class", a)] `isInfixOf` l
 matchAKey Always _                   = True
@@ -130,12 +147,10 @@ stringFoldBase :: Text -> Text
 stringFoldBase tx = Tx.pack "   " <> stringFold 33 "\n   " tx
 ----------------------------------------------------------------------------------------------------
 treeText    :: (StringLike a, Monoid a) => TagTree a -> a
-treeTextMap :: (StringLike a, Monoid a) => [TagTree a] -> a
-treeText    = treeTextEx normalDirection
-treeTextMap = mconcat . map treeText
+treeText    = textFromTree normalDirection
 ----------
-normalDirection :: DirectionList
-normalDirection = 
+normalDirection :: Direction
+normalDirection =
   [(Name "script", Always,          Skip),
    (Name "div",    Attr "posted",   Skip),
    (Name "div",    Attr "bookmark", Skip),
@@ -143,32 +158,29 @@ normalDirection =
    (Name "br",     Always,          Pack "\n"),
    (Always,        Always,          Loop)]
 
-directionTranslate :: StringLike a => DirectionList -> DirectionType a
-directionTranslate = map translate'
-  where translate' (n, a, d) = (logicProduct (n, a), d)
+directionElementMatch ::
+  StringLike a => DirectionElement -> TagTree a -> Bool
+directionElementMatch (name, attr, _) tb =
+  matchAKey name tb && matchAKey attr tb
 
-directionList :: StringLike a => DirectionType a
-directionList = directionTranslate normalDirection
+toOrder :: DirectionElement -> Order
+toOrder (_, _, o) = o
 
--- direction :: StringLike a =>
---              DirectionType a -> [(DirectionType a -> Bool, WriterDirection)] -> WriterDirection
-direction _ [] = Skip
-direction tb ((f, direct):xs)
-  | f tb      = direct
-  | otherwise = direction tb xs
+direction :: StringLike a => Direction -> TagTree a -> Order
+direction direct tb =
+  fromMaybe Skip $ toOrder <$> find (`directionElementMatch` tb) direct
+
 ----------------------------------------------------------------------------------------------------
-treeTextEx :: (StringLike a, Monoid a) => DirectionList -> TagTree a -> a
-treeTextEx dl = execWriter . ttxex dl
-
-ttxex :: (StringLike a, Monoid a) => DirectionList -> TagTree a -> Writer a ()
-ttxex _ (TagLeaf (TagText s)) = tell s
-ttxex dl tb@(TagBranch _ _ descend) =
-  case direction tb dx of
-    Skip   -> tell mempty
-    Pack n -> tell $ castString n
-    Loop   -> forM_ descend (tell . treeTextEx dl)
-  where dx = directionTranslate dl
-ttxex _ _ = tell mempty
+textFromTree :: (StringLike a, Monoid a) => Direction -> TagTree a -> a
+textFromTree dl = execWriter . textFromTreeWriter dl
+  where
+    textFromTreeWriter _ (TagLeaf (TagText s)) = tell s
+    textFromTreeWriter dl tb@(TagBranch _ _ descend) =
+      case dl `direction` tb of
+        Skip   -> tell mempty
+        Pack n -> tell $ castString n
+        Loop   -> forM_ descend (tell . textFromTree dl)
+    textFromTreeWriter _ _ = tell mempty
 ----------------------------------------------------------------------------------------------------
 strip :: StringLike a => a -> Text
 strip = tailCut . skip . (<> Tx.pack "\n") . decode
@@ -178,16 +190,16 @@ strip = tailCut . skip . (<> Tx.pack "\n") . decode
 
 filterBlankLines :: (StringLike a, Monoid a) => [a] -> [Text]
 filterBlankLines [] = []
-filterBlankLines (x:xl) = case parse fBLparse "" str of
-  Right _ -> filterBlankLines xl
-  Left _  -> strip x : filterBlankLines xl
-  where str    = castString x :: String
-
-fBLparse :: Parser String
-fBLparse = do
-  try (string "" <* eof)
-    <|> try (many1 $ oneOf " \r\n\t")
-    <|> string "続きを読む"
+filterBlankLines (x:xl) =
+  case parse parser "" (castString x) of
+    Right _ -> filterBlankLines xl
+    Left _  -> strip x : filterBlankLines xl
+  where
+    parser :: Parser String
+    parser = do
+      try (string "" <* eof)
+        <|> try (many1 $ oneOf " \r\n\t")
+        <|> string "続きを読む"
 ----------------------------------------------------------------------------------------------------
 translateTags :: StringLike a => a -> [TagTree a]
 translateTags str = tagTree $ parseTags str
@@ -196,23 +208,18 @@ utf8Text :: StringLike a => a -> Text
 utf8Text = decodeUtf8 . castString
 
 takeTitle :: MonadReader (Config a) m => a -> m Text
-takeTitle tree = do
-  ak <- titleAK <$> ask
-  f  <- findFunc <$> ask
+takeTitle tree = ask >>= \Con {..} -> do
   return $
     (utf8Text "** " <>) .
     utf8Text . mconcat . map treeText $
-    f ak tree
+    findFunc titleAK tree
 
 takeText :: MonadReader (Config a) m => a -> m [Text]
-takeText tree = do
-  ak     <- textAK   <$> ask
-  f      <- findFunc <$> ask
-  direct <- direct   <$> ask
+takeText tree = ask >>= \Con {..} -> do
   return $
     map (<> Tx.pack "\n")          .
     map stringFoldBase             .
     filterBlankLines               .
     concatMap (lines . castString) .
-    map (treeTextEx direct)        $
-    f ak tree
+    map (textFromTree direct)      $
+    findFunc textAK tree

@@ -35,6 +35,10 @@ getPageContents f url = do
   body      <- getResponseBody http
   converted <- castString <$> f body
   return $ translateTags converted
+
+getPageConvert, getPageNoConvert :: String -> IO [TagTree Tx.Text]
+getPageConvert = getPageContents convertUTF8
+getPageNoConvert = getPageContents noconvertUTF8
 ----------------------------------------------------------------------------------------------------
 filePrinter filename dt = 
   withAppendFile filename $ \handle ->
@@ -70,14 +74,14 @@ dayMaker bp td = do
   I.hFlush I.stdout
   --(make a promise)--------------------------------------
   let url = (makeURL td `runReader`)
-  cmPromise  <- async $ getPageContents convertUTF8 (url Cm.config)
-  urlPromise <- async $ Ak.makeNewsList <$> getPageContents noconvertUTF8 (url Ak.config)
+  cmPromise  <- async $ getPageConvert (url Cm.config)
+  urlPromise <- async $ Ak.makeNewsList <$> getPageNoConvert (url Ak.config)
   --(common parts)----------------------------------------
   cmContents <- wait cmPromise
   forM_ (Cm.makeTree cmContents) $ trueOutput Cm.config
   --(akahata parts)---------------------------------------
   urls <- wait urlPromise
-  conc <- forM urls (async . getPageContents noconvertUTF8)
+  conc <- forM urls (async . getPageNoConvert)
   forM_ conc $ \asy -> do
     promise <- wait asy
     trueOutput Ak.config promise

@@ -1,4 +1,4 @@
-resolver: lts-6.17
+resolver: lts-9.21
 
 packages:
 - "../Util/"
@@ -8,9 +8,11 @@ extra-deps: []
 
 flags: {}
 
-extra-include-dirs: ["C:\\Users\\Jumpei\\Haskell\\Snews", "C:\\Users\\Jumpei\\Haskell\\icu\\include"]
-extra-lib-dirs: ["C:\\Users\\Jumpei\\Haskell\\Snews", "C:\\Users\\Jumpei\\Haskell\\icu\\lib"]
+extra-include-dirs: ["d:\\home\\temp\\Haskell\\Snews\\icu\\include", "d:\\home\\temp\\Haskell\\Snews\\icu\\include\\unicode", "d:\\home\\temp\\Haskell\\Snews\\icu\\bin"]
+extra-lib-dirs: ["d:\\home\\temp\\Haskell\\Snews\\icu\\lib", "d:\\home\\temp\\Haskell\\Snews\\icu\\bin"]
+# extra-include-dirs: ["d:\\home\\temp\\Haskell\\Snews", "d:\\home\\temp\\Haskell\\icu\\include", "d:\\home\\temp\\Haskell\\icu\\include\\unicode"]
+# extra-lib-dirs: ["d:\\home\\temp\\Haskell\\Snews", "d:\\home\\temp\\Haskell\\icu\\lib"]
 
-build:
-  library-profiling: true
-  executable-profiling: true
+# build:
+#   library-profiling: true
+#   executable-profiling: true
