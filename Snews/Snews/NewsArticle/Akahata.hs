@@ -3,14 +3,15 @@ module Snews.NewsArticle.Akahata ( config
                                  , makeNewsList
                                  ) where
 
-import Util.Strdt                       (strdt, nendo, dayStrWithSep)
-import Data.Time                        (Day (..))
-import Data.Maybe                       (fromJust)
-import Control.Monad.Reader
-import Snews.NewsArticle.Base
-import Text.StringLike                  (StringLike, castString)
-import Text.HTML.TagSoup.Tree
-import qualified Data.Text              as Tx
+import           Control.Monad.Reader
+import           Data.Maybe                (fromJust)
+import qualified Data.Text                 as Tx
+import           Data.Time                 (Day (..))
+import           Snews.NewsArticle.Base
+import           Text.HTML.TagSoup.Tree
+import           Text.StringLike           (StringLike, castString)
+import           Util.Strdt                (strdt, nendo
+                                           , dayStrWithSep, toYear)
 
 config = Con { hostName  = "http://www.jcp.or.jp/akahata/"
              , baseName  = "index.html"

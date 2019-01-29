@@ -110,6 +110,8 @@ executables:
     - app/CreateDirectory
     ghc-options:
     - -O3
+    - -static
+    - -optl-static
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
@@ -121,6 +123,8 @@ executables:
     - app/OpenPDF
     ghc-options:
     - -O0
+    - -static
+    - -optl-static
     dependencies:
     - Match
    

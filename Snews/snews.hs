@@ -19,7 +19,7 @@ import qualified Data.Text                      as Tx
 import qualified Data.Text.IO                   as Txio
 import qualified Data.Text.ICU.Convert          as C
 import qualified Data.ByteString.Char8          as B
-----------------------------------------------------------------------------------------------------
+--------------------------------------------------
 data StandardOutput
 data FileOutput
 data Encoding = UTF8 | SJIS
@@ -41,18 +41,27 @@ getPageContents f url = do
   converted <- castString <$> f body
   return $ translateTags converted
 
-getPageConvert, getPageNoConvert :: String -> IO [TagTree Tx.Text]
-getPageConvert = getPageContents convertUTF8
-getPageNoConvert = getPageContents noconvertUTF8
-----------------------------------------------------------------------------------------------------
-filePrinter filename dt =
-  withAppendFile filename $ \handle ->
-    Txio.hPutStrLn handle dt
+-- getPageConvert, getPageNoConvert :: String -> IO [TagTree Tx.Text]
+-- getPageConvert = getPageContents convertUTF8
+-- getPageNoConvert = getPageContents noconvertUTF8
 
-printerCore :: Monad m => (Tx.Text -> m b) -> Config a -> a -> m ()
-printerCore outputF config page = do
-  outputF $ takeTitle page `runReader` config
-  mapM_ outputF $ takeText page `runReader` config
+getPageConvert, getPageNoConvert ::
+  Day -> ReaderT (Config a) IO [TagTree Tx.Text]
+getPageConvert d = do
+  url <- makeURL d
+  liftIO $ getPageContents convertUTF8 url
+getPageNoConvert d = do
+  url <- makeURL d
+  liftIO $ getPageContents noconvertUTF8 url
+--------------------------------------------------
+-- filePrinter filename dt =
+--   withAppendFile filename $ \handle ->
+--     Txio.hPutStrLn handle dt
+
+-- printerCore :: Monad m => (Tx.Text -> m b) -> Config a -> a -> m ()
+-- printerCore outputF config page = do
+--   outputF $ takeTitle page `runReader` config
+--   mapM_ outputF $ takeText page `runReader` config
 
 printPage :: (Tx.Text -> IO b) -> Day -> a -> Output a
 printPage f date page = do
@@ -70,15 +79,26 @@ fileOutput fp = printPage $ outputter fp
     outputter fp contents =
       withAppendFile fp $ \handle -> Txio.hPutStrLn handle contents
 
-printer :: Config a -> a -> IO ()
-printer = printerCore Txio.putStrLn
+test = do
+  td <- todayDay
+  (`runReaderT` Ak.config) $ do
+    contents <- getPageNoConvert td
+    return $ map (textFromTree [(Always, Always, Capture)]) contents
 
-fPrinter :: FilePath -> Config a -> a -> IO ()
-fPrinter filename = printerCore $ filePrinter filename
+-- printer :: Config a -> a -> IO ()
+-- printer = printerCore Txio.putStrLn
+
+-- fPrinter :: FilePath -> Config a -> a -> IO ()
+-- fPrinter filename = printerCore $ filePrinter filename
 
 orgDirectory :: IO (Maybe FilePath)
 orgDirectory = runFile $ Directory [ "c:/Users/Jumpei/org/news/"
                                    , "d:/home/Org/news/"]
+
+verboseDayMakerOutput :: Day -> FilePath -> Output a
+verboseDayMakerOutput d fp = liftIO $ do
+  I.putStrLn $ "Output " ++ show d ++ " article --> " ++ fp
+  I.hFlush I.stdout
 
 dayMaker :: Bool -> Day -> IO ()
 dayMaker bp td = do
@@ -89,24 +109,18 @@ dayMaker bp td = do
   let destination
         | bp        = standardOutput td
         | otherwise = fileOutput orgFile td
-  -- let (trueOutput, headOutput)
-  --       | bp        = (printer, Txio.putStrLn)
-  --       | otherwise = (fPrinter orgFile, filePrinter orgFile)
-  I.putStrLn $ "Output " ++ show td ++ " article --> " ++ orgFile
-  I.hFlush I.stdout
-  --(make a promise)--------------------------------------
-  let url = (makeURL td `runReader`)
-  cmPromise <- async $ getPageConvert (url Cm.config)
-  akPromise <- async $ Ak.makeNewsList <$> getPageNoConvert (url Ak.config)
-  --(common parts)----------------------------------------
-  cmContents <- wait cmPromise
-  forM_ (Cm.makeTree cmContents) $ destination Cm.config
-  --(akahata parts)---------------------------------------
-  urls <- wait akPromise
-  conc <- forM urls (async . getPageNoConvert)
-  forM_ conc $ \asy -> do
-    promise <- wait asy
-    destination Ak.config promise
+
+  (`runReaderT` Cm.config) $ do
+    promise  <- liftIO . async . return =<< getPageConvert td
+    contents <- liftIO $ wait promise
+    forM_ (Cm.makeTree contents) destination
+
+  (`runReaderT` Ak.config) $ do
+    urls    <- Ak.makeNewsList <$> getPageNoConvert td
+    promise <- forM urls (liftIO . async . getPageContents noconvertUTF8)
+    forM_ promise $ \pr -> do
+      contents <- liftIO $ wait pr
+      destination contents
 
 orgfileTagsOut :: IO ()
 orgfileTagsOut = do
@@ -178,7 +192,7 @@ forceP = O.strOption $ mconcat
         , O.metavar ""
         , O.value ""
         , O.showDefaultWith id]
-        
+
 sjisP :: O.Parser Bool
 sjisP = O.switch $ O.short 's' <> O.long "sjis" <> O.help "Output with char-set sjis"
 

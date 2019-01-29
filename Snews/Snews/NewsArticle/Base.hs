@@ -25,23 +25,23 @@ module Snews.NewsArticle.Base ( URL
                               , takeTitle
                               , takeText) where
 
-import           Util.StrEnum
-import           Data.Time (Day (..))
-import           Data.List (foldl', isInfixOf, find)
-import           Data.Maybe (fromMaybe)
-import           Data.Text.Internal (Text (..))
-import           Data.Text.Encoding (decodeUtf8)
-import           Data.Conduit
-import qualified Data.Conduit.List as CL
+import           Control.Monad.Identity
 import           Control.Monad.Reader
 import           Control.Monad.Writer
-import           Control.Monad.Identity
-import           Text.StringLike (StringLike, castString)
+import           Data.Conduit
+import qualified Data.Conduit.List      as CL
+import           Data.List              (foldl', isInfixOf, find)
+import           Data.Maybe             (fromMaybe)
+import qualified Data.Text              as Tx
+import           Data.Text.Encoding     (decodeUtf8)
+import           Data.Text.Internal     (Text (..))
+import           Data.Time              (Day (..))
 import           Text.HTML.TagSoup
 import           Text.HTML.TagSoup.Tree
-import           Text.Parsec hiding (State)
+import           Text.Parsec            hiding (State)
 import           Text.Parsec.String
-import qualified Data.Text as Tx
+import           Text.StringLike        (StringLike, castString)
+import           Util.StrEnum
 
 type URL              = String
 type ArticleKey       = (TagElement, TagElement)
@@ -51,7 +51,7 @@ type DirectionType a  = [(TagTree a -> Bool, Order)]
 
 data TagElement = Name String | Attr String | Always deriving (Show, Eq)
 
-data Order = Skip | Pack String | Loop deriving (Show, Eq)
+data Order = Skip | Pack String | Capture deriving (Show, Eq)
 
 data Config a = Con { hostName  :: String
                     , baseName  :: String
@@ -69,7 +69,7 @@ data URLParts =
   | Str String
   | Slash URLParts
 
-makeURL :: Day -> Reader (Config a) String
+makeURL :: MonadReader (Config a) m => Day -> m String
 makeURL d = ask >>= \Con {..} -> do
   let murl gen (Slash x) = gen ++ murl "" x ++ "/"
       murl gen  Host     = gen ++ hostName
@@ -78,13 +78,17 @@ makeURL d = ask >>= \Con {..} -> do
       murl gen (Str s)   = gen ++ s
   return $ foldl' murl "" urlRecipe
 ----------------------------------------------------------------------------------------------------
-tagtest = TagBranch "hoge" [("foo", "2")] [TagBranch "foo" [] [TagLeaf (TagText "Iran")], TagLeaf (TagComment "")]
+tagtest = TagBranch "hoge" [("foo", "2")]
+  [ TagBranch "foo" [] [TagLeaf (TagText "Iran")]
+  , TagBranch "buz" [] [TagBranch "buzzy" [] [TagLeaf (TagText "Iraq")]
+                       , TagLeaf (TagText "Quwait")]
+  , TagLeaf (TagComment "")]
 
 tagTreeSource :: StringLike a => TagTree a -> Source Identity (TagTree a)
 tagTreeSource tb@(TagBranch name _ desc) = do
   yield tb
   mapM_ yield desc
-tagTreeSource _ = return ()
+tagTreeSource tb@(TagLeaf _) = yield tb
 
 findConduit :: StringLike a =>
   [ArticleKey] -> Conduit (TagTree a) Identity (TagTree a)
@@ -160,7 +164,7 @@ normalDirection =
    (Name "div",    Attr "bookmark", Skip),
    (Name "p",      Attr "date",     Skip),
    (Name "br",     Always,          Pack "\n"),
-   (Always,        Always,          Loop)]
+   (Always,        Always,          Capture)]
 
 directionElementMatch ::
   StringLike a => DirectionElement -> TagTree a -> Bool
@@ -187,10 +191,10 @@ textFromTree dl tb =
         case tagtree of
           TagLeaf (TagText s) -> yield s
           TagBranch _ _ desc  ->
-            case dl `direction` tb of
-              Pack n -> yield $ castString n
-              Loop   -> yield (mconcat $ map (textFromTree dl) desc)
-              _      -> return ()
+            case dl `direction` tagtree of
+              Pack n  -> yield $ castString n
+              Capture -> yield (mconcat $ map (textFromTree dl) desc)
+              Skip    -> return ()
           _ -> return ()
 ----------------------------------------------------------------------------------------------------
 strip :: StringLike a => a -> Text
@@ -234,3 +238,21 @@ takeText tree = ask >>= \Con {..} -> do
     concatMap (lines . castString) .
     map (textFromTree direct)      $
     findFunc textAK tree
+
+
+test1 dl tb =
+  runConduitPure
+    $ tagTreeSource tb
+    .| conduit
+    .| CL.consume
+  where
+    conduit = do
+      awaitForever $ \tagtree -> do
+        case tagtree of
+          TagLeaf (TagText s) -> yield s
+          TagBranch _ _ desc  ->
+            case dl `direction` tagtree of
+              Pack n  -> yield $ castString n
+              Capture -> yield (mconcat $ map (textFromTree dl) desc)
+              Skip    -> return ()
+          _ -> return ()
