@@ -1,4 +1,10 @@
-import           Util                           (withAppendFile, withOutFile, runFile, FileSystem (..))
+module Main where
+
+import           Util                           (withAppendFile
+                                                , withOutFile
+                                                , readUTF8
+                                                , runFile
+                                                , FileSystem (..))
 import           Util.Strdt                     (strdt, toYear, toMonth, todayDay, dayStr6)
 import           Snews.OrgParse                 (tagsOutput1)
 import           Snews.OrgConduit               (parseToDayList)
@@ -34,16 +40,16 @@ convertUTF8 s = do
 noconvertUTF8 :: String -> IO B.ByteString
 noconvertUTF8 = return . castString
 
-getPageContents :: (String-> IO B.ByteString) -> String -> IO [TagTree Tx.Text]
+getResponse :: String -> IO String
+getResponse url = getResponseBody =<< simpleHTTP (getRequest url)
+
+getPageContents ::
+  (String-> IO B.ByteString) -> String -> IO [TagTree Tx.Text]
 getPageContents f url = do
   http      <- simpleHTTP $ getRequest url
   body      <- getResponseBody http
   converted <- castString <$> f body
   return $ translateTags converted
-
--- getPageConvert, getPageNoConvert :: String -> IO [TagTree Tx.Text]
--- getPageConvert = getPageContents convertUTF8
--- getPageNoConvert = getPageContents noconvertUTF8
 
 getPageConvert, getPageNoConvert ::
   Day -> ReaderT (Config a) IO [TagTree Tx.Text]
@@ -54,15 +60,6 @@ getPageNoConvert d = do
   url <- makeURL d
   liftIO $ getPageContents noconvertUTF8 url
 --------------------------------------------------
--- filePrinter filename dt =
---   withAppendFile filename $ \handle ->
---     Txio.hPutStrLn handle dt
-
--- printerCore :: Monad m => (Tx.Text -> m b) -> Config a -> a -> m ()
--- printerCore outputF config page = do
---   outputF $ takeTitle page `runReader` config
---   mapM_ outputF $ takeText page `runReader` config
-
 printPage :: (Tx.Text -> IO b) -> Day -> a -> Output a
 printPage f date page = do
   let printer = liftIO . f
@@ -78,18 +75,6 @@ fileOutput fp = printPage $ outputter fp
   where
     outputter fp contents =
       withAppendFile fp $ \handle -> Txio.hPutStrLn handle contents
-
-test = do
-  td <- todayDay
-  (`runReaderT` Ak.config) $ do
-    contents <- getPageNoConvert td
-    return $ map (textFromTree [(Always, Always, Capture)]) contents
-
--- printer :: Config a -> a -> IO ()
--- printer = printerCore Txio.putStrLn
-
--- fPrinter :: FilePath -> Config a -> a -> IO ()
--- fPrinter filename = printerCore $ filePrinter filename
 
 orgDirectory :: IO (Maybe FilePath)
 orgDirectory = runFile $ Directory [ "c:/Users/Jumpei/org/news/"
@@ -210,10 +195,35 @@ optionsP = (<*>) O.helper
            <*> outputFileP
 
 myParserInfo :: O.ParserInfo Options
-myParserInfo = O.info optionsP $ mconcat 
+myParserInfo = O.info optionsP $ mconcat
     [ O.fullDesc
     , O.progDesc "test program."
     , O.header "snews.exe -- get a daily news article program."
     , O.footer ""
     , O.progDesc ""
     ]
+
+test = do
+  setUTF
+  td <- todayDay
+  let key = [(Name "li", Attr "newslist")]
+  (`runReaderT` Ak.config) $ do
+    -- contents <- getPageNoConvert td
+    -- contents <- getPageConvert td
+    url <- makeURL td
+    contents <- liftIO $ getResponse url
+    let trees = concat $ map (findTree key) $ translateTags contents
+    mapM_ (liftIO . I.putStrLn . textExtract) trees
+
+-- test2 :: IO [TagTree Tx.Text]
+test2 = do
+  setSJIS
+  fileContents <- (readUTF8 "index.html" :: IO Tx.Text)
+  let key = [(Name "li", Attr "newslist")]
+  let trees = concat $ map (findTree key) $ translateTags fileContents
+  mapM_ (Txio.putStrLn . textExtract) trees
+
+setSJIS = I.hSetEncoding I.stdout =<< I.mkTextEncoding "cp932"
+setUTF  = I.hSetEncoding I.stdout I.utf8
+
+url = "http://www.jcp.or.jp/akahata/aik18/2019-01-31/index.html"

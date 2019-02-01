@@ -18,6 +18,7 @@ module Snews.NewsArticle.Base ( URL
                               , stringFoldBase
                               , treeText
                               , textFromTree
+                              , textExtract
                               , normalDirection
                               , filterBlankLines
                               , translateTags
@@ -61,7 +62,7 @@ data Config a = Con { hostName  :: String
                     , findFunc  :: [ArticleKey] -> a -> [TagTree Text]
                     , direct    :: Direction
                     , urlRecipe :: [URLParts] }
-----------------------------------------------------------------------------------------------------
+--------------------------------------------------
 data URLParts =
   Host
   | Base
@@ -77,17 +78,17 @@ makeURL d = ask >>= \Con {..} -> do
       murl gen (MDay f)  = gen ++ f d
       murl gen (Str s)   = gen ++ s
   return $ foldl' murl "" urlRecipe
-----------------------------------------------------------------------------------------------------
+--------------------------------------------------
 tagtest = TagBranch "hoge" [("foo", "2")]
   [ TagBranch "foo" [] [TagLeaf (TagText "Iran")]
   , TagBranch "buz" [] [TagBranch "buzzy" [] [TagLeaf (TagText "Iraq")]
                        , TagLeaf (TagText "Quwait")]
-  , TagLeaf (TagComment "")]
+  , TagLeaf (TagText "Saudi Arabia")]
 
 tagTreeSource :: StringLike a => TagTree a -> Source Identity (TagTree a)
-tagTreeSource tb@(TagBranch name _ desc) = do
+tagTreeSource tb@(TagBranch _ _ desc) = do
   yield tb
-  mapM_ yield desc
+  mapM_ tagTreeSource desc
 tagTreeSource tb@(TagLeaf _) = yield tb
 
 findConduit :: StringLike a =>
@@ -150,13 +151,13 @@ matchAKey _ _                        = False
 
 pairF :: (t -> t1) -> (t, t) -> (t1, t1)
 pairF f (a, b) = (f a, f b)
-----------------------------------------------------------------------------------------------------
+--------------------------------------------------
 stringFoldBase :: Text -> Text
 stringFoldBase tx = Tx.pack "   " <> stringFold 33 "\n   " tx
-----------------------------------------------------------------------------------------------------
+--------------------------------------------------
 treeText    :: (StringLike a, Monoid a) => TagTree a -> a
 treeText    = textFromTree normalDirection
-----------
+--------------------------------------------------
 normalDirection :: Direction
 normalDirection =
   [(Name "script", Always,          Skip),
@@ -178,7 +179,7 @@ direction :: StringLike a => Direction -> TagTree a -> Order
 direction direct tb =
   fromMaybe Skip $ toOrder <$> find (`directionElementMatch` tb) direct
 
-----------------------------------------------------------------------------------------------------
+--------------------------------------------------
 textFromTree :: (StringLike a, Monoid a) => Direction -> TagTree a -> a
 textFromTree dl tb =
   runConduitPure
@@ -196,7 +197,20 @@ textFromTree dl tb =
               Capture -> yield (mconcat $ map (textFromTree dl) desc)
               Skip    -> return ()
           _ -> return ()
-----------------------------------------------------------------------------------------------------
+
+textExtract :: (StringLike a, Monoid a) => TagTree a -> a
+textExtract tb =
+  runConduitPure
+    $ tagTreeSource tb
+    .| conduit
+    .| CL.fold mappend mempty
+  where
+    conduit = do
+      awaitForever $ \tagtree -> do
+        case tagtree of
+          TagLeaf (TagText s) -> yield s
+          _ -> return ()
+--------------------------------------------------
 strip :: StringLike a => a -> Text
 strip = tailCut . skip . (<> Tx.pack "\n") . decode
   where decode  = decodeUtf8 . castString
@@ -215,7 +229,7 @@ filterBlankLines (x:xl) =
       try (string "" <* eof)
         <|> try (many1 $ oneOf " \r\n\t")
         <|> string "続きを読む"
-----------------------------------------------------------------------------------------------------
+--------------------------------------------------
 translateTags :: StringLike a => a -> [TagTree a]
 translateTags str = tagTree $ parseTags str
 
@@ -238,7 +252,6 @@ takeText tree = ask >>= \Con {..} -> do
     concatMap (lines . castString) .
     map (textFromTree direct)      $
     findFunc textAK tree
-
 
 test1 dl tb =
   runConduitPure

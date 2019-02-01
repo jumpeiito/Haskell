@@ -179,8 +179,7 @@ readUTF8File fp = do
 readUTF8ByteFile :: FilePath -> IO B.ByteString
 readUTF8ByteFile fp = do
   h <- I.openFile fp I.ReadMode
-  encoding <- I.mkTextEncoding "cp65001"
-  I.hSetEncoding h encoding
+  I.hSetEncoding h I.utf8
   B.hGetContents h
 
 sjisLines :: FilePath -> IO [String]
