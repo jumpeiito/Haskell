@@ -6,7 +6,6 @@ module Util where
 
 import RIO
 import qualified Data.List            as DL
-import qualified Data.Maybe           as M
 import qualified System.IO            as I
 import qualified Text.Parsec          as P
 import qualified Text.Parsec.String   as P
@@ -72,8 +71,10 @@ pragmas pl = pragmaSort $ pragmaAppend $ filter isPragma pl
     isPragma (Pg _)   = True
     isPragma _        = False
     Pg x1 <<>> Pg x2  = Pg (x1 ++ x2)
+    _     <<>> _      = error "must not happen at `pragmas`."
     pragmaAppend      = DL.foldl' (<<>>) (Pg [])
     pragmaSort (Pg x) = Pg (DL.sort x)
+    pragmaSort _      = error "must not happen at `pragmas`."
 
 pragmasText :: ParsedLine -> [String]
 pragmasText (Pg x) = map toText x
@@ -81,16 +82,17 @@ pragmasText (Pg x) = map toText x
     toText pg  = mconcat ["{-# LANGUAGE ", justify' pg, " #-}"]
     maxLength  = DL.maximum $ map length x
     justify' pg = pg ++ (replicate (maxLength - length pg) ' ')
+pragmasText _ = error "must not happen at `pragmasText`."
 
 justify :: Int -> String -> String
 justify n s = s ++ (replicate (n - length s) ' ')
 
 hasImports :: [ParsedLine] -> Bool
-hasImports []            = False
-hasImports ((Imp _):xs)  = True
-hasImports ((ImpQ _):xs) = True
-hasImports ((ImpO _):xs) = True
-hasImports (_:xs)        = hasImports xs
+hasImports []           = False
+hasImports ((Imp _):_)  = True
+hasImports ((ImpQ _):_) = True
+hasImports ((ImpO _):_) = True
+hasImports (_:xs)       = hasImports xs
 
 imports :: [ParsedLine] -> [ParsedLine]
 imports = reverse . DL.foldl' insert' []
@@ -107,9 +109,10 @@ importsMaxLength pl = foldr maxlen 0 pl
   where
     Newline        `maxlen` size = size
     O _            `maxlen` size = size
-    Imp (name, r)  `maxlen` size = length name `max` size
-    ImpQ (name, r) `maxlen` size = length name `max` size
+    Imp (name, _)  `maxlen` size = length name `max` size
+    ImpQ (name, _) `maxlen` size = length name `max` size
     ImpO _         `maxlen` size = size
+    _              `maxlen` _    = error "must not happen at `importsMaxLength`"
 
 importsText :: [ParsedLine] -> [String]
 importsText pl = foldr insert' [] pl
@@ -118,11 +121,16 @@ importsText pl = foldr insert' [] pl
     insert' el seed = toText el : seed
     toText Newline = "\n"
     toText (O s) = s
+    toText (Pg _) = error "must not happen at `importsText`"
+    toText (Imp (name, Nothing)) =
+      mconcat ["import           " , name]
     toText (Imp (name, Just "")) =
       mconcat ["import           " , name]
     toText (Imp (name, Just r)) =
       mconcat ["import           "
               , justify maxLength name , " " , r]
+    toText (ImpQ (name, Nothing)) =
+      mconcat ["import qualified " , name]
     toText (ImpQ (name, Just "")) =
       mconcat ["import qualified " , name]
     toText (ImpQ (name, Just r)) =
@@ -144,4 +152,5 @@ headerOutput target = do
 plus2 :: Int -> Int
 plus2 = (+ 2)
 
+hoge :: String
 hoge = "{-# LANGUAGE NoImplicitPrelude, TemplateHaskell #-}\n{-# LANGUAGE OverloadedStrings                    #-}\n\nmodule Main where\nimport RIO\nimport qualified Data.List            as DL\nimport Data.List       ( intercalate\n               , sortBy)\nimport qualified Data.Maybe           as M\nimport qualified Text.Parsec          as P\nimport qualified Text.Parsec.String   as P"
