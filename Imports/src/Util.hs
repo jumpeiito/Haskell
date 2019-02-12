@@ -1,5 +1,5 @@
-{-# LANGUAGE NoImplicitPrelude, TemplateHaskell #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE FlexibleInstances              #-}
 -- | Silly utility module, used to demonstrate how to write a test
 -- case.
 module Util where
@@ -17,16 +17,18 @@ data ParsedLine =
   | ImpQ (String, Maybe String)
   | ImpO String
   | O String
-  | Module
   | Newline
   deriving (Show)
+
+blank :: P.Parser String
+blank = P.many $ P.char ' '
 
 pragmaParser :: P.Parser ParsedLine
 pragmaParser = do
   Pg <$> P.between open close inner
   where
-    open   = P.string "{-# LANGUAGE "
-    close  = P.string " #-}"
+    open   = P.string "{-# LANGUAGE" >> blank
+    close  = blank >> P.string "#-}"
     pragma = (:) <$> P.oneOf ['A'..'Z'] <*> P.many (P.noneOf ['#', ' ', ','])
     sep    = P.string ", "
     inner  = P.sepBy pragma sep
@@ -43,19 +45,19 @@ importNameComponentParser =
 importParser :: P.Parser ParsedLine
 importParser = do
   let header = P.string "import"
-               >> P.many (P.char ' ')
+               >> blank
                *> P.optionMaybe (P.string "qualified")
-               <* P.many (P.char ' ')
+               <* blank
   qlf  <- header
   name <- importNameParser
-  rest <- P.optionMaybe (P.many (P.char ' ') >> P.many P.anyChar)
+  rest <- P.optionMaybe (blank >> P.many P.anyChar)
   case qlf of
     Just _  -> return $ ImpQ (name, rest)
     Nothing -> return $ Imp (name, rest)
 
 otherParser :: P.Parser ParsedLine
 otherParser = do
-  P.try (P.many (P.char ' ') >> P.eof >> return Newline)
+  P.try (blank >> P.eof >> return Newline)
   <|> (O <$> P.many P.anyChar)
 
 lineParse :: P.Parser ParsedLine
@@ -83,19 +85,28 @@ pragmasText (Pg x) = map toText x
 justify :: Int -> String -> String
 justify n s = s ++ (replicate (n - length s) ' ')
 
+hasImports :: [ParsedLine] -> Bool
+hasImports [] = False
+hasImports ((Imp _):xs) = True
+hasImports ((ImpQ _):xs) = True
+hasImports ((ImpO _):xs) = True
+hasImports (_:xs) = hasImports xs
+
 imports :: [ParsedLine] -> [ParsedLine]
-imports = foldr insert' []
+imports = reverse . DL.foldl' insert' []
   where
-    insert' (O _) []    = []
-    insert' (O "") seed = Newline : seed
-    insert' (O s) seed  = ImpO s : seed
-    insert' (Pg _) seed = seed
-    insert' el seed     = el : seed
+    insert' seed (O "") = Newline : seed
+    insert' seed (O s)
+      | hasImports seed = ImpO s : seed
+      | otherwise       = O s : seed
+    insert' seed (Pg _) = seed
+    insert' seed el     = el : seed
 
 importsMaxLength :: [ParsedLine] -> Int
 importsMaxLength pl = foldr maxlen 0 pl
   where
-    maxlen Newline size          = size
+    Newline `maxlen` size        = size
+    O _ `maxlen` size            = size
     Imp (name, r) `maxlen` size  = length name `max` size
     ImpQ (name, r) `maxlen` size = length name `max` size
     ImpO _ `maxlen` size         = size
@@ -107,16 +118,16 @@ importsText pl = foldr insert' [] pl
     insert' el seed = toText el : seed
     toText Newline = "\n"
     toText (O s) = s
-    toText (Imp (name, r)) =
+    toText (Imp (name, Just "")) =
+      mconcat ["import           " , name]
+    toText (Imp (name, Just r)) =
       mconcat ["import           "
-              , justify maxLength name
-              , " "
-              , fromMaybe "" r]
-    toText (ImpQ (name, r)) =
+              , justify maxLength name , " " , r]
+    toText (ImpQ (name, Just "")) =
+      mconcat ["import qualified " , name]
+    toText (ImpQ (name, Just r)) =
       mconcat ["import qualified "
-              , justify maxLength name
-              , " "
-              , fromMaybe "" r]
+              , justify maxLength name , " " , r]
     toText (ImpO s) =
       mconcat [ justify (maxLength + 18) ""
               , DL.dropWhile (== ' ') s]
@@ -128,11 +139,10 @@ toParsedLine target = rights $ map (P.parse lineParse "") $ lines target
 headerOutput :: String -> IO ()
 headerOutput target = do
   let contents = toParsedLine target
-  mapM_ I.print $ pragmasText $ pragmas contents
-  mapM_ I.print $ importsText $ imports contents
-
+  mapM_ I.putStrLn $ pragmasText $ pragmas contents
+  mapM_ I.putStrLn $ importsText $ imports contents
 
 plus2 :: Int -> Int
 plus2 = (+ 2)
 
-hoge = "{-# LANGUAGE NoImplicitPrelude, TemplateHaskell #-}\n{-# LANGUAGE OverloadedStrings #-}\n\nmodule Main where\nimport RIO\nimport qualified Data.List            as DL\nimport Data.List       ( intercalate\n               , sortBy)\nimport qualified Data.Maybe           as M\nimport qualified Text.Parsec          as P\nimport qualified Text.Parsec.String   as P"
+hoge = "{-# LANGUAGE NoImplicitPrelude, TemplateHaskell #-}\n{-# LANGUAGE OverloadedStrings                    #-}\n\nmodule Main where\nimport RIO\nimport qualified Data.List            as DL\nimport Data.List       ( intercalate\n               , sortBy)\nimport qualified Data.Maybe           as M\nimport qualified Text.Parsec          as P\nimport qualified Text.Parsec.String   as P"
