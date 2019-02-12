@@ -9,25 +9,25 @@ module Match.SQL
   , SQLSource (..)
   , Sourceable (..)) where
 
-import           Control.Arrow              ((>>>))
-import           Control.Lens               hiding (Getter)
+import           Control.Arrow           ((>>>))
+import           Control.Lens            hiding (Getter)
 import           Control.Monad.Reader
 import           Control.Exception.Safe
 import           Data.Conduit
-import qualified Data.Conduit.List          as CL
-import           Data.Text                  (Text)
-import qualified Data.Text                  as Tx
+import qualified Data.Conduit.List       as CL
+import           Data.Text               (Text)
+import qualified Data.Text               as Tx
 import           Database.Persist
 import           Database.Persist.Sqlite
 import           Database.Persist.TH
-import           Util.Exception             (FileNotExistException (..))
-import           Match.Config               ( PathGetter
-                                            , Getter
-                                            , readConf)
-import           Match.CSV                  (parseCSV, Spec)
-import           System.Directory           ( doesFileExist
-                                            , getModificationTime
-                                            , removeFile)
+import           Util.Exception          (FileNotExistException (..))
+import           Match.Config            ( PathGetter
+                                         , Getter
+                                         , readConf)
+import           Match.CSV               (parseCSV, Spec)
+import           System.Directory        ( doesFileExist
+                                         , getModificationTime
+                                         , removeFile)
 
 type ReadCSV = Either String [[Text]]
 

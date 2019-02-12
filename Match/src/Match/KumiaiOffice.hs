@@ -5,19 +5,19 @@
 module Match.KumiaiOffice where
 
 import           Control.Lens
-import           Control.Arrow               ((&&&))
-import           Control.Monad.Reader        (runReader)
+import           Control.Arrow          ((&&&))
+import           Control.Monad.Reader   (runReader)
 import           Data.Conduit
-import qualified Data.Conduit.List           as CL
+import qualified Data.Conduit.List      as CL
 import           Data.Extensible
-import qualified Data.Map.Strict             as M
-import           Data.Text                   hiding (map)
-import qualified Data.Text                   as Tx
-import qualified Data.Text.Lazy.Builder      as BB
+import qualified Data.Map.Strict        as M
+import           Data.Text              hiding (map)
+import qualified Data.Text              as Tx
+import qualified Data.Text.Lazy.Builder as BB
 import           Match.SQL
-import           Match.Base                  (killHyphen
-                                             , makeKey
-                                             , officeTypeRegularize)
+import           Match.Base             (killHyphen
+                                        , makeKey
+                                        , officeTypeRegularize)
 import           Util
 
 type MaybeIO a = IO (Either String a)

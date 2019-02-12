@@ -5,23 +5,23 @@
 {-# LANGUAGE FlexibleInstances  #-}
 module Match.Kumiai where
 
-import           Control.Arrow               ((&&&))
-import           Control.Lens                ((^.))
-import qualified Data.Map.Strict             as M
+import           Control.Arrow     ((&&&))
+import           Control.Lens      ((^.))
+import qualified Data.Map.Strict   as M
 import           Data.Conduit
-import qualified Data.Conduit.List          as CL
+import qualified Data.Conduit.List as CL
 import           Data.Extensible
-import           Data.Monoid                 ((<>))
-import           Data.Text                   hiding (foldl', map)
-import qualified Data.Text                   as Tx
-import           Data.Time                   (Day (..))
+import           Data.Monoid       ((<>))
+import           Data.Text         hiding (foldl', map)
+import qualified Data.Text         as Tx
+import           Data.Time         (Day (..))
 import           Match.SQL
-import           Match.Base                  (killBlanks, killBunkai
-                                             , killShibu, makeKey
-                                             , officeTypeRegularize
-                                             , regularize)
-import           Text.Read                   (readMaybe)
-import           Util.Strbt                  (strdt)
+import           Match.Base        (killBlanks, killBunkai
+                                   , killShibu, makeKey
+                                   , officeTypeRegularize
+                                   , regularize)
+import           Text.Read         (readMaybe)
+import           Util.Strbt        (strdt)
 import           Util
 
 type MaybeIO a = IO (Either String a)

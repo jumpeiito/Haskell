@@ -13,3 +13,6 @@ extra-deps:
 - heredocs-0.1.4
 - extensible-0.4.9
 - req-1.2.1
+- cborg-0.2.1.0
+- dotgen-0.4.2
+- serialise-0.2.1.0

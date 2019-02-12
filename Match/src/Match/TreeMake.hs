@@ -13,21 +13,21 @@ module Match.TreeMake (
   , OyakataMap
   , KNumberMap) where
 
-import           Control.Arrow                      ((>>>))
+import           Control.Arrow                     ((>>>))
 import           Control.Lens
-import           Control.Monad                      (foldM, when)
-import           Control.Monad.Trans                (lift)
-import           Control.Monad.Trans.Writer.Strict  (Writer, WriterT
-                                                    , tell)
-import           Control.Monad.Trans.State          (StateT, put, get
-                                                    , evalStateT)
-import           Data.Foldable                      (toList)
-import           Data.Monoid                        ((<>))
-import qualified Data.Map.Strict                    as M
-import           Data.Text                          (Text, unpack)
-import qualified Data.Text                          as Tx
-import           Match.Kumiai                       (Kumiai (..))
-import           Text.Heredoc              (heredoc)
+import           Control.Monad                     (foldM)
+import           Control.Monad.Trans               (lift)
+import           Control.Monad.Trans.Writer.Strict (Writer, WriterT
+                                                   , tell)
+import           Control.Monad.Trans.State         (StateT, put, get
+                                                   , evalStateT)
+import           Data.Foldable                     (toList)
+import           Data.Monoid                       ((<>))
+import qualified Data.Map.Strict                   as M
+import           Data.Text                         (Text, unpack
+                                                   , justifyRight)
+import           Match.Kumiai                      (Kumiai (..))
+import           Text.Heredoc                      (heredoc)
 
 type OyakataMap  = M.Map Text (Text, Text)
 type KNumberMap  = M.Map Text Kumiai
@@ -67,7 +67,7 @@ instance Traversable RelTree where
     Node <$> f a <*> traverse f l <*> traverse f r
 
 regularN :: Text -> Text
-regularN = Tx.justifyRight 7 '0'
+regularN = justifyRight 7 '0'
 
 rknum :: Kumiai -> Text
 rknum = regularN . (^. #number)
@@ -110,7 +110,7 @@ instance Eq RTK where
   rk1 == rk2 = (runK rk1) ^. #number == (runK rk2) ^. #number
 
 instance Show RTK where
-  show rtk = Tx.unpack [heredoc|R(${num})|]
+  show rtk = unpack [heredoc|R(${num})|]
     where
       num = (runK rtk) ^. #number
 

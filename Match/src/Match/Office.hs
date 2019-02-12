@@ -6,21 +6,21 @@ module Match.Office where
 import           Control.Arrow
 import           Control.Lens
 import           Data.Conduit
-import qualified Data.Conduit.List          as CL
+import qualified Data.Conduit.List      as CL
 import           Data.Attoparsec.Text
 import           Data.Extensible
-import qualified Data.Map.Strict             as M
-import           Data.Monoid                 ((<>))
-import           Data.Text                   hiding (map)
-import qualified Data.Text                   as Tx
-import qualified Data.Text.Lazy.Builder      as BB
+import qualified Data.Map.Strict        as M
+import           Data.Monoid            ((<>))
+import           Data.Text              hiding (map)
+import qualified Data.Text              as Tx
+import qualified Data.Text.Lazy.Builder as BB
 import           Match.SQL
-import           Match.Base                  (Office
-                                             , killBlanks
-                                             , killHyphen
-                                             , makeKey
-                                             , officeTypeRegularize)
-import           Util.Strbt                  (strdt)
+import           Match.Base             (Office
+                                        , killBlanks
+                                        , killHyphen
+                                        , makeKey
+                                        , officeTypeRegularize)
+import           Util.Strbt             (strdt)
 
 type MaybeIO a = IO (Either String a)
 

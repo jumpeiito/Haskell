@@ -1,30 +1,34 @@
 {-# LANGUAGE GADTs, RankNTypes, FlexibleContexts, FlexibleInstances #-}
 module Util where
 
-import Control.Arrow
-import Control.Parallel.Strategies (parMap, rseq)
-import Data.Conduit
-import Data.List
-import Data.IORef
-import qualified Data.Set               as S
-import qualified Data.Vector            as V
-import Control.Exception                hiding (try)
-import Control.Monad
-import Control.Monad.Writer
-import Control.Monad.State.Strict
-import Control.Concurrent.Async
-import System.Directory                 hiding (listDirectory)
-import System.Process
-import Text.StringLike                  (StringLike)
-import qualified Data.Map.Strict        as Map
-import qualified System.IO              as I
-import qualified Data.Text              as Tx
-import qualified Data.Text.IO           as Txio
-import qualified Data.Text.Internal     as Txi
-import qualified Data.ByteString.Char8  as B
-import qualified Data.ByteString.Lazy.Char8 as BL
-import Text.Parsec                      hiding (State)
-import Text.Parsec.String
+import           Control.Arrow
+import           Control.Parallel.Strategies (parMap, rseq)
+import           Data.Conduit
+import qualified Data.Conduit.List           as CL
+import           Data.List
+import           Data.IORef
+import           Data.Maybe
+import qualified Data.Set                    as S
+import           Data.String                 (IsString
+                                             , fromString)
+import qualified Data.Vector                 as V
+import           Control.Exception           hiding (try)
+import           Control.Monad
+import           Control.Monad.Writer
+import           Control.Monad.State.Strict
+import           Control.Concurrent.Async
+import           System.Directory            hiding (listDirectory)
+import           System.Process
+import           Text.StringLike             (StringLike)
+import qualified Data.Map.Strict             as Map
+import qualified System.IO                   as I
+import qualified Data.Text                   as Tx
+import qualified Data.Text.IO                as Txio
+import qualified Data.Text.Internal          as Txi
+import qualified Data.ByteString.Char8       as B
+import qualified Data.ByteString.Lazy.Char8  as BL
+import           Text.Parsec                 hiding (State)
+import           Text.Parsec.String
 ----------------------------------------------------------------------------------------------------
 uniq :: Ord a => [a] -> [a]
 uniq = fst . foldr uniq' ([], S.empty)
@@ -121,6 +125,12 @@ makeListMap :: Ord k => (t -> k) -> (t -> [a]) -> [t] -> Map.Map k [a]
 makeListMap _ _ [] = Map.empty
 makeListMap kF vF (x:xs) =
    Map.insertWith (++) (kF x) (vF x) $ makeListMap kF vF xs
+
+maybeS :: (IsString a, Monoid a) => Maybe a -> a
+maybeS = (mempty `fromMaybe`)
+
+xShow :: Show a => IsString b => a -> b
+xShow =  fromString . show
 
 class ReadFile a where
   readUTF8     :: FilePath -> IO a
@@ -621,6 +631,24 @@ mapGenerate (MakeDiffListMap (Key k) (Value v)) =
         in Map.insert (k el) v' mp
   in foldl' insert'' Map.empty
 
+mapGenerateC :: MakeMap t t1 t2 -> [t] -> Map.Map t1 t2
+mapGenerateC (MakeListMap (Key k) (Value v)) targetList =
+  let insert'' mp el =
+        let v' = case k el `Map.lookup` mp of
+                  Just ans -> (v el) : ans
+                  Nothing  -> [v el]
+        in Map.insert (k el) v' mp
+  in runConduitPure
+    $ CL.sourceList targetList
+    .| CL.fold insert'' Map.empty
+
+mapGenerateC (MakeMonoidMap (Key k) (Value v)) targetList =
+  let insert'' mp el =
+        Map.insertWith mappend (k el) (v el) mp
+  in runConduitPure
+    $ CL.sourceList targetList
+    .| CL.fold insert'' Map.empty
+
 mapGenerateM :: MonadIO m => MakeMap t t1 t2 -> m [t] -> m (Map.Map t1 t2)
 mapGenerateM mm t = mapGenerate mm <$> t
 
@@ -652,8 +680,8 @@ infixl 9 <<>>
 (<@@>) = MakeListMap
 infixl 9 <@@>
 
-mm :: MakeMap Integer Integer [Integer]
-mm = Key (`mod` 3) `MakeMonoidMap` Value (:[])
+mm :: MakeMap Integer Integer (Sum Integer)
+mm = Key (`mod` 3) `MakeMonoidMap` Value (Sum)
 
 mm2 :: MakeMap Integer Integer (V.Vector Integer)
 mm2 = Key (`mod` 3) `MakeMonoidMap` Value V.singleton

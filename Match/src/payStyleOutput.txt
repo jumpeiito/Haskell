@@ -1,0 +1,3 @@
+%{ forall (ps, (len, mx, avg, mid)) <- len }
+#{fromMaybe "不明" ps}(#{len}人): 最高値#{mx}千円、平均#{avg}千円、中央値#{mid}千円
+%{ endforall }

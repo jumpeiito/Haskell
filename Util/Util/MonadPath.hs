@@ -5,6 +5,7 @@ module Util.MonadPath where
 import           Control.Monad.State
 import qualified Data.List                  as DL
 import           Data.List.Split            (splitOn)
+import           Data.Monoid
 import           Data.Vector                ((!))
 import qualified Data.Vector                as V
 
@@ -39,15 +40,14 @@ bottomM  = do
   put (v, V.length v - 1)
 
 basenameM :: MonadicPath String
-basenameM = do
-  (v, i) <- get
-  return $ v ! i
+-- basenameM = do (v, i) <- get return $ v ! i
+basenameM = uncurry (!) <$> get
 
 fullPathM :: MonadicPath String
 fullPathM = do
   (v, i) <- get
-  let xlist = map (v!) [0..i-1]
-  return $ DL.intercalate "/" xlist
+  let xlist = map (v!) [0..i]
+  return $ (DL.intercalate "/" xlist) <> "/"
 
 pathLengthM :: MonadicPath Int
 pathLengthM = V.length <$> fst <$> get

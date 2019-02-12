@@ -5,10 +5,10 @@
 {-# LANGUAGE TypeOperators     #-}
 module Util.Address where
 
-import           Control.Applicative ((<|>))
+import           Control.Applicative  ((<|>))
 import           Data.Extensible
-import           Data.Monoid       ((<>))
-import qualified Data.Text as Tx
+import           Data.Monoid          ((<>))
+import qualified Data.Text            as Tx
 import           Data.Attoparsec.Text
 
 type Address = Record

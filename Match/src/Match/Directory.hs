@@ -8,48 +8,48 @@ module Match.Directory
   , openPDFFileFromString
   , openPDFFileToday) where
 
-import           Control.Arrow              ((>>>))
+import           Control.Arrow         ((>>>))
 import           Control.Lens
-import           Control.Monad              (forM_, unless, when)
-import           Control.Monad.State        (get)
-import           Control.Monad.Trans        (liftIO)
+import           Control.Monad         (forM_, unless, when)
+import           Control.Monad.State   (get)
+import           Control.Monad.Trans   (liftIO)
 import           Data.Conduit
-import qualified Data.Conduit.List          as CL
-import           Data.Either                (isRight, lefts, rights)
+import qualified Data.Conduit.List     as CL
+import           Data.Either           (isRight, lefts, rights)
 import           Data.Extensible
-import qualified Data.List                  as DL
-import           Data.List.Split            (splitOn)
-import qualified Data.Map.Strict            as M
-import           Data.Maybe                 (fromJust, fromMaybe)
-import           Data.Monoid                ((<>))
-import           Data.Text                  ( Text
-                                            , isInfixOf
-                                            , intercalate
-                                            , unpack)
+import qualified Data.List             as DL
+import           Data.List.Split       (splitOn)
+import qualified Data.Map.Strict       as M
+import           Data.Maybe            (fromJust, fromMaybe)
+import           Data.Monoid           ((<>))
+import           Data.Text             ( Text
+                                       , isInfixOf
+                                       , intercalate
+                                       , unpack)
 import           Data.Time.Calendar
 import           Data.Time.Clock
-import qualified Data.Vector                as V
-import           Match.Base                 ( killBlanks
-                                            , officeTypeReplace
-                                            , toCode
-                                            , toShibu)
-import           Match.Config               ( directorySpecF
-                                            , fileTreeDirectory
-                                            , sendCSVFileName)
-import           Match.CSV                  (parseCSV2)
-import           System.Directory           ( createDirectoryIfMissing
-                                            , doesDirectoryExist
-                                            , doesFileExist
-                                            , getDirectoryContents
-                                            , getModificationTime
-                                            , removeDirectory)
-import           System.IO                  (hFlush, stdout)
-import           System.FilePath.Posix      (takeExtension)
-import           System.Process             (runInteractiveCommand)
+import qualified Data.Vector           as V
+import           Match.Base            ( killBlanks
+                                       , officeTypeReplace
+                                       , toCode
+                                       , toShibu)
+import           Match.Config          ( directorySpecF
+                                       , fileTreeDirectory
+                                       , sendCSVFileName)
+import           Match.CSV             (parseCSV2)
+import           System.Directory      ( createDirectoryIfMissing
+                                       , doesDirectoryExist
+                                       , doesFileExist
+                                       , getDirectoryContents
+                                       , getModificationTime
+                                       , removeDirectory)
+import           System.IO             (hFlush, stdout)
+import           System.FilePath.Posix (takeExtension)
+import           System.Process        (runInteractiveCommand)
 import           Text.Heredoc
 import           Text.Parsec
 import           Text.Parsec.String
-import           Text.Read                  (readMaybe)
+import           Text.Read             (readMaybe)
 import           Util
 import           Util.Strdt
 import           Util.MonadPath
@@ -262,18 +262,15 @@ createDirectoryRecursive fp (x:xs) = do
   bool <- doesDirectoryExist newPath
   unless bool $ do
     putStrLn newPath
-    print bool
     createDirectoryIfMissing True newPath
   createDirectoryRecursive newPath xs
 
 createHihoDirectory :: IO ()
 createHihoDirectory = do
   fp   <- fileTreeDirectory
-  xmap <- getXTDMap
   xsnd <- readSendFile
   forM_ xsnd $ \n -> do
-    unless (n `hasTree2` xmap) $
-      createDirectoryRecursive (fp <> "/") $ xsendDirectoryList n
+    createDirectoryRecursive (fp <> "/") $ xsendDirectoryList n
 
 removeTargetDirectories :: Conduit FilePath IO FilePath
 removeTargetDirectories = do
@@ -373,7 +370,7 @@ openPDFFile pday = do
 openPDFFileFromString :: String -> IO ()
 openPDFFileFromString dayString = do
   case strdt dayString of
-    Just d -> openPDFFile d
+    Just d  -> openPDFFile d
     Nothing -> return ()
 
 openPDFFileToday :: IO ()

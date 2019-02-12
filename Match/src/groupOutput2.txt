@@ -1,0 +1,3 @@
+%{ forall (shibu, length) <- l }
+#{fromMaybe "不明" shibu},#{length}
+%{ endforall }

@@ -19,13 +19,13 @@ module Match.Base ( Office
 import           Control.Applicative
 import           Data.Extensible
 import           Data.Attoparsec.Text
-import qualified Data.Attoparsec.Text       as Atp
-import qualified Data.Map.Strict            as M
-import           Data.Maybe                 (fromMaybe)
-import           Data.Text                  (Text)
-import qualified Data.Text                  as Tx
-import           Data.Time                  (Day (..))
-import           Data.Tuple                 (swap)
+import qualified Data.Attoparsec.Text as Atp
+import qualified Data.Map.Strict      as M
+import           Data.Maybe           (fromMaybe)
+import           Data.Text            (Text)
+import qualified Data.Text            as Tx
+import           Data.Time            (Day (..))
+import           Data.Tuple           (swap)
 import           GHC.Generics
 
 type Office = Record
