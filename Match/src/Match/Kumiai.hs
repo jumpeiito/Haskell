@@ -1,8 +1,8 @@
 -- -*- coding: utf-8 -*-
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances  #-}
 module Match.Kumiai where
 
 import           Control.Arrow     ((&&&))

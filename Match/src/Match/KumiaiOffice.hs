@@ -1,7 +1,7 @@
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE TypeFamilies  #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE TypeFamilies         #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances  #-}
 module Match.KumiaiOffice where
 
 import           Control.Lens

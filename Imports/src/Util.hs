@@ -43,13 +43,12 @@ importNameComponentParser =
 
 importParser :: P.Parser ParsedLine
 importParser = do
-  let header = P.string "import"
-               >> blank
-               *> P.optionMaybe (P.string "qualified")
-               <* blank
-  qlf  <- header
+  qlf  <- P.string "import"
+          >> blank
+          *> P.optionMaybe (P.string "qualified")
+          <* blank
   name <- importNameParser
-  rest <- P.optionMaybe (blank >> P.many P.anyChar)
+  rest <- P.optionMaybe (blank >> P.many1 P.anyChar)
   case qlf of
     Just _  -> return $ ImpQ (name, rest)
     Nothing -> return $ Imp (name, rest)
@@ -124,14 +123,10 @@ importsText pl = foldr insert' [] pl
     toText (Pg _) = error "must not happen at `importsText`"
     toText (Imp (name, Nothing)) =
       mconcat ["import           " , name]
-    toText (Imp (name, Just "")) =
-      mconcat ["import           " , name]
     toText (Imp (name, Just r)) =
       mconcat ["import           "
               , justify maxLength name , " " , r]
     toText (ImpQ (name, Nothing)) =
-      mconcat ["import qualified " , name]
-    toText (ImpQ (name, Just "")) =
       mconcat ["import qualified " , name]
     toText (ImpQ (name, Just r)) =
       mconcat ["import qualified "
