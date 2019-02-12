@@ -86,11 +86,11 @@ justify :: Int -> String -> String
 justify n s = s ++ (replicate (n - length s) ' ')
 
 hasImports :: [ParsedLine] -> Bool
-hasImports [] = False
-hasImports ((Imp _):xs) = True
+hasImports []            = False
+hasImports ((Imp _):xs)  = True
 hasImports ((ImpQ _):xs) = True
 hasImports ((ImpO _):xs) = True
-hasImports (_:xs) = hasImports xs
+hasImports (_:xs)        = hasImports xs
 
 imports :: [ParsedLine] -> [ParsedLine]
 imports = reverse . DL.foldl' insert' []
@@ -105,11 +105,11 @@ imports = reverse . DL.foldl' insert' []
 importsMaxLength :: [ParsedLine] -> Int
 importsMaxLength pl = foldr maxlen 0 pl
   where
-    Newline `maxlen` size        = size
-    O _ `maxlen` size            = size
-    Imp (name, r) `maxlen` size  = length name `max` size
+    Newline        `maxlen` size = size
+    O _            `maxlen` size = size
+    Imp (name, r)  `maxlen` size = length name `max` size
     ImpQ (name, r) `maxlen` size = length name `max` size
-    ImpO _ `maxlen` size         = size
+    ImpO _         `maxlen` size = size
 
 importsText :: [ParsedLine] -> [String]
 importsText pl = foldr insert' [] pl
@@ -131,7 +131,6 @@ importsText pl = foldr insert' [] pl
     toText (ImpO s) =
       mconcat [ justify (maxLength + 18) ""
               , DL.dropWhile (== ' ') s]
-
 
 toParsedLine :: String -> [ParsedLine]
 toParsedLine target = rights $ map (P.parse lineParse "") $ lines target
