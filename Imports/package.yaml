@@ -55,6 +55,7 @@ tests:
     dependencies:
     - Imports
     - hspec
+    - parsec
 
     ghc-options:
     - -threaded

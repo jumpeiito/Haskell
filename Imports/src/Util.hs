@@ -1,8 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE FlexibleInstances              #-}
-{-# LANGUAGE LambdaCase              #-}
--- | Silly utility module, used to demonstrate how to write a test
--- case.
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase        #-}
 module Util where
 
 import RIO
@@ -18,16 +16,28 @@ data Parsed a =
   | ImpO a
   | O a
   | Newline
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Header a = Header { contents        :: [Parsed a]
                        , pragmaMaxLength :: Int
                        , importMaxLength :: Int }
   deriving Show
 
+-- |
+--
+-- >>> isRight $ P.parse blank "" "   "
+-- True
+-- >>> isRight $ P.parse blank "" ""
+-- True
 blank :: P.Parser String
 blank = P.many $ P.char ' '
 
+-- |
+--
+-- >>> P.parse pragmaParser "" "{-# LANGUAGE NoImplicitPrelude #-}"
+-- Right (Pg ["NoImplicitPrelude"] 17)
+-- >>> P.parse pragmaParser "" "{-# LANGUAGE NoImplicitPrelude, LambdaCase #-}"
+-- Right (Pg ["NoImplicitPrelude", "LambdaCase"] 17)
 pragmaParser :: P.Parser (Parsed String)
 pragmaParser = do
   prg <- P.between open close inner
@@ -105,36 +115,38 @@ isImport _ = False
 hasImports :: [Parsed String] -> Bool
 hasImports = isJust . DL.find isImport
 
-pragmaOutput :: Int -> String -> IO ()
-pragmaOutput len p =
-  I.putStrLn $ mconcat ["{-# ", justify len p, " #-}"]
+pragmaString :: Int -> String -> String
+pragmaString len p =
+  mconcat ["{-# ", justify len p, " #-}"]
 
-importOutput :: Bool -> String -> [Char] -> Int -> IO ()
-importOutput b n r len =
-  I.putStrLn $ mconcat [ "import "
-                       , if b then "qualified " else "          "
-                       , justify len n
-                       , " "
-                       , r ]
+importString :: Bool -> String -> [Char] -> Int -> String
+importString b n r len =
+  mconcat [ "import "
+          , if b then "qualified " else "          "
+          , justify len n
+          , " "
+          , r ]
 
-headerOutput :: Header String -> IO ()
-headerOutput (Header c pmaxlen imaxlen) = do
-  forM_ (reverse c) $ \case
-    Pg pgs _                -> forM_ pgs (pragmaOutput pmaxlen)
-    Newline                 -> I.putStrLn ""
-    O s                     -> I.putStrLn s
-    Imp (name, Nothing, _)  -> I.putStrLn $ "import           " ++ name
-    Imp (name, Just r, _)   -> importOutput False name r imaxlen
-    ImpQ (name, Nothing, _) -> I.putStrLn $ "import qualified " ++ name
-    ImpQ (name, Just r, _)  -> importOutput True name r imaxlen
-    ImpO s                  ->
-      I.putStrLn $ justify (imaxlen + 18) "" ++ DL.dropWhile (== ' ') s
+headerOutput :: Header String -> [String]
+headerOutput (Header c pmaxlen imaxlen) = map toString $ reverse c
+  where
+    toString = \case
+      Pg pgs _                ->
+        DL.intercalate "\n" $ map (pragmaString pmaxlen) pgs
+      Newline                 -> ""
+      O s                     -> s
+      Imp (name, Nothing, _)  -> "import           " ++ name
+      Imp (name, Just r, _)   -> importString False name r imaxlen
+      ImpQ (name, Nothing, _) -> "import qualified " ++ name
+      ImpQ (name, Just r, _)  -> importString True name r imaxlen
+      ImpO s                  ->
+        justify (imaxlen + 18) "" ++ DL.dropWhile (== ' ') s
 
 toHeader :: String -> Header String
 toHeader = DL.foldl' toParsed (Header mempty 0 0) . lines
 
 output :: String -> IO ()
-output = headerOutput . toHeader
+output = mapM_ I.putStrLn . headerOutput . toHeader
 
 hoge :: String
 hoge = "{-# LANGUAGE NoImplicitPrelude, TemplateHaskell #-}\n{-# LANGUAGE OverloadedStrings                    #-}\n\nmodule Main where\nimport RIO\nimport qualified Data.List            as DL\nimport Data.List       ( intercalate\n               , sortBy)\nimport qualified Data.Maybe           as M\nimport qualified Text.Parsec          as P\nimport qualified Text.Parsec.String   as P"
