@@ -1,5 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE FlexibleInstances              #-}
+{-# LANGUAGE LambdaCase              #-}
 -- | Silly utility module, used to demonstrate how to write a test
 -- case.
 module Util where
@@ -10,21 +11,27 @@ import qualified System.IO            as I
 import qualified Text.Parsec          as P
 import qualified Text.Parsec.String   as P
 
-data ParsedLine =
-  Pg [String]
-  | Imp (String, Maybe String)
-  | ImpQ (String, Maybe String)
-  | ImpO String
-  | O String
+data Parsed a =
+  Pg [a] Int
+  | Imp (a, Maybe a, Int)
+  | ImpQ (a, Maybe a, Int)
+  | ImpO a
+  | O a
   | Newline
   deriving (Show)
+
+data Header a = Header { contents        :: [Parsed a]
+                       , pragmaMaxLength :: Int
+                       , importMaxLength :: Int }
+  deriving Show
 
 blank :: P.Parser String
 blank = P.many $ P.char ' '
 
-pragmaParser :: P.Parser ParsedLine
+pragmaParser :: P.Parser (Parsed String)
 pragmaParser = do
-  Pg <$> P.between open close inner
+  prg <- P.between open close inner
+  return $ Pg prg (DL.maximum $ map length prg)
   where
     open   = P.string "{-# LANGUAGE" >> blank
     close  = blank >> P.string "#-}"
@@ -35,13 +42,13 @@ pragmaParser = do
 importNameParser :: P.Parser String
 importNameParser = DL.intercalate "." <$> components
   where
-    components = P.sepBy importNameComponentParser (P.string ".")
+    components = P.sepBy1 importNameComponentParser (P.string ".")
 
 importNameComponentParser :: P.Parser String
 importNameComponentParser =
   (:) <$> P.oneOf ['A'..'Z'] <*> P.many (P.oneOf ['A'..'z'])
 
-importParser :: P.Parser ParsedLine
+importParser :: P.Parser (Parsed String)
 importParser = do
   qlf  <- P.string "import"
           >> blank
@@ -50,102 +57,87 @@ importParser = do
   name <- importNameParser
   rest <- P.optionMaybe (blank >> P.many1 P.anyChar)
   case qlf of
-    Just _  -> return $ ImpQ (name, rest)
-    Nothing -> return $ Imp (name, rest)
+    Just _  -> return $ ImpQ (name, rest, length name)
+    Nothing -> return $ Imp (name, rest, length name)
 
-otherParser :: P.Parser ParsedLine
-otherParser = do
-  P.try (blank >> P.eof >> return Newline)
-  <|> (O <$> P.many P.anyChar)
+newlineParser :: P.Parser (Parsed String)
+newlineParser = blank >> P.eof >> return Newline
 
-lineParse :: P.Parser ParsedLine
+otherParser :: P.Parser (Parsed String)
+otherParser = O <$> P.many P.anyChar
+
+lineParse :: P.Parser (Parsed String)
 lineParse = do
   P.try importParser
   <|> P.try pragmaParser
+  <|> P.try newlineParser
   <|> otherParser
 
-pragmas :: [ParsedLine] -> ParsedLine
-pragmas pl = pragmaSort $ pragmaAppend $ filter isPragma pl
-  where
-    isPragma (Pg _)   = True
-    isPragma _        = False
-    Pg x1 <<>> Pg x2  = Pg (x1 ++ x2)
-    _     <<>> _      = error "must not happen at `pragmas`."
-    pragmaAppend      = DL.foldl' (<<>>) (Pg [])
-    pragmaSort (Pg x) = Pg (DL.sort x)
-    pragmaSort _      = error "must not happen at `pragmas`."
-
-pragmasText :: ParsedLine -> [String]
-pragmasText (Pg x) = map toText x
-  where
-    toText pg  = mconcat ["{-# LANGUAGE ", justify' pg, " #-}"]
-    maxLength  = DL.maximum $ map length x
-    justify' pg = pg ++ (replicate (maxLength - length pg) ' ')
-pragmasText _ = error "must not happen at `pragmasText`."
+toParsed :: Header String -> String -> Header String
+toParsed h target =
+  case P.parse lineParse "" target of
+    Right p@(Pg _ len) ->
+      h { contents = p : contents h
+        , pragmaMaxLength = len `max` pragmaMaxLength h }
+    Right i@(Imp (_, _, len)) ->
+      h { contents = i : contents h
+        , importMaxLength = len `max` importMaxLength h }
+    Right i@(ImpQ (_, _, len)) ->
+      h { contents = i : contents h
+        , importMaxLength = len `max` importMaxLength h }
+    Right (O s) ->
+      if hasImports $ contents h
+      then h { contents = ImpO s : contents h }
+      else h { contents = O s : contents h }
+    Right r ->
+      h { contents = r : contents h }
+    Left _ ->
+      h { contents = O target : contents h }
 
 justify :: Int -> String -> String
 justify n s = s ++ (replicate (n - length s) ' ')
 
-hasImports :: [ParsedLine] -> Bool
-hasImports []           = False
-hasImports ((Imp _):_)  = True
-hasImports ((ImpQ _):_) = True
-hasImports ((ImpO _):_) = True
-hasImports (_:xs)       = hasImports xs
+isImport :: Parsed String -> Bool
+isImport (Imp _)  = True
+isImport (ImpQ _) = True
+isImport _ = False
 
-imports :: [ParsedLine] -> [ParsedLine]
-imports = reverse . DL.foldl' insert' []
-  where
-    insert' seed (O "") = Newline : seed
-    insert' seed (O s)
-      | hasImports seed = ImpO s : seed
-      | otherwise       = O s : seed
-    insert' seed (Pg _) = seed
-    insert' seed el     = el : seed
+hasImports :: [Parsed String] -> Bool
+hasImports = isJust . DL.find isImport
 
-importsMaxLength :: [ParsedLine] -> Int
-importsMaxLength pl = foldr maxlen 0 pl
-  where
-    Newline        `maxlen` size = size
-    O _            `maxlen` size = size
-    Imp (name, _)  `maxlen` size = length name `max` size
-    ImpQ (name, _) `maxlen` size = length name `max` size
-    ImpO _         `maxlen` size = size
-    _              `maxlen` _    = error "must not happen at `importsMaxLength`"
+pragmaOutput :: Int -> String -> IO ()
+pragmaOutput len p =
+  I.putStrLn $ mconcat ["{-# ", justify len p, " #-}"]
 
-importsText :: [ParsedLine] -> [String]
-importsText pl = foldr insert' [] pl
-  where
-    maxLength = importsMaxLength pl
-    insert' el seed = toText el : seed
-    toText Newline = "\n"
-    toText (O s) = s
-    toText (Pg _) = error "must not happen at `importsText`"
-    toText (Imp (name, Nothing)) =
-      mconcat ["import           " , name]
-    toText (Imp (name, Just r)) =
-      mconcat ["import           "
-              , justify maxLength name , " " , r]
-    toText (ImpQ (name, Nothing)) =
-      mconcat ["import qualified " , name]
-    toText (ImpQ (name, Just r)) =
-      mconcat ["import qualified "
-              , justify maxLength name , " " , r]
-    toText (ImpO s) =
-      mconcat [ justify (maxLength + 18) ""
-              , DL.dropWhile (== ' ') s]
+importOutput :: Bool -> String -> [Char] -> Int -> IO ()
+importOutput b n r len =
+  I.putStrLn $ mconcat [ "import "
+                       , if b then "qualified " else "          "
+                       , justify len n
+                       , " "
+                       , r ]
 
-toParsedLine :: String -> [ParsedLine]
-toParsedLine target = rights $ map (P.parse lineParse "") $ lines target
+headerOutput :: Header String -> IO ()
+headerOutput (Header c pmaxlen imaxlen) = do
+  forM_ (reverse c) $ \case
+    Pg pgs _                -> forM_ pgs (pragmaOutput pmaxlen)
+    Newline                 -> I.putStrLn ""
+    O s                     -> I.putStrLn s
+    Imp (name, Nothing, _)  -> I.putStrLn $ "import           " ++ name
+    Imp (name, Just r, _)   -> importOutput False name r imaxlen
+    ImpQ (name, Nothing, _) -> I.putStrLn $ "import qualified " ++ name
+    ImpQ (name, Just r, _)  -> importOutput True name r imaxlen
+    ImpO s                  ->
+      I.putStrLn $ justify (imaxlen + 18) "" ++ DL.dropWhile (== ' ') s
 
-headerOutput :: String -> IO ()
-headerOutput target = do
-  let contents = toParsedLine target
-  mapM_ I.putStrLn $ pragmasText $ pragmas contents
-  mapM_ I.putStrLn $ importsText $ imports contents
+toHeader :: String -> Header String
+toHeader = DL.foldl' toParsed (Header mempty 0 0) . lines
 
-plus2 :: Int -> Int
-plus2 = (+ 2)
+output :: String -> IO ()
+output = headerOutput . toHeader
 
 hoge :: String
 hoge = "{-# LANGUAGE NoImplicitPrelude, TemplateHaskell #-}\n{-# LANGUAGE OverloadedStrings                    #-}\n\nmodule Main where\nimport RIO\nimport qualified Data.List            as DL\nimport Data.List       ( intercalate\n               , sortBy)\nimport qualified Data.Maybe           as M\nimport qualified Text.Parsec          as P\nimport qualified Text.Parsec.String   as P"
+
+hoge2 :: String
+hoge2 = "{-# LANGUAGE NoImplicitPrelude, OverloadedStrings #-}\n{-# LANGUAGE FlexibleInstances              #-}\n-- | Silly utility module, used to demonstrate how to write a test\n-- case.\nmodule Util where\n\nimport   RIO\nimport qualified Data.List            as DL\nimport qualified System.IO            as I\nimport qualified Text.Parsec          as P\nimport qualified Text.Parsec.String   as P\n"
