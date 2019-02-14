@@ -61,3 +61,13 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+  Imports-doctest:
+    main: test/Main.hs
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - Imports
+    - doctest
+    - parsec

@@ -1,7 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
--- module Util (output) where
 module Util  where
 
 import RIO
@@ -25,28 +24,34 @@ data Header a = Header { contents        :: [Parsed a]
                        , importMaxLength :: Int }
   deriving Show
 
+-- $setup
+-- >>> import qualified Text.Parsec as P
+-- >>> import qualified Text.Parsec.String as P
+
+-- | Pragma Semigroup test
+--
+-- >>> Pragma ["LambdaCase", "FlexibleInstances"] 17 <> Pragma [] 0
+-- Pragma ["LambdaCase", "FlexibleInstances"] 17
 instance Semigroup (Pragma a) where
-   Pragma x1 len1 <> Pragma x2 len2 = Pragma (x1 <> x2) (len1 `max` len2)
+   Pragma x1 len1 <> Pragma x2 len2 =
+     Pragma (x1 <> x2) (len1 `max` len2)
 
 instance Monoid (Pragma a) where
   mempty  = Pragma [] 0
   mappend = (<>)
 
--- |
+-- | blank parser test
 --
--- >>> isRight $ P.parse blank "" "   "
--- True
--- >>> isRight $ P.parse blank "" ""
--- True
+-- >>> P.parse blank "" " "
+-- Right " "
 blank :: P.Parser String
 blank = P.many $ P.char ' '
 
--- |
---
--- >>> P.parse pragmaParser "" "{-# LANGUAGE NoImplicitPrelude #-}"
--- Right (Pg ["NoImplicitPrelude"] 17)
--- >>> P.parse pragmaParser "" "{-# LANGUAGE NoImplicitPrelude, LambdaCase #-}"
--- Right (Pg ["NoImplicitPrelude", "LambdaCase"] 17)
+-- -- |
+-- -- >>> P.parse pragmaParser "" "{-# LANGUAGE NoImplicitPrelude #-}"
+-- -- Right (Pg ["NoImplicitPrelude"] 17)
+-- -- >>> P.parse pragmaParser "" "{-# LANGUAGE NoImplicitPrelude, LambdaCase #-}"
+-- -- Right (Pg ["NoImplicitPrelude", "LambdaCase"] 17)
 pragmaParser :: P.Parser (Pragma String)
 pragmaParser = do
   prg <- P.between open close inner
@@ -122,6 +127,10 @@ toParsed h target =
     Left _ ->
       h { contents = O target : contents h }
 
+-- | Justify Test
+--
+-- >>> justify 10 "hoge"
+-- "hoge      "
 justify :: Int -> String -> String
 justify n s = s ++ replicate (n - length s) ' '
 
@@ -133,7 +142,7 @@ isPragma :: Parsed String -> Bool
 isPragma (P _)  = True
 isPragma _ = False
 
-sortPragma :: Ord a => Pragma a -> Pragma a
+sortPragma :: Pragma String -> Pragma String
 sortPragma (Pragma a i) = Pragma (DL.sort a) i
 
 importLength :: Imports a -> Int
@@ -180,12 +189,12 @@ importStringInner :: Int -> [String] -> Imports String -> String
 importStringInner maxlen other i =
   DL.intercalate "\n" stringList
   where
-    stringList = [header] ++ map lengthArrange other
+    stringList = [header i] ++ map lengthArrange other
     lengthArrange = (justify (maxlen + 18) "" ++) .
                     DL.dropWhile (== ' ')
-    header = mconcat [ importHeader i
-                     , importName maxlen i
-                     , importRest i]
+    header = mconcat [ importHeader
+                     , importName maxlen
+                     , importRest ]
 
 importString :: Int -> Imports String -> String
 importString maxlen i@(ImpN _ o)  = importStringInner maxlen o i
