@@ -29,6 +29,8 @@ library
                        Util.Yaml
                        Util.Address
                        Util.MonadPath
+                       Util.Range
+                       Data.Text.Levenshtein
   build-depends:       base >= 4.7 && < 5
                      , mtl
                      , directory

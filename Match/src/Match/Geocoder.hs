@@ -187,6 +187,7 @@ getLatLng address = do
       Right x -> return $ parseXML x
       Left _  -> return mempty
 
+
 retryGetPoint :: Text -> MaybeT IO Point
 retryGetPoint address = do
   w <- setting #waitSeconds
@@ -347,3 +348,4 @@ geoSource =
     parseCSVSource [] "d:/SQLite/geocoder.csv"
     .| CL.map (Just . toPoint)
     .| CL.mapM_ insertDB
+

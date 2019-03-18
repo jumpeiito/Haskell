@@ -1,18 +1,25 @@
-{-# LANGUAGE TemplateHaskell          #-}
-{-# LANGUAGE QuasiQuotes              #-}
-{-# LANGUAGE GADTs                    #-}
-{-# LANGUAGE FlexibleContexts         #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Match.Directory
-  (createHihoDirectory
+  ( createHihoDirectory
   , removeBlankDirectory
   , openPDFFileFromString
+  , openPDFFileSexp
   , openPDFFileToday) where
 
+import           Control.Applicative   ((<|>))
 import           Control.Arrow         ((>>>))
 import           Control.Lens
 import           Control.Monad         (forM_, unless, when)
+import           Control.Monad.IO.Class
 import           Control.Monad.State   (get)
 import           Control.Monad.Trans   (liftIO)
+import           Control.Monad.Trans.Reader (ReaderT)
 import           Data.Conduit
 import qualified Data.Conduit.List     as CL
 import           Data.Either           (isRight, lefts, rights)
@@ -23,48 +30,78 @@ import qualified Data.Map.Strict       as M
 import           Data.Maybe            (fromJust, fromMaybe)
 import           Data.Monoid           ((<>))
 import           Data.Text             ( Text
+                                       , pack
                                        , isInfixOf
                                        , intercalate
                                        , unpack)
 import           Data.Time.Calendar
 import           Data.Time.Clock
+import           Data.Vector           ((!?))
 import qualified Data.Vector           as V
-import           Match.Base            ( killBlanks
-                                       , officeTypeReplace
-                                       , toCode
-                                       , toShibu)
-import           Match.Config          ( directorySpecF
-                                       , fileTreeDirectory
-                                       , sendCSVFileName)
-import           Match.CSV             (parseCSV2)
-import           System.Directory      ( createDirectoryIfMissing
-                                       , doesDirectoryExist
-                                       , doesFileExist
-                                       , getDirectoryContents
-                                       , getModificationTime
-                                       , removeDirectory)
-import           System.IO             (hFlush, stdout)
-import           System.FilePath.Posix (takeExtension)
-import           System.Process        (runInteractiveCommand)
+import           Database.Persist      hiding (get)
+import           Database.Persist.Sqlite hiding (get)
+import           Database.Persist.TH
+import           Match.Base              ( killBlanks
+                                         , officeTypeReplace
+                                         , toCode
+                                         , toShibu)
+import           Match.Config            ( directorySpecF
+                                         , fileTreeDirectory
+                                         , sendCSVFileName)
+import           Match.CSV               (parseCSV2)
+import           System.Directory        ( createDirectoryIfMissing
+                                         , doesDirectoryExist
+                                         , doesFileExist
+                                         , getDirectoryContents
+                                         , getModificationTime
+                                         , removeFile
+                                         , removeDirectory)
+import           System.IO               (hFlush, stdout
+                                         , writeFile)
+import           System.FilePath.Posix   (takeExtension)
+import           System.Process          (runInteractiveCommand)
 import           Text.Heredoc
-import           Text.Parsec
-import           Text.Parsec.String
-import           Text.Read             (readMaybe)
+import qualified Text.Parsec             as P
+import qualified Text.Parsec.String      as P
+import           Text.Read               (readMaybe)
 import           Util
 import           Util.Strdt
 import           Util.MonadPath
 
-type XTDMap = M.Map (Maybe Int) [XTD]
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
+Unit
+    mtime Text
+    kind Text
+    number Text
+    shibuCode Text
+    officeCode Text
+    officeName Text
+    person Text
+    deriving Show
+|]
+
+dbPath :: FilePath
+dbPath = "d:/home/.directory.sqlite3"
+
+makeNewDB :: IO ()
+makeNewDB = do
+  p <- doesFileExist dbPath
+  when p $ removeFile dbPath
+  runSqlite (pack dbPath) $ runMigration migrateAll
+
+insertDB :: Unit -> IO ()
+insertDB u = do
+  runSqlite (pack dbPath) . s $ insert u >> return ()
+
+s :: ReaderT SqlBackend m a -> ReaderT SqlBackend m a
+s = id
+
 type DirectoryBaseInfo = (Maybe Int, (String, String), String, Bool)
 
 shibud, officed, persond :: MonadicPath ()
 shibud  = initialM >> 3 `repM` downM
 officed = initialM >> 4 `repM` downM
 persond = initialM >> 5 `repM` downM
-
-lostp, enoughp :: MonadicPath Bool
-lostp   = isLengthp 7
-enoughp = (>= 6) <$> (V.length . fst) <$> get
 
 shibuCodeM :: MonadicPath (Maybe Int)
 shibuCodeM =
@@ -90,12 +127,12 @@ baseInfoM = do
   b <- lostPDFP
   return (s, o, p, b)
 
-officeNameParser :: Parser (String, String)
+officeNameParser :: P.Parser (String, String)
 officeNameParser =
-  (,) <$> count 6 digit <* char '_' <*> many anyChar
+  (,) <$> P.count 6 P.digit <* P.char '_' <*> P.many P.anyChar
 
 officeNameP :: FilePath -> Bool
-officeNameP = isRight . parse officeNameParser ""
+officeNameP = isRight . P.parse officeNameParser ""
 
 officeMP, personalMP, lostMP, targetMP :: MonadicPath Bool
 officeMP = do
@@ -116,19 +153,6 @@ lostMP = do
 targetMP = or <$> sequence [officeMP, personalMP, lostMP]
 
 data SendType  = Get | Lost | Other deriving (Eq, Ord, Show)
-
-toXSend :: DirectoryBaseInfo -> XSend
-toXSend (s, (oC, oN), p, b) =
-  #code @= oC
-  <: #name @= oN
-  <: #sendType @= (if b then Lost else Get)
-  <: #hihoName @= p
-  <: #shibu @= s
-  <: nil
-
-xsendToPath :: FilePath -> XSend -> FilePath
-xsendToPath root xs =
-  root ++ (DL.intercalate "/" $ xsendDirectoryList xs)
 
 type XSend = Record
   '[ "code"      >: String
@@ -158,14 +182,6 @@ xsendDirectoryList s = basic ++ sendtype
                       , xsendOfficeName
                       , xsendPersonName]
 
-type XTD = Record
-  '[ "shibuCode" >: Maybe Int
-   , "filePath"  >: FilePath
-   , "oCode"     >: String
-   , "oName"     >: String
-   , "person"    >: String
-   , "isLost"    >: Bool ]
-
 makeXSend :: [Text] -> Either Text XSend
 makeXSend t = case t of
   [_c, _n, _st, _hn, _si, _sh] ->
@@ -181,7 +197,7 @@ makeXSend t = case t of
 makeSendType :: Text -> SendType
 makeSendType t | "取得" `isInfixOf` t = Get
                | "喪失" `isInfixOf` t = Lost
-               | otherwise           = Other
+               | otherwise            = Other
 
 readSendFile :: IO [XSend]
 readSendFile = do
@@ -191,36 +207,6 @@ readSendFile = do
   forM_ (lefts contents) print
   return $ rights contents
 
-makeXTD :: FilePath -> XTD
-makeXTD fp =
-  runFileM fp $ do
-    officeParts <- officePartsM
-    shibuCode   <- shibuCodeM
-    person      <- persond >> basenameM
-    isLost      <- lostp
-    return $
-      #shibuCode   @= shibuCode
-      <: #filePath @= fp
-      <: #oCode    @= fst officeParts
-      <: #oName    @= snd officeParts
-      <: #person   @= person
-      <: #isLost   @= isLost
-      <: nil
-
-getXTD :: (XTD -> Bool) -> IO [XTD]
-getXTD f = do
-  topdir <- fileTreeDirectory
-  let conduit = sourceDescendDirectory topdir
-                .| CL.map makeXTD
-                .| CL.filter f
-                .| CL.consume
-  liftIO $ runConduit conduit
-
-getXTDMap :: IO XTDMap
-getXTDMap = do
-  getXTD ((`runFileM` enoughp) . (^. #filePath)) ===>
-    Key (^. #shibuCode) `MakeListMap` Value id
-
 sourceDescendDirectory :: FilePath -> Source IO FilePath
 sourceDescendDirectory fp = do
   directoryP <- liftIO $ doesDirectoryExist fp
@@ -228,32 +214,6 @@ sourceDescendDirectory fp = do
     yield fp
     dirs <- liftIO $ listDirectory (fp ++ "/")
     mapM_ sourceDescendDirectory dirs
-
-sourceDescendFile :: FilePath -> Source IO FilePath
-sourceDescendFile fp = do
-  directoryP <- liftIO $ doesDirectoryExist fp
-  fileP'     <- liftIO $ doesFileExist fp
-  case (directoryP, fileP') of
-    (True, _) -> do
-      contents <- liftIO $ listDirectory (fp <> "/")
-      forM_ contents sourceDescendFile
-    (_, True) -> yield fp
-    (False, False) -> error "must not happen."
-
-sendAlreadyRegistered :: (XSend, Bool) -> [XTD] -> Bool
-sendAlreadyRegistered _ [] = False
-sendAlreadyRegistered (send, bool) (x:xs)
-  | (send ^. #shibu) == (x ^. #shibuCode) &&
-    (send ^. #hihoName) == (x ^. #person) = True
-  | otherwise = (send, bool) `sendAlreadyRegistered` xs
-
-hasTree2 :: XSend -> XTDMap -> Bool
-hasTree2 send xtdm =
-  case (send ^. #shibu) `M.lookup` xtdm of
-    Just xtds ->
-      let bool = send ^. #sendType /= Get
-      in (send, bool) `sendAlreadyRegistered` xtds
-    Nothing -> False
 
 createDirectoryRecursive :: FilePath -> [String] -> IO ()
 createDirectoryRecursive _ [] = return ()
@@ -317,12 +277,6 @@ openPDFFileCommand fp =
   runInteractiveCommand (acrord <> " " <> fp <> " &")
     >> return ()
 
-pdfSink :: Sink String IO ()
-pdfSink = do
-  awaitForever $ \pdf -> liftIO $ do
-    putStrLn pdf
-    openPDFFileCommand pdf
-
 baseInfoMap ::
   [FilePath] -> M.Map DirectoryBaseInfo (DiffList FilePath)
 baseInfoMap dirs =
@@ -335,21 +289,60 @@ directoryBaseInfoString dbi =
   in let pdftype = if bool then "喪失" else "取得"
   in [heredoc|${oCode}-${oName}(${shibu'}) ${person}--${pdftype}|]
 
-pdfCollectiveSink :: Sink String IO ()
-pdfCollectiveSink = do
-  pdflist <- CL.consume
-  let infoMap = baseInfoMap pdflist
-  forM_ (M.keys infoMap) $ \info -> liftIO $ do
-    putStrLn $ directoryBaseInfoString info
+directoryBaseInfoList :: DirectoryBaseInfo -> [String]
+directoryBaseInfoList dbi =
+  let (shibu, (oCode, oName), person, bool) = dbi
+  in let shibu' = show $ fromMaybe 99 shibu
+  in let pdftype = if bool then "喪失" else "取得"
+  in [oCode, oName, shibu', person, pdftype]
+
+type PDFVector = V.Vector (String, [FilePath])
+
+makePDFVector :: [FilePath] -> PDFVector
+makePDFVector =
+  M.toList . baseInfoMap
+  >>> map (\(k, v) -> (directoryBaseInfoString k, fromDiffList v))
+  >>> V.fromList
+
+pdfVectorFirstOutput :: MonadIO m => PDFVector -> m ()
+pdfVectorFirstOutput pv = do
+  let indexPV = V.indexed pv
+  let tostr (idx, (k, _)) = "(" ++ show idx ++ ")" ++ k
+  forM_ indexPV $ \v -> liftIO $ do
+    putStrLn (tostr v)
     hFlush stdout
-    c <- getLine
-    case c of
-      "n" -> return ()
-      _   ->
-        runConduit $
-          CL.sourceList
-            ((fromDiffList . fromJust) $ info `M.lookup` infoMap)
-          .| pdfSink
+
+pdfOpenFromVector :: MonadIO m => PDFVector -> Int -> m ()
+pdfOpenFromVector pv i = do
+  case pv !? i of
+    Nothing      -> return ()
+    Just (_, xl) -> forM_ xl (liftIO . openPDFFileCommand)
+
+pdfSink2 :: Sink FilePath IO ()
+pdfSink2 = do
+  pdflist <- CL.consume
+  let infoVector = makePDFVector pdflist
+  pdfVectorFirstOutput infoVector
+  range <- liftIO $ getLine
+  case fromRange range of
+    Nothing -> return ()
+    Just xl -> forM_ xl (pdfOpenFromVector infoVector)
+
+pdfSinkSexp :: Sink FilePath IO ()
+pdfSinkSexp = do
+  pdflist <- CL.consume
+  let finalize =
+        baseInfoMap
+        >>> M.toList
+        >>> map (\(k, v) -> directoryBaseInfoList k
+                            ++ fromDiffList v)
+        >>> map (map (\n -> "\"" <> n <> "\""))
+        >>> map (DL.intercalate " ")
+        >>> map (\n -> "(" ++ n ++ ")")
+        >>> DL.zip [0..]
+        >>> map (\(n, s) -> "(" ++ show n ++ " . " ++ s ++ ")")
+  let final = DL.intercalate "\n" $ finalize pdflist
+  liftIO $ writeFile "d:/home/.sexp" $ "(" ++ final ++ ")"
 
 dayFilter :: Day -> Conduit FilePath IO FilePath
 dayFilter pday = do
@@ -365,7 +358,19 @@ openPDFFile pday = do
     pSearchSource topPath
     .| CL.filter (takeExtension >>> (== ".pdf"))
     .| dayFilter pday
-    .| pdfCollectiveSink
+    .| pdfSink2
+
+openPDFFileSexp :: String -> String -> IO ()
+openPDFFileSexp dayString diffDay = do
+  case strdt dayString of
+    Nothing   -> return ()
+    Just pday -> do
+      topPath <- fileTreeDirectory
+      runConduit $
+        pSearchSourceRecently True diffDay topPath
+        .| CL.filter (takeExtension >>> (== ".pdf"))
+        .| dayFilter pday
+        .| pdfSinkSexp
 
 openPDFFileFromString :: String -> IO ()
 openPDFFileFromString dayString = do
@@ -377,3 +382,57 @@ openPDFFileToday :: IO ()
 openPDFFileToday = do
   today' <- todayDay
   openPDFFile today'
+
+hasHyphenParser :: P.Parser [Int]
+hasHyphenParser = do
+  beg <- read <$> P.many1 P.digit <* (P.char '-')
+  end <- read <$> P.many1 P.digit
+  return $ [beg..end]
+
+onlyNumParser :: P.Parser [Int]
+onlyNumParser = do
+  (:[]) <$> read <$> P.many1 P.digit
+
+trimSpace :: P.Parser a -> P.Parser a
+trimSpace p = do
+  let space = P.many (P.char ' ')
+  let maybeSpace = P.optional space
+  P.between maybeSpace maybeSpace p
+
+rangeParse :: P.Parser [Int]
+rangeParse = do
+  let parser =
+        P.try (trimSpace hasHyphenParser)
+        <|> (trimSpace onlyNumParser)
+  let postFunc = DL.sort . DL.nub . mconcat
+  let sep    = P.char ','
+  intList <- P.sepBy1 parser sep
+  return $ postFunc intList
+
+fromRange :: String -> Maybe [Int]
+fromRange target =
+  case P.parse rangeParse "" target of
+    Right x -> Just x
+    Left _  -> Nothing
+
+pSearchSourceRecently ::
+  Bool -> String -> FilePath -> Source IO FilePath
+pSearchSourceRecently flg diffDay fp = do
+  p  <- liftIO $ doesDirectoryExist fp
+  if p
+    then
+    do cond <- liftIO $ pSSRCondition flg fp diffDay
+       if cond
+         then do contents <- liftIO $ listDirectory (fp <> "/")
+                 forM_ contents (pSearchSourceRecently False diffDay)
+         else return ()
+    else yield fp
+
+pSSRCondition ::
+  Bool -> String -> FilePath -> IO Bool
+pSSRCondition flg diffDay fp = do
+  today' <- todayDay
+  mtime  <- utctDay <$> getModificationTime fp
+  case (readMaybe diffDay :: Maybe Integer) of
+    Nothing -> return (flg || True)
+    Just i  -> return (flg || diffDays today' mtime < i)

@@ -11,6 +11,7 @@ import qualified Data.Map.Strict   as M
 import           Data.Conduit
 import qualified Data.Conduit.List as CL
 import           Data.Extensible
+import           Data.Maybe        (isNothing)
 import           Data.Monoid       ((<>))
 import           Data.Text         hiding (foldl', map)
 import qualified Data.Text         as Tx
@@ -162,6 +163,9 @@ type Kumiai = Record
 
 kanaBirthKey :: Kumiai -> (Text, Maybe Day)
 kanaBirthKey k = (killBlanks (k ^. #kana), k ^. #birth)
+
+aliveP :: Kumiai -> Bool
+aliveP k = isNothing $ k ^. #lost
 
 makeKumiai :: [Text] -> Kumiai
 makeKumiai record' = case record' of

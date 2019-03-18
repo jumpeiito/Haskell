@@ -25,14 +25,17 @@ type Conf = Record
    , "hihoSpec"         >: [Text]
    , "kumiaiSpec"       >: [Text]
    , "officeSpec"       >: [Text]
+   , "officeSPSpec"     >: [Text]
    , "kumiaiOfficeSpec" >: [Text]
    , "fileTree"         >: String
    , "kumiaiFile"       >: String
    , "officeFile"       >: String
+   , "officeSPFile"     >: String
    , "kumiaiOfficeFile" >: String
    , "hihoFile"         >: String
    , "kumiaiDB"         >: String
    , "officeDB"         >: String
+   , "officeSPDB"       >: String
    , "kumiaiOfficeDB"   >: String
    , "hihoDB"           >: String
    ]
@@ -53,12 +56,12 @@ sendCSVFileName, fileTreeDirectory :: (MonadCatch m, MonadIO m) => m FilePath
 sendCSVFileName   = (^. #directoryFile) <$> safeReadConf
 fileTreeDirectory = (^. #fileTree) <$> safeReadConf
 
-directorySpecF, hihoSpecF, kumiaiSpecF, officeSpecF, kumiaiOfficeSpecF
-  :: (MonadCatch m, MonadIO m) => m [Text]
+directorySpecF, hihoSpecF, kumiaiSpecF, officeSpecF, kumiaiOfficeSpecF, officeSPSpecF :: (MonadCatch m, MonadIO m) => m [Text]
 directorySpecF    = (^. #directorySpec)    <$> safeReadConf
 hihoSpecF         = (^. #hihoSpec)         <$> safeReadConf
 kumiaiSpecF       = (^. #kumiaiSpec)       <$> safeReadConf
 officeSpecF       = (^. #officeSpec)       <$> safeReadConf
+officeSPSpecF     = (^. #officeSPSpec)     <$> safeReadConf
 kumiaiOfficeSpecF = (^. #kumiaiOfficeSpec) <$> safeReadConf
 
 defaultConf :: Conf
@@ -72,14 +75,17 @@ defaultConf = #directoryFile @= "d:/送信案件一覧.csv"
               <: #hihoSpec         @= []
               <: #kumiaiSpec       @= []
               <: #officeSpec       @= []
+              <: #officeSPSpec     @= []
               <: #kumiaiOfficeSpec @= []
               <: #fileTree         @= "y:/労働保険事務組合/電子申請e-Gov"
               <: #kumiaiFile       @= ""
               <: #officeFile       @= ""
+              <: #officeSPFile     @= ""
               <: #kumiaiOfficeFile @= ""
               <: #hihoFile         @= ""
               <: #kumiaiDB         @= ""
               <: #officeDB         @= ""
+              <: #officeSPDB       @= ""
               <: #kumiaiOfficeDB   @= ""
               <: #hihoDB           @= ""
               <: nil

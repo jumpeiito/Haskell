@@ -27,9 +27,10 @@ import qualified Data.Set                   as S
 import qualified Data.Text                  as Tx
 import           Data.Text                  hiding (foldl', map)
 import qualified Data.Text.IO               as Tx
-import           Data.Time                  (Day (..), fromGregorian)
-import           Data.Time.Calendar         (diffDays)
-import           Match.Base                 (killBlanks)
+import           Data.Time                  ( Day (..)
+                                            , fromGregorian)
+import           Data.Time.Calendar         (diffDays, toGregorian)
+import           Match.Base                 (killBlanks, katakanaP)
 import           Match.SQL
 import qualified System.IO                  as I
 import           Text.Blaze.Renderer.String (renderMarkup)
@@ -39,32 +40,58 @@ import           Util
 import           Util.Strbt                 (strdt, howOld)
 
 type HihoR = Record
-  '[ "name"       >: Text
-   , "kana"       >: Text
-   , "birth"      >: Maybe Day
-   , "rawBirth"   >: Text
-   , "postal"     >: Text
-   , "address"    >: Text
-   , "address1"   >: Text
-   , "address2"   >: Text
-   , "telnum"     >: Text
-   , "number"     >: Text
-   , "got"        >: Maybe Day
-   , "lost"       >: Maybe Day
-   , "alien"      >: Maybe Text
-   , "shibu"      >: Maybe Text
-   , "officeCode" >: Text
-   , "officeName" >: Text
-   , "officeGot"  >: Maybe Day
-   , "officeLost" >: Maybe Day
-   , "payAmount"  >: Maybe Int
-   , "workLong"   >: Maybe (Int, Int)
-   , "payStyle"   >: Text
-   , "country"    >: Maybe Text
-   , "alienReq"   >: Maybe Text
+  '[ "name"        >: Text
+   , "code"        >: Text
+   , "kana"        >: Text
+   , "birth"       >: Maybe Day
+   , "rawBirth"    >: Text
+   , "postal"      >: Text
+   , "address"     >: Text
+   , "address1"    >: Text
+   , "address2"    >: Text
+   , "telnum"      >: Text
+   , "number"      >: Text
+   , "got"         >: Maybe Day
+   , "lost"        >: Maybe Day
+   , "alien"       >: Maybe Text
+   , "shibu"       >: Maybe Text
+   , "officeCode"  >: Text
+   , "officeName"  >: Text
+   , "koyouNumber" >: Text
+   , "officeGot"   >: Maybe Day
+   , "officeLost"  >: Maybe Day
+   , "payAmount"   >: Maybe Int
+   , "workLong"    >: Maybe (Int, Int)
+   , "payStyle"    >: Text
+   , "country"     >: Maybe Text
+   , "alienReq"    >: Maybe Text
    ]
 
 type MaybeIO a = IO (Either String a)
+
+newtype HihoX = IdNumber { runHiho :: HihoR }
+newtype OldHiho = Birthday { runOH :: HihoR }
+
+instance Eq HihoX where
+  x == y = hihoXKey x == hihoXKey y
+
+instance Eq OldHiho where
+  x == y =
+    let birth = runOH >>> (^. #birth)
+    in birth x == birth y
+
+instance Ord HihoX where
+  x `compare` y = hihoXKey x `compare` hihoXKey y
+
+instance Ord OldHiho where
+  x `compare` y =
+    let birth = runOH >>> (^. #birth)
+    in birth x `compare` birth y
+
+hihoXKey :: HihoX -> Text
+hihoXKey hx =
+  let h = runHiho hx
+  in h ^. #officeCode <> h ^. #code
 
 shibuMap :: M.Map Text Text
 shibuMap = M.fromList
@@ -99,67 +126,110 @@ stringMaybe s  = Just s
 
 makeHiho :: [Text] -> HihoR
 makeHiho line' = case line' of
-  [_code, _officename, _name, _kana, _birth, _postal
+  [_code, _hcode, _officename, _name, _kana, _birth, _postal
     , _ad1, _ad2, _telnum, _num, _g, _l, _rnum, _knum
     , _alien, _payA, _workHour, _workMinute, _payS
-    , _alienCountry, _alienRequirement
+    , _alienCountry, _alienRequirement, _kn
     ]
-    -> #name          @= _name
-       <: #kana       @= _kana
-       <: #birth      @= strdt _birth
-       <: #rawBirth   @= _birth
-       <: #postal     @= _postal
-       <: #address    @= _ad1 <> _ad2
-       <: #address1   @= _ad1
-       <: #address2   @= _ad2
-       <: #telnum     @= _telnum
-       <: #number     @= _num
-       <: #got        @= strdt _g
-       <: #lost       @= (if _l == "" then Nothing else strdt _l)
-       <: #alien      @= stringMaybe _alien
-       <: #shibu      @= (Tx.take 5 (Tx.drop 5 _knum) `M.lookup` shibuMap)
-       <: #officeCode @= _code
-       <: #officeName @= _officename
-       <: #officeGot  @= Nothing
-       <: #officeLost @= Nothing
-       <: #payAmount  @= (readMaybe $ unpack _payA)
-       <: #workLong   @= Nothing
-       <: #payStyle   @= payStyleToString _payS
-       <: #country    @= stringMaybe _alienCountry
-       <: #alienReq   @= stringMaybe _alienRequirement
+    -> #name           @= _name
+       <: #code        @= _hcode
+       <: #kana        @= _kana
+       <: #birth       @= strdt _birth
+       <: #rawBirth    @= _birth
+       <: #postal      @= _postal
+       <: #address     @= _ad1 <> _ad2
+       <: #address1    @= _ad1
+       <: #address2    @= _ad2
+       <: #telnum      @= _telnum
+       <: #number      @= _num
+       <: #got         @= strdt _g
+       <: #lost        @= (if _l == "" then Nothing else strdt _l)
+       <: #alien       @= stringMaybe _alien
+       <: #shibu       @= (Tx.take 5 (Tx.drop 5 _knum) `M.lookup` shibuMap)
+       <: #officeCode  @= _code
+       <: #officeName  @= _officename
+       <: #koyouNumber @= _kn
+       <: #officeGot   @= Nothing
+       <: #officeLost  @= Nothing
+       <: #payAmount   @= (readMaybe $ unpack _payA)
+       <: #workLong    @= Nothing
+       <: #payStyle    @= payStyleToString _payS
+       <: #country     @= stringMaybe _alienCountry
+       <: #alienReq    @= stringMaybe _alienRequirement
        <: nil
   _ -> error "must not be happen"
 
 hihoAliveP :: HihoR -> Bool
 hihoAliveP = isNothing . (^. #lost)
 
+--------------------------------------------------
+--- 年度更新用
+--------------------------------------------------
+hihoThisNendoP :: Integer -> HihoR -> Bool
+hihoThisNendoP y h =
+  case h ^. #lost of
+    Nothing -> True
+    Just ld -> fromGregorian y 4 1 <= ld
+
+outputForNendo :: HihoR -> Text
+outputForNendo h =
+  toCSV [ oldYear (h ^. #birth)
+        , h ^. #name
+        , fromDay (h ^. #birth)
+        , fromDay (h ^. #got)
+        , fromDay (h ^. #lost)
+          -- , h ^. #officeCode
+        ]
+  where
+    fromDay d = mempty `fromMaybe` (japaneseStyleDate <$> d)
+    oldYear Nothing = mempty
+    oldYear (Just d) =
+      if (fromGregorian 1954 4 2) > d
+      then "高"
+      else mempty
+
+japaneseStyleDate :: Day -> Text
+japaneseStyleDate d = Tx.pack ds
+  where
+    ds = case toGregorian d of
+           (y, m, d)
+             | y < 1925 -> "T" <> show (y - 1886) <> "." <> show m <> "." <> show d
+             | y < 1989 -> "S" <> show (y - 1925) <> "." <> show m <> "." <> show d
+             | otherwise -> "H" <> show (y - 1988) <> "." <> show m <> "." <> show d
+           _ -> ""
+
 hihoOfficeAliveP :: HihoR -> Bool
 hihoOfficeAliveP = isNothing . (^. #officeLost)
-
-inKatakana :: Char -> Bool
-inKatakana = inClass ['ア'..'ン']
 
 -- (&&) <$> even <*> (>= 4)
 -- -> do e <- even; f <- (>= 4); return (e && f)
 -- -> even >>= \e -> (>= 4) >>= \f -> return (e && f)
 hihoNameUnfinishedP :: HihoR -> Bool
-hihoNameUnfinishedP = (&&) <$> hihoNameKatakanaP <*> hihoAliveP
+hihoNameUnfinishedP = (&&) <$> hihoNameKatakanaP
+                           <*> hihoAliveP
 
 hihoNameKatakanaP :: HihoR -> Bool
 hihoNameKatakanaP h =
-  let parser = (many1 $ satisfy inKatakana)
-  in let answer = parser `parseOnly` (h ^. #name)
-  in (isRight answer && (isNothing $ h ^. #alien))
+  -- let parser = (many1 $ satisfy inKatakana)
+  -- in let answer = parser `parseOnly` (h ^. #name)
+  -- in (isRight answer && (isNothing $ h ^. #alien))
+  katakanaP (h ^. #name) && (isNothing $ h ^. #alien)
 
 hihoAddressBlankP :: HihoR -> Bool
 hihoAddressBlankP =
-  (&&) <$> ((^. #lost) >>> isNothing) <*> ((^. #address) >>> (== ""))
+  (&&) <$> ((^. #lost) >>> isNothing)
+       <*> ((^. #address) >>> (== ""))
 
 instance Sourceable HihoR where
   source = SQLSource { specGetter    = #hihoSpec
                      , csvPathGetter = #hihoFile
                      , dbPathGetter  = #hihoDB
                      , makeFunction  = makeHiho }
+
+birthMap :: IO (M.Map (Maybe Day) [HihoR])
+birthMap = do
+  initializeList ===>
+    Key (^. #birth) `MakeListMap` Value id
 
 kanaBirthMap :: IO (M.Map (Text, Maybe Day) [HihoR])
 kanaBirthMap = do
@@ -184,6 +254,22 @@ numberCMap = do
          $$ CL.consume
   return $ M.fromList gen
 
+officeCodeCMap :: IO (M.Map Text [HihoR])
+officeCodeCMap = do
+  let insert mp el =
+        M.insertWith (++) (el ^. #officeCode) [el] mp
+  initializeSource
+    $= CL.filter (hihoThisNendoP 2018)
+    $$ CL.fold insert M.empty
+
+koyouNumberCMap :: IO (M.Map Text [HihoR])
+koyouNumberCMap = do
+  let insert mp el =
+        M.insertWith (++) (el ^. #koyouNumber) [el] mp
+  initializeSource
+    $= CL.filter (hihoThisNendoP 2018)
+    $$ CL.fold insert M.empty
+
 howLongD :: HihoR -> Maybe Integer
 howLongD h =
   let thisDay = fromGregorian 2019 2 5
@@ -207,6 +293,7 @@ payStyleToString s =
 hihoOutput :: HihoR -> Tx.Text
 hihoOutput h =
   let s = maybeS $ h ^. #shibu
+  in let n = h ^. #name
   in let thisDay = fromGregorian 2019 2 6
   in let o  = h ^. #officeName
   in let c  = maybeS $ h ^. #country
@@ -217,7 +304,7 @@ hihoOutput h =
   in let hh = maybeS (xShow <$> ho)
   in let g  = maybeS (xShow <$> (h ^. #got))
   in let l  = maybeS (xShow <$> (h ^. #lost))
-  in Tx.intercalate "," [s, o, hh, c, y, p, a, g, l]
+  in toCSV [s, n, o, hh, c, y, p, a, g, l]
 
 type Calcurate a = ReaderT Bool IO a
 type HihoRList a = [(Maybe a, [HihoR])]

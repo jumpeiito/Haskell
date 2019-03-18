@@ -127,6 +127,16 @@ executables:
     - -optl-static
     dependencies:
     - Match
+  PDFSexp:
+    main:                Main.hs
+    source-dirs:
+    - app/PDFSexp
+    ghc-options:
+    - -O3
+    - -static
+    - -optl-static
+    dependencies:
+    - Match
    
 tests:
   # Match-test:

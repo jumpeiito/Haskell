@@ -1,4 +1,8 @@
-{-# LANGUAGE GADTs, RankNTypes, FlexibleContexts, FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Util where
 
 import           Control.Arrow
@@ -6,6 +10,7 @@ import           Control.Parallel.Strategies (parMap, rseq)
 import           Data.Conduit
 import qualified Data.Conduit.List           as CL
 import           Data.List
+import           Data.String
 import           Data.IORef
 import           Data.Maybe
 import qualified Data.Set                    as S
@@ -685,3 +690,17 @@ mm = Key (`mod` 3) `MakeMonoidMap` Value (Sum)
 
 mm2 :: MakeMap Integer Integer (V.Vector Integer)
 mm2 = Key (`mod` 3) `MakeMonoidMap` Value V.singleton
+
+class IsString a => ToCSV a where
+  concatenate :: a -> [a] -> a
+  _separator :: a
+  toCSV :: [a] -> a
+
+  _separator = ","
+  toCSV = concatenate _separator
+
+instance ToCSV String where
+  concatenate = intercalate
+
+instance ToCSV Tx.Text where
+  concatenate = Tx.intercalate

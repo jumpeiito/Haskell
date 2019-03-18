@@ -14,12 +14,14 @@ module Match.Base ( Office
                   , toCode
                   , toShibu
                   , killStringsAll
+                  , katakanaP
                   ) where
 
 import           Control.Applicative
 import           Data.Extensible
 import           Data.Attoparsec.Text
 import qualified Data.Attoparsec.Text as Atp
+import           Data.Either          (isRight)
 import qualified Data.Map.Strict      as M
 import           Data.Maybe           (fromMaybe)
 import           Data.Text            (Text)
@@ -45,6 +47,10 @@ type Office = Record
    , "rosaiCode"   >: Text
    , "rosaiNumber" >: Text
    , "koyouNumber" >: Text
+   , "salaryEnd"   >: Text
+   , "salaryPayM"  >: Text
+   , "salaryPay"   >: Text
+   , "hellowork"   >: Text
    ]
 
 data BaseInfo =
@@ -240,3 +246,12 @@ _toCode s = s `M.lookup` shibuCodeMap
 toShibu :: Int -> Maybe String
 toShibu i | i == 12 = Just "京都中央"
           | otherwise = i `M.lookup` codeShibuMap
+
+inKatakana :: Char -> Bool
+inKatakana = inClass ['ア'..'ン']
+
+katakanaP :: Text -> Bool
+katakanaP s = isRight parseResult
+  where
+    parseResult =
+      many1 (satisfy inKatakana) `parseOnly` s

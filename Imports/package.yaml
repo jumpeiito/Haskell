@@ -42,6 +42,7 @@ executables:
     dependencies:
     - Imports
     - optparse-simple
+    - Util
 
     ghc-options:
     - -threaded

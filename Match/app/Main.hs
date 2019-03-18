@@ -4,10 +4,12 @@
 module Main where
 
 import           Control.Arrow ((>>>), (&&&))
+import           Control.Applicative ((<|>))
 import           Control.Lens
-import           Control.Monad             (when, guard)
+import           Control.Monad             (when, guard, forM_ )
 import           Control.Monad.Except      (ExceptT, runExceptT, liftIO)
-import           Data.List                 (sortBy)
+import           Data.List                 (sortBy, sort)
+import           Data.List.Split           (chunksOf)
 import           Data.Ord                  (comparing)
 import           Data.Conduit              (Source
                                            , Conduit
@@ -33,9 +35,11 @@ import qualified Match.Hiho                as H
 import qualified Match.Kumiai              as K
 import qualified Match.KumiaiOffice        as KO
 import qualified Match.Office              as O
+import qualified Match.OfficeSP            as OSP
 import qualified Match.SQL                 as S
 import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
+import           Util                      (toCSV)
 
 makeKey :: K.Kumiai -> Text
 makeKey = Tx.take 6 . B.makeKey 7 . (^. #number)
@@ -57,6 +61,103 @@ run = (>> return ()) . runExceptT
 -- data Target = Target Filtering [K.Kumiai]
 
 -- data Filtering = undefined
+test :: IO ()
+test = do
+  I.hSetEncoding I.stdout I.utf8
+
+  -- 事業所番号にひもづけられた被保険者情報
+  om <- H.officeCodeCMap
+  -- 委託解除日の情報を取得するために、
+  -- 労働保険番号にひもづけられた事業所情報(2)
+  -- 事業所番号にしてしまうと、労働保険が複数ある場合に
+  -- うまく機能しないようだ。
+  cm <- OSP.rosaiNumberCMap
+
+  -- ベースになるのは事業所情報(1)
+  officeList <- (S.initializeSource :: Source IO B.Office)
+                $$ CL.consume
+
+  let officeListSource =
+        -- 事業所を基幹番号＋適用コード＋枝番号の順番に並びかえる。
+        CL.sourceList (comparing O.KikanBango `sortBy` officeList)
+        -- 適用コードが"0"または"2"のものだけ抽出する
+        $= CL.filter O.koyoP
+
+  let mainSink =
+        CL.mapM_ $ \o -> liftIO $ do
+          let osp   = O.rosaiNumberKey o `M.lookup` cm
+          -- 委託解除日の情報
+          let lost  = Tx.pack . show <$> ((^. #lost) =<< osp)
+          -- 事業所が府外のハローワーク管轄の場合だけ、
+          -- ハローワーク名を出力する。
+          let hwork = O.helloworkForNendo o
+          -- 委託解除されている場合は、委託解除日を出力。
+          -- 委託解除されておらず、府外の場合、ハローワーク名を出力
+          -- 上記以外の事業所は空欄を出力する。
+          let header = mempty `fromMaybe` (lost <|> Just hwork)
+          let officePart = header <> "," <> O.outputForNendo o
+          case (o ^. #code) `M.lookup` om of
+            Nothing -> do
+              Tx.putStrLn $ officePart
+            Just x  -> do
+              -- 該当の事業所番号にひもづけられた被保険者を個人番号
+              -- の順番に並びかえる。
+              let hiho   = comparing H.IdNumber `sortBy` x
+              let sorted = map H.outputForNendo hiho
+              -- 被保険者10名ずつ1行に出力する。
+              -- 具体的には、
+              -- (事業所情報) + (被保険者1番〜10番)
+              -- (事業所情報) + (被保険者11番〜20番)
+              -- (事業所情報) + (被保険者21番〜30番) …
+              -- 上記において、事業所情報は全て同じである。
+              forM_ (chunksOf 10 sorted) $ \hihoUnit -> do
+                Tx.putStrLn $ officePart <> "," <> toCSV hihoUnit
+
+  officeListSource
+    $$ mainSink
+
+test2 :: IO ()
+test2 = do
+  I.hSetEncoding I.stdout I.utf8
+  hihoList <- (S.initializeSource :: Source IO H.HihoR)
+              $$ CL.consume
+
+  CL.sourceList (comparing H.Birthday `sortBy` hihoList)
+    $= CL.filter (H.hihoThisNendoP 2018)
+    $$ CL.mapM_ (H.outputForNendo >>> Tx.putStrLn)
+
+test3 :: IO ()
+test3 = do
+  I.hSetEncoding I.stdout I.utf8
+  -- 事業所番号にひもづけられた被保険者情報
+  om <- H.koyouNumberCMap
+
+  officeList <- (S.initializeSource :: Source IO OSP.OfficeSP)
+                $$ CL.consume
+
+  let mainSink =
+        CL.mapM_ $ \o -> liftIO $ do
+          let officePart = OSP.outputForNendo o
+          case (o ^. #koyouNumber) `M.lookup` om of
+            Nothing -> do
+              Tx.putStrLn $ officePart
+            Just x  -> do
+              -- 該当の事業所番号にひもづけられた被保険者を個人番号
+              -- の順番に並びかえる。
+              let hiho   = comparing H.IdNumber `sortBy` x
+              let sorted = map H.outputForNendo hiho
+              -- 被保険者10名ずつ1行に出力する。
+              -- 具体的には、
+              -- (事業所情報) + (被保険者1番〜10番)
+              -- (事業所情報) + (被保険者11番〜20番)
+              -- (事業所情報) + (被保険者21番〜30番) …
+              -- 上記において、事業所情報は全て同じである。
+              forM_ (chunksOf 10 sorted) $ \hihoUnit -> do
+                Tx.putStrLn $ officePart <> "," <> toCSV hihoUnit
+
+  CL.sourceList (comparing OSP.KikanBango `sortBy` officeList)
+    $= CL.filter OSP.koyoP
+    $$ mainSink
 ----------------------------------------------------------------------
 jigyosyoMatchUp :: IO ()
 jigyosyoMatchUp = do
