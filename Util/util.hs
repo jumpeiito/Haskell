@@ -14,9 +14,6 @@ import           Data.String
 import           Data.IORef
 import           Data.Maybe
 import qualified Data.Set                    as S
-import           Data.String                 (IsString
-                                             , fromString)
-import qualified Data.Vector                 as V
 import           Control.Exception           hiding (try)
 import           Control.Monad
 import           Control.Monad.Writer
@@ -685,11 +682,11 @@ infixl 9 <<>>
 (<@@>) = MakeListMap
 infixl 9 <@@>
 
-mm :: MakeMap Integer Integer (Sum Integer)
-mm = Key (`mod` 3) `MakeMonoidMap` Value (Sum)
+-- mm :: MakeMap Integer Integer (Sum Integer)
+-- mm = Key (`mod` 3) `MakeMonoidMap` Value (Sum)
 
-mm2 :: MakeMap Integer Integer (V.Vector Integer)
-mm2 = Key (`mod` 3) `MakeMonoidMap` Value V.singleton
+-- mm2 :: MakeMap Integer Integer (V.Vector Integer)
+-- mm2 = Key (`mod` 3) `MakeMonoidMap` Value V.singleton
 
 class IsString a => ToCSV a where
   concatenate :: a -> [a] -> a

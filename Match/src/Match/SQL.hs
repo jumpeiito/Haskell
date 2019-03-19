@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE TemplateHaskell            #-}
 module Match.SQL
   (fetchSQLSource
@@ -28,6 +29,12 @@ import           Match.CSV               (parseCSV, Spec)
 import           System.Directory        ( doesFileExist
                                          , getModificationTime
                                          , removeFile)
+import           Match.Base
+import           Match.Hiho
+import           Match.Office
+import           Match.OfficeSP
+import           Match.Kumiai
+import           Match.KumiaiOffice
 
 type ReadCSV = Either String [[Text]]
 
@@ -121,3 +128,33 @@ class Sourceable a where
     return $ src $= CL.map maker
 
   initializeList = runConduit (initializeSource .| CL.consume)
+
+instance Sourceable HihoR where
+  source = SQLSource { specGetter    = #hihoSpec
+                     , csvPathGetter = #hihoFile
+                     , dbPathGetter  = #hihoDB
+                     , makeFunction  = makeHiho }
+
+instance Sourceable Office where
+  source = SQLSource { specGetter    = #officeSpec
+                     , csvPathGetter = #officeFile
+                     , dbPathGetter  = #officeDB
+                     , makeFunction  = makeOffice }
+
+instance Sourceable OfficeSP where
+  source = SQLSource { specGetter    = #officeSPSpec
+                     , csvPathGetter = #officeSPFile
+                     , dbPathGetter  = #officeSPDB
+                     , makeFunction  = makeOfficeSP }
+
+instance Sourceable Kumiai where
+  source = SQLSource { specGetter    = #kumiaiSpec
+                     , csvPathGetter = #kumiaiFile
+                     , dbPathGetter  = #kumiaiDB
+                     , makeFunction  = makeKumiai }
+
+instance Sourceable KumiaiOffice where
+  source = SQLSource { specGetter    = #kumiaiOfficeSpec
+                     , csvPathGetter = #kumiaiOfficeFile
+                     , dbPathGetter  = #kumiaiOfficeDB
+                     , makeFunction  = makeKumiaiOffice }

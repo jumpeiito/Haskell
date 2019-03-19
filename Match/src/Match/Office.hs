@@ -1,27 +1,16 @@
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE GADTs  #-}
 {-# LANGUAGE TypeFamilies  #-}
 module Match.Office where
 
-import           Control.Arrow
 import           Control.Lens
-import           Data.Conduit
-import qualified Data.Conduit.List      as CL
 import           Data.Attoparsec.Text
 import           Data.Extensible
-import qualified Data.Map.Strict        as M
 import           Data.Maybe             (fromMaybe)
 import           Data.Monoid            ((<>))
 import           Data.Text              hiding (map, count)
 import qualified Data.Text              as Tx
 import qualified Data.Text.Lazy.Builder as BB
-import           Match.SQL
 import           Match.Base             (Office
-                                        , killBlanks
-                                        , killHyphen
-                                        , makeKey
                                         , toShibu
                                         , officeTypeRegularize)
 import           Util
@@ -76,12 +65,6 @@ salaryMonth "1" = "当月"
 salaryMonth "2" = "翌月"
 salaryMonth _   = ""
 
-instance Sourceable Office where
-  source = SQLSource { specGetter    = #officeSpec
-                     , csvPathGetter = #officeFile
-                     , dbPathGetter  = #officeDB
-                     , makeFunction  = makeOffice }
-
 newtype OfficeX = KikanBango { runOffice :: Office }
 
 instance Eq OfficeX where
@@ -89,7 +72,6 @@ instance Eq OfficeX where
 
 instance Ord OfficeX where
   x `compare` y =
-    -- makeOfficeXKey x `compare` makeOfficeXKey y
     let toKikan o =
           mempty `fromMaybe` toKikanBango (o ^. #shibu)
     in let edaban o =
@@ -111,14 +93,6 @@ makeOfficeXKey ox =
     mempty `fromMaybe` toKikanBango (o ^. #shibu)
     <> o ^. #rosaiCode
 
-makeMapFunc :: (Office -> (Text, Office)) -> IO (M.Map Text Office)
-makeMapFunc f = M.fromList <$> (initializeSource =$ CL.map f $$ CL.consume)
-
-numberMap, telMap, posMap, nameMap :: IO (M.Map Text Office)
-numberMap = makeMapFunc (\n -> (makeKey 6 $ n ^. #code, n))
-telMap    = makeMapFunc ((killHyphen . (^. #tel)) &&& id)
-posMap    = makeMapFunc ((killHyphen . (^. #postal)) &&& id)
-nameMap   = makeMapFunc ((^. #name) &&& id)
 
 numberInfixAddressP :: Office -> Bool
 numberInfixAddressP o =

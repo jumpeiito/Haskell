@@ -1,30 +1,18 @@
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances  #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE GADTs  #-}
-{-# LANGUAGE TypeFamilies  #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies     #-}
 module Match.OfficeSP where
 
 import           Control.Applicative        ((<|>))
-import           Control.Arrow              ((>>>))
 import           Control.Lens
 import           Data.Attoparsec.Text
-import           Data.Conduit
-import           Data.Ord
 import           Data.Maybe                 (fromMaybe)
-import qualified Data.Conduit.List          as CL
 import qualified Data.Text                  as Tx
 import           Data.Text                  hiding (foldl', map, count)
-import qualified Data.Text.IO               as Tx
 import           Data.Extensible
 import           Data.Monoid
 import           Data.Time                  ( Day (..))
-import           Data.List                  (sortBy)
-import qualified Data.Map.Strict            as M
-import           Match.SQL
 import           Util
 import           Util.Strbt                 (strdt)
-import qualified System.IO                 as I
 
 type OfficeSP = Record
   '[ "code"      >: Text
@@ -95,19 +83,14 @@ makeOfficeSP line' = case line' of
       <: nil
   _ -> error "must not be happen."
 
-instance Sourceable OfficeSP where
-  source = SQLSource { specGetter    = #officeSPSpec
-                     , csvPathGetter = #officeSPFile
-                     , dbPathGetter  = #officeSPDB
-                     , makeFunction  = makeOfficeSP }
-
 kikanBango :: OfficeSP -> Text
 kikanBango o =
   Tx.take 5 $ takeEnd 6 $ o ^. #groupid
 
 salaryDay :: Text -> Text
 salaryDay "31" = "末"
-salaryDay s = s
+salaryDay "0"  = ""
+salaryDay s    = s
 
 salaryMonth :: Text -> Text
 salaryMonth "1" = "当月"
@@ -155,22 +138,6 @@ rosaiNumberKey o =
 lostDayString :: OfficeSP -> Maybe Text
 lostDayString o = Tx.pack . show <$> o ^. #lost
 
-codeCMap :: IO (M.Map Text OfficeSP)
-codeCMap = do
-  let xl = initializeSource
-           $= CL.filter koyoP
-           $$ CL.consume
-  xl ===>
-    Key (^. #code) `MakeSingletonMap` Value id
-
-rosaiNumberCMap :: IO (M.Map Text OfficeSP)
-rosaiNumberCMap = do
-  let xl = initializeSource
-           $= CL.filter koyoP
-           $$ CL.consume
-  xl ===>
-    Key rosaiNumberKey `MakeSingletonMap` Value id
-
 helloworkForNendo :: OfficeSP -> Maybe Text
 helloworkForNendo o =
   if (outofP o)
@@ -187,6 +154,7 @@ outputForNendo o = toCSV txs
     txs = [ headerForNendo o
           , o ^. #shibu
           , o ^. #shibuName
+          , toHelloWorkNumber (takeEnd 2 $ o ^. #shibu)
           , kikanBango o
           , o ^. #otype
           , o ^. #id
@@ -197,12 +165,32 @@ outputForNendo o = toCSV txs
           , o ^. #payM <> o ^. #payDay
           ]
 
-test = do
-  I.hSetEncoding I.stdout I.utf8
+toHelloWork :: Text -> Maybe (Text, Text)
+toHelloWork "10" = Just ("01", "西陣")
+toHelloWork "11" = Just ("01", "西陣")
+toHelloWork "12" = Just ("01", "西陣")
+toHelloWork "13" = Just ("02", "七条")
+toHelloWork "14" = Just ("02", "七条")
+toHelloWork "15" = Just ("01", "西陣")
+toHelloWork "16" = Just ("02", "七条")
+toHelloWork "17" = Just ("02", "七条")
+toHelloWork "18" = Just ("01", "西陣")
+toHelloWork "19" = Just ("01", "西陣")
+toHelloWork "20" = Just ("03", "伏見")
+toHelloWork "21" = Just ("03", "伏見")
+toHelloWork "50" = Just ("02", "七条")
+toHelloWork "51" = Just ("08", "宇治")
+toHelloWork "53" = Just ("01", "西陣")
+toHelloWork "54" = Just ("01", "西陣")
+toHelloWork "56" = Just ("05", "綾部")
+toHelloWork "57" = Just ("05", "福知山")
+toHelloWork "58" = Just ("06", "舞鶴")
+toHelloWork "59" = Just ("07", "宮津")
+toHelloWork "60" = Just ("07", "峰山")
+toHelloWork "61" = Just ("04", "木津")
+toHelloWork "62" = Just ("08", "宇治")
+toHelloWork "63" = Just ("04", "京都田辺")
+toHelloWork _ = Nothing
 
-  source <- (initializeSource :: Source IO OfficeSP)
-            $$ CL.consume
-
-  CL.sourceList (comparing KikanBango `sortBy` source)
-   $= CL.filter koyoP
-   $$ CL.mapM_ (Tx.putStrLn . outputForNendo)
+toHelloWorkNumber :: Text -> Text
+toHelloWorkNumber s = mempty `fromMaybe` (fst <$> toHelloWork s)

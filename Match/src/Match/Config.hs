@@ -9,6 +9,7 @@ module Match.Config
   , hihoSpecF
   , kumiaiSpecF
   , officeSpecF
+  , officeSPSpecF
   , kumiaiOfficeSpecF)
 where
 

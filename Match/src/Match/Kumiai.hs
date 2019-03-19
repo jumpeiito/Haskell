@@ -1,29 +1,19 @@
 -- -*- coding: utf-8 -*-
-{-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 module Match.Kumiai where
 
-import           Control.Arrow     ((&&&))
 import           Control.Lens      ((^.))
-import qualified Data.Map.Strict   as M
-import           Data.Conduit
-import qualified Data.Conduit.List as CL
 import           Data.Extensible
 import           Data.Maybe        (isNothing)
 import           Data.Monoid       ((<>))
 import           Data.Text         hiding (foldl', map)
 import qualified Data.Text         as Tx
 import           Data.Time         (Day (..))
-import           Match.SQL
 import           Match.Base        (killBlanks, killBunkai
                                    , killShibu, makeKey
                                    , officeTypeRegularize
                                    , regularize)
 import           Text.Read         (readMaybe)
 import           Util.Strbt        (strdt)
-import           Util
 
 type MaybeIO a = IO (Either String a)
 
@@ -243,65 +233,14 @@ blankMaybe :: Text -> Maybe Text
 blankMaybe "" = Nothing
 blankMaybe x  = Just x
 
-instance Sourceable Kumiai where
-  source = SQLSource { specGetter    = #kumiaiSpec
-                     , csvPathGetter = #kumiaiFile
-                     , dbPathGetter  = #kumiaiDB
-                     , makeFunction  = makeKumiai }
-
 -- |
 --
 -- >>> Tx.unpack $ kumiaiMakeKey (Tx.pack "1234")
 -- "000123"
 -- >>> Tx.unpack $ kumiaiMakeKey (Tx.pack "1234567")
 -- "123456"
-kumiaiMakeKey :: Text -> Text
-kumiaiMakeKey = Tx.take 6 . makeKey 7
-
-numberMap :: IO (M.Map Text Kumiai)
-numberMap = do
-  let k = kumiaiMakeKey . (^. #number)
-  initializeList ===> Key k `MakeSingletonMap` Value id
-
-birthdayMap :: IO (M.Map (Maybe Day) [Kumiai])
-birthdayMap = do
-  initializeList ===>
-    Key (^. #birth) `MakeListMap` Value id
-
-birthdayNameMap :: IO (M.Map (Text, Maybe Day) [Kumiai])
-birthdayNameMap = do
-  let toKey el = (killBlanks $ el ^. #kana, el ^. #birth)
-  initializeList ===>
-    Key toKey `MakeListMap` Value id
-
-numberCMap :: IO (M.Map Text Kumiai)
-numberCMap = M.fromList <$>
-             (initializeSource
-              =$ CL.map ((kumiaiMakeKey . (^. #number)) &&& id)
-              $$ CL.consume)
-
-birthdayCMap :: IO (M.Map (Maybe Day) [Kumiai])
-birthdayCMap = do
-  let insert mp el =
-        M.insertWith (++) (el ^. #birth) [el] mp
-  initializeSource $$ CL.fold insert M.empty
-
-birthdayNameCMap :: IO (M.Map (Text, Maybe Day) [Kumiai])
-birthdayNameCMap = do
-  let insert mp el =
-        let b = el ^. #birth
-        in let k = killBlanks $ el ^. #kana
-        in M.insertWith (++) (k, b) [el] mp
-  initializeSource $$ CL.fold insert M.empty
-
-officeCodeMap :: IO (M.Map Text [Kumiai])
-officeCodeMap = do
-  ls <- runConduit
-        $ initializeSource
-        .| CL.consume
-  let rize = Tx.justifyRight 7 '0'
-  return $
-    ls ==> Key (rize . (^. #officeCode)) `MakeListMap` Value id
+-- kumiaiMakeKey :: Text -> Text
+-- kumiaiMakeKey = Tx.take 6 . makeKey 7
 
 verboseName :: Kumiai -> Text
 verboseName k = k ^. #name <> "(" <> k ^. #kana <> ")"

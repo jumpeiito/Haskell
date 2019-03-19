@@ -1,8 +1,10 @@
 module Util.ZenkakuHankaku where
 
+import Control.Applicative
 import Data.Maybe               (fromMaybe)
 import Test.Hspec
 import qualified Data.Map as M
+import qualified System.IO                 as I
 ----------------------------------------------------------------------------------------------------
 withReverse :: (String -> String) -> String -> String
 withReverse f = reverse . f . reverse
@@ -18,6 +20,7 @@ preKana   = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆ�
 postKana  = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンァィゥェォッャュョ"
 -- preKana2  = "ｶﾞｷﾞｸﾞｹﾞｺﾞｻﾞｼﾞｽﾞｾﾞｿﾞﾀﾞﾁﾞﾂﾞﾃﾞﾄﾞﾊﾞﾋﾞﾌﾞﾍﾞﾎﾞﾊﾟﾋﾟﾌﾟﾍﾟﾎﾟｳﾞ"
 -- postKana2 = "ガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポヴ"
+
 kanaMap, kanaMap2 :: M.Map Char [Char]
 kanaMap = M.fromList [ ('ｶ', "ガ")
                      , ('ｷ', "ギ")
@@ -42,12 +45,43 @@ kanaMap = M.fromList [ ('ｶ', "ガ")
                      , ('ｳ', "ヴ")
                      ]
 
+kanaVerseMap :: M.Map Char Char
+kanaVerseMap = M.fromList [ ('ガ', 'ｶ')
+                          , ('ギ', 'ｷ')
+                          , ('グ', 'ｸ')
+                          , ('ゲ', 'ｹ')
+                          , ('ゴ', 'ｺ')
+                          , ('ザ', 'ｻ')
+                          , ('ジ', 'ｼ')
+                          , ('ズ', 'ｽ')
+                          , ('ゼ', 'ｾ')
+                          , ('ゾ', 'ｿ')
+                          , ('ダ', 'ﾀ')
+                          , ('ヂ', 'ﾁ')
+                          , ('ヅ', 'ﾂ')
+                          , ('デ', 'ﾃ')
+                          , ('ド', 'ﾄ')
+                          , ('バ', 'ﾊ')
+                          , ('ビ', 'ﾋ')
+                          , ('ブ', 'ﾌ')
+                          , ('ベ', 'ﾍ')
+                          , ('ボ', 'ﾎ')
+                          , ('ヴ', 'ｳ')]
+
 kanaMap2 = M.fromList [ ('ﾊ', "パ")
                       , ('ﾋ', "ピ")
                       , ('ﾌ', "プ")
                       , ('ﾍ', "ペ")
                       , ('ﾎ', "ポ")
                       ]
+
+kanaVerseMap2 :: M.Map Char Char
+kanaVerseMap2 = M.fromList [ ('パ', 'ﾊ')
+                           , ('ピ', 'ﾋ')
+                           , ('プ', 'ﾌ')
+                           , ('ペ', 'ﾍ')
+                           , ('ポ', 'ﾎ')
+                           ]
 ----------------------------------------------------------------------------------------------------
 preStr    = concat [preAlnum, preKigou, preKana]
 postStr   = concat [postAlnum, postKigou, postKana]
@@ -69,7 +103,13 @@ _toZenkaku (x:y:xs)
     fromMaybe x (M.lookup x charMap) : _toZenkaku (y:xs)
 
 toHankaku "" = ""
-toHankaku (x:xs) = fromMaybe x (M.lookup x charVerseMap) : toHankaku xs
+-- toHankaku (x:xs) = fromMaybe x (M.lookup x charVerseMap) : toHankaku xs
+toHankaku (x:xs) = headString ++ toHankaku xs
+  where
+    headString = ((:[]) x) `fromMaybe`
+                   ((:[]) <$> x `M.lookup` charVerseMap
+                    <|> (: ['ﾞ']) <$> x `M.lookup` kanaVerseMap
+                    <|> (: ['ﾟ']) <$> x `M.lookup` kanaVerseMap2)
 ----------------------------------------------------------------------------------------------------
 toZenkakuSpec :: Spec
 toZenkakuSpec = do
@@ -112,3 +152,9 @@ toHankakuSpec = do
     it "17" $ toHankaku ""                     `shouldBe` ""
     it "18" $ toHankaku "　"                   `shouldBe` " "    
 
+test :: IO ()
+test = do
+  I.hSetEncoding I.stdout I.utf8
+
+  I.putStrLn $ toHankaku "アーキテクチャ"
+  I.putStrLn $ (:[]) $ 'ガ'

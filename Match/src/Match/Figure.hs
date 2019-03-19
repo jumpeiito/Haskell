@@ -1,9 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
 module Match.Figure where
 
 import           Control.Lens
@@ -11,7 +5,6 @@ import           Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
 import qualified Match.Base                as B
 import qualified Match.Hiho                as H
 import qualified Match.Kumiai              as K
--- import           Data.Extensible
 import           Data.Ord                  (comparing)
 import           Data.Foldable             (forM_)
 import           Data.Maybe                (fromMaybe, fromJust)
@@ -126,6 +119,8 @@ instance FigureSorter FigureSorterBY where toFigure = runFigureBY
 -- toKumiai (FSB f _) = fromJust $ runKumiai f
 -- compareWithKumiai :: FigureSorter a => Ord b
 --   => K.Kumiai -> b -> (a -> a -> Ordering)
+compareWithKumiai ::
+  (FigureSorter a, Ord a1) => (K.Kumiai -> a1) -> a -> a -> Ordering
 compareWithKumiai f = comparing (f . toKumiai)
 
 directionToSorter :: FigureSorter a => Direction -> (a -> a -> Ordering)
