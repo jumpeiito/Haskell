@@ -11,24 +11,33 @@ module Match.Hiho
   , hihoAliveP
   , hihoOfficeAliveP
   , makeHiho
+  , alienFilterConduit
+  , textConduit
   )
 where
 
 import           Control.Arrow              ((>>>))
 import           Control.Lens
 import           Data.Extensible
+import           Data.Conduit
+import qualified Data.Conduit.List          as CL
 import qualified Data.Map.Strict            as M
-import           Data.Maybe                 (isNothing, fromMaybe)
+import           Data.Maybe                 ( isNothing
+                                            , isJust
+                                            , fromMaybe)
 import           Data.Monoid                ((<>))
+import qualified Data.Set                   as S
 import qualified Data.Text                  as Tx
 import           Data.Text                  hiding (foldl', map)
 import           Data.Time                  ( Day (..)
-                                            , fromGregorian)
+                                            , fromGregorian
+                                            , diffDays)
 import           Data.Time.Calendar         (toGregorian)
-import           Match.Base                 (katakanaP)
+import           Match.Base                 ( katakanaP
+                                            , dateToS)
 import           Text.Read                  (readMaybe)
 import           Util
-import           Util.Strbt                 (strdt)
+import           Util.Strbt                 (strdt, howOld)
 import           Util.ZenkakuHankaku
 
 type HihoR = Record
@@ -168,7 +177,6 @@ outputForNendo y h =
         , fromDay (h ^. #birth)
         , fromDay (h ^. #got)
         , fromDay (h ^. #lost)
-          -- , h ^. #officeCode
         ]
   where
     fromDay d = mempty `fromMaybe` (japaneseStyleDate <$> d)
@@ -183,8 +191,8 @@ japaneseStyleDate d = Tx.pack ds
   where
     ds = case toGregorian d of
            (y, m, dy)
-             | y < 1925 -> "T" <> show (y - 1886) <> "." <> show m <> "." <> show dy
-             | y < 1989 -> "S" <> show (y - 1925) <> "." <> show m <> "." <> show dy
+             | y < 1925  -> "T" <> show (y - 1886) <> "." <> show m <> "." <> show dy
+             | y < 1989  -> "S" <> show (y - 1925) <> "." <> show m <> "." <> show dy
              | otherwise -> "H" <> show (y - 1988) <> "." <> show m <> "." <> show dy
 
 hihoOfficeAliveP :: HihoR -> Bool
@@ -198,13 +206,16 @@ hihoNameUnfinishedP = (&&) <$> hihoNameKatakanaP
                            <*> hihoAliveP
 
 hihoNameKatakanaP :: HihoR -> Bool
-hihoNameKatakanaP h =
-  katakanaP (h ^. #name) && (isNothing $ h ^. #alien)
+hihoNameKatakanaP = (&&) <$> nameKatakana <*> notAlien
+  where
+    nameKatakana = (^. #name)  >>> katakanaP
+    notAlien     = (^. #alien) >>> isNothing
 
 hihoAddressBlankP :: HihoR -> Bool
-hihoAddressBlankP =
-  (&&) <$> ((^. #lost) >>> isNothing)
-       <*> ((^. #address) >>> (== ""))
+hihoAddressBlankP = (&&) <$> notLost <*> addressBlank
+  where
+    notLost      = (^. #lost) >>> isNothing
+    addressBlank = (^. #address) >>> (== "")
 
 payStyleToString :: Tx.Text -> Tx.Text
 payStyleToString s =
@@ -215,21 +226,34 @@ payStyleToString s =
     "4" -> "時給"
     _   -> "不明"
 
--- hihoOutput :: HihoR -> Tx.Text
--- hihoOutput h =
---   let s = maybeS $ h ^. #shibu
---   in let n = h ^. #name
---   in let thisDay = fromGregorian 2019 2 6
---   in let o  = h ^. #officeName
---   in let c  = maybeS $ h ^. #country
---   in let y  = maybeS $ xShow <$> howLongY h
---   in let p  = h ^. #payStyle
---   in let a  = maybeS (xShow <$> h ^. #payAmount)
---   in let ho = flip howOld thisDay <$> h ^. #birth
---   in let hh = maybeS (xShow <$> ho)
---   in let g  = maybeS (xShow <$> (h ^. #got))
---   in let l  = maybeS (xShow <$> (h ^. #lost))
---   in toCSV [s, n, o, hh, c, y, p, a, g, l]
+howLongD :: Day -> HihoR -> Maybe Integer
+howLongD thisDay h =
+  -- let thisDay = fromGregorian 2019 2 5
+  let days = flip diffDays thisDay <$> h ^. #got
+  in abs <$> days
+
+howLongY :: Day -> HihoR -> Maybe Integer
+howLongY thisDay h =
+  let days = 365.0 :: Double
+  in (ceiling . (/ days) . realToFrac) <$> howLongD thisDay h
+
+hihoOutput :: HihoR -> Tx.Text
+hihoOutput h =
+  let s = maybeS $ h ^. #shibu
+  in let n = h ^. #name
+  in let thisDay = fromGregorian 2019 2 6
+  in let o  = h ^. #officeName
+  in let c  = maybeS $ h ^. #country
+  in let y  = maybeS $ xShow <$> howLongY thisDay h
+  in let p  = h ^. #payStyle
+  in let a  = maybeS (xShow <$> h ^. #payAmount)
+  in let ho = flip howOld thisDay <$> h ^. #birth
+  in let hh = maybeS (xShow <$> ho)
+  -- in let g  = maybeS (xShow <$> (h ^. #got))
+  -- in let l  = maybeS (xShow <$> (h ^. #lost))
+  in let g  = dateToS (h ^. #got)
+  in let l  = dateToS (h ^. #lost)
+  in toCSV [s, n, o, hh, c, y, p, a, g, l]
 
 -- type Calcurate a = ReaderT Bool IO a
 -- type HihoRList a = [(Maybe a, [HihoR])]
@@ -319,130 +343,130 @@ payStyleToString s =
 --   lift . runConduit
 --     $ alienSource .| CL.filter f .| CL.consume
 
--- alienSource :: Source IO HihoR
--- alienSource =
---   alienSource1 <> alienSource2
+alienFromSetP :: HihoR -> Bool
+alienFromSetP = (^. #number) >>> (`S.member` alienSet)
 
--- alienSource1 :: Source IO HihoR
--- alienSource1 =
---   initializeSource
---   .| CL.filter hihoNameKatakanaP
---   .| CL.filter (isNothing . (^. #alien))
---   .| CL.filter ((`S.member` alienSet) . (^. #number))
+alienP :: HihoR -> Bool
+alienP = (^. #alien) >>> isJust
 
--- alienSource2 :: Source IO HihoR
--- alienSource2 =
---   initializeSource
---   .| CL.filter (isJust . (^. #alien))
+alienFilterConduit :: Conduit HihoR IO HihoR
+alienFilterConduit =
+  CL.filter ((||) <$> alienP <*> alienP2)
+  where
+    alienP2 = (&&) <$> hihoNameKatakanaP
+                   <*> alienFromSetP
 
--- alienSet :: S.Set Tx.Text
--- alienSet = S.fromList [
---  "51007036896"
---  , "50918392341"
---  , "50918392287"
---  , "50975034295"
---  , "50970904495"
---  , "50993182730"
---  , "50993116676"
---  , "50997542326"
---  , "50997542501"
---  , "51005577699"
---  , "50998104069"
---  , "50998102773"
---  , "50870709787"
---  , "50994361426"
---  , "50994361802"
---  , "50971017593"
---  , "50971017725"
---  , "50971017740"
---  , "51013463748"
---  , "51013463160"
---  , "51013449274"
---  , "50967048453"
---  , "50916248383"
---  , "50916248301"
---  , "50916248262"
---  , "50972187047"
---  , "50972186950"
---  , "51004722258"
---  , "50978845092"
---  , "50936771639"
---  , "50879777400"
---  , "50879777519"
---  , "50907375638"
---  , "50907375517"
---  , "50974797079"
---  , "50974797306"
---  , "50980031427"
---  , "51009482102"
---  , "50968688507"
---  , "50968688563"
---  , "51006596823"
---  , "51006960466"
---  , "51006960533"
---  , "51008868016"
---  , "51008868085"
---  , "51001308240"
---  , "51001307564"
---  , "50972512549"
---  , "50972512616"
---  , "51002487292"
---  , "51002485832"
---  , "51009008969"
---  , "51009007571"
---  , "50991506732"
---  , "50991502258"
---  , "50943156303"
---  , "50825016836"
---  , "50941933348"
---  , "51006219348"
---  , "51006218739"
---  , "50960252279"
---  , "50960249527"
---  , "50983108639"
---  , "50972202005"
---  , "51005233209"
---  , "51005233317"
---  , "50937714011"
---  , "50885804252"
---  , "51005160607"
---  , "50817483985"
---  , "50871721726"
---  , "50936463052"
---  , "50973220347"
---  , "50973217314"
---  , "50998302383"
---  , "51006024834"
---  , "50924640851"
---  , "50924640916"
---  , "50924641002"
---  , "50999241452"
---  , "50999242502"
---  , "50999242018"
---  , "51002370634"
---  , "51002370647"
---  , "50966641685"
---  , "50966643171"
---  , "51005930515"
---  , "51005930139"
---  , "50986461385"
---  , "50986462651"
---  , "50986462809"
---  , "51007117292"
---  , "51005714290"
---  , "50972054805"
---  , "50972055239"
---  , "50972055120"
---  , "50934840648"
---  , "50934840903"
---  , "50934840501"
---  , "50993408741"
---  , "51025325815"
---  , "51025325117"
---  , "51030774646"
---  , "51034212191"
---  , "51034212604"
---   ]
+textConduit :: Conduit HihoR IO Text
+textConduit = CL.map hihoOutput
+
+alienSet :: S.Set Tx.Text
+alienSet = S.fromList [
+ "51007036896"
+ , "50918392341"
+ , "50918392287"
+ , "50975034295"
+ , "50970904495"
+ , "50993182730"
+ , "50993116676"
+ , "50997542326"
+ , "50997542501"
+ , "51005577699"
+ , "50998104069"
+ , "50998102773"
+ , "50870709787"
+ , "50994361426"
+ , "50994361802"
+ , "50971017593"
+ , "50971017725"
+ , "50971017740"
+ , "51013463748"
+ , "51013463160"
+ , "51013449274"
+ , "50967048453"
+ , "50916248383"
+ , "50916248301"
+ , "50916248262"
+ , "50972187047"
+ , "50972186950"
+ , "51004722258"
+ , "50978845092"
+ , "50936771639"
+ , "50879777400"
+ , "50879777519"
+ , "50907375638"
+ , "50907375517"
+ , "50974797079"
+ , "50974797306"
+ , "50980031427"
+ , "51009482102"
+ , "50968688507"
+ , "50968688563"
+ , "51006596823"
+ , "51006960466"
+ , "51006960533"
+ , "51008868016"
+ , "51008868085"
+ , "51001308240"
+ , "51001307564"
+ , "50972512549"
+ , "50972512616"
+ , "51002487292"
+ , "51002485832"
+ , "51009008969"
+ , "51009007571"
+ , "50991506732"
+ , "50991502258"
+ , "50943156303"
+ , "50825016836"
+ , "50941933348"
+ , "51006219348"
+ , "51006218739"
+ , "50960252279"
+ , "50960249527"
+ , "50983108639"
+ , "50972202005"
+ , "51005233209"
+ , "51005233317"
+ , "50937714011"
+ , "50885804252"
+ , "51005160607"
+ , "50817483985"
+ , "50871721726"
+ , "50936463052"
+ , "50973220347"
+ , "50973217314"
+ , "50998302383"
+ , "51006024834"
+ , "50924640851"
+ , "50924640916"
+ , "50924641002"
+ , "50999241452"
+ , "50999242502"
+ , "50999242018"
+ , "51002370634"
+ , "51002370647"
+ , "50966641685"
+ , "50966643171"
+ , "51005930515"
+ , "51005930139"
+ , "50986461385"
+ , "50986462651"
+ , "50986462809"
+ , "51007117292"
+ , "51005714290"
+ , "50972054805"
+ , "50972055239"
+ , "50972055120"
+ , "50934840648"
+ , "50934840903"
+ , "50934840501"
+ , "50993408741"
+ , "51025325815"
+ , "51025325117"
+ , "51030774646"
+ , "51034212191"
+ , "51034212604"
+  ]
 
 -- median :: [Double] -> Double
 -- median [] = 0

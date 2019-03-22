@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts           #-}
 module Match.Map where
 
-import           Control.Arrow      ((&&&))
+import           Control.Arrow      ((&&&), (>>>))
 import           Control.Lens
 import           Control.Monad.Reader
 import           Data.Conduit
@@ -16,6 +16,7 @@ import qualified Match.Base         as B
 import           Match.SQL          ( initializeSource
                                     , initializeList)
 import qualified Match.Hiho         as H
+import qualified Match.Hitori       as HT
 import qualified Match.OfficeSP     as OSP
 import qualified Match.Kumiai       as K
 import qualified Match.KumiaiOffice as KO
@@ -186,4 +187,25 @@ ospRosaiNumberCMap = do
   xl ===>
     Key OSP.rosaiNumberKey `MakeSingletonMap` Value id
 
+-- hitori
+hitoriRosaiCodeMap :: IO (M.Map Text Text)
+hitoriRosaiCodeMap = do
+  let personsCSV =
+        (^. #persons) >>> map HT.personString >>> toCSV
+  let rosaiCode =
+        HT.rosaiCode >>> Tx.takeEnd 10
+        -- HT.rosaiCode
+  M.fromList <$>
+    (initializeSource
+     $= CL.map (rosaiCode &&& personsCSV)
+     $$ CL.consume)
 
+hitoriRosaiCodeMap2 :: IO (M.Map Text HT.Hitori)
+hitoriRosaiCodeMap2 = do
+  let rosaiCode =
+        HT.rosaiCode >>> Tx.takeEnd 10
+        -- HT.rosaiCode
+  M.fromList <$>
+    (initializeSource
+     $= CL.map (rosaiCode &&& id)
+     $$ CL.consume)

@@ -35,6 +35,7 @@ dependencies:
   - data-default-class
   - conduit
   - conduit-extra
+  - conduit-combinators
   - xml-conduit
   - req
   - aeson

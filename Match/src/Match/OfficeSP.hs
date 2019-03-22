@@ -2,9 +2,12 @@
 {-# LANGUAGE TypeFamilies     #-}
 module Match.OfficeSP where
 
+import           Control.Arrow              ((>>>))
 import           Control.Applicative        ((<|>))
 import           Control.Lens
 import           Data.Attoparsec.Text
+import           Data.Conduit
+import qualified Data.Conduit.List          as CL
 import           Data.Maybe                 (fromMaybe)
 import qualified Data.Text                  as Tx
 import           Data.Text                  hiding (foldl', map, count)
@@ -35,6 +38,19 @@ type OfficeSP = Record
    , "payM"      >: Text
    , "payDay"    >: Text
    , "koyouNumber" >: Text
+   , "postal"    >: Text
+   , "address1"  >: Text
+   , "address2"  >: Text
+   , "address"   >: Text
+   , "tel"       >: Text
+   , "fax"       >: Text
+   , "rStart"    >: Maybe Day
+   , "rStartM"   >: Maybe Day
+   , "rEnd"      >: Maybe Day
+   , "kStart"    >: Maybe Day
+   , "kStartM"   >: Maybe Day
+   , "kEnd"      >: Maybe Day
+   , "amount"    >: Text
       ]
 
 newtype OSP = KikanBango { runOSP :: OfficeSP }
@@ -59,7 +75,9 @@ makeOfficeSP line' = case line' of
   [_c, _n, _nk, _o, _ok
     , _s, _sn, _hw, _i, _gi
     , _g, _l, _k, _kp, _ke, _otp
-    , _pe, _pm, _pd, _kn]
+    , _pe, _pm, _pd, _kn
+    , _ps, _ad1, _ad2, _tel, _fax
+    , _rs, _rsm, _re, _ks, _ksm, _ken, _am]
    -> #code @= _c
       <: #name      @= _n
       <: #nameKana  @= _nk
@@ -80,6 +98,19 @@ makeOfficeSP line' = case line' of
       <: #payM      @= (salaryMonth _pm)
       <: #payDay    @= (salaryDay _pd)
       <: #koyouNumber @= _kn
+      <: #postal    @= _ps
+      <: #address1  @= _ad1
+      <: #address2  @= _ad2
+      <: #address   @= (_ad1 <> _ad2)
+      <: #tel       @= _tel
+      <: #fax       @= _fax
+      <: #rStart    @= (strdt _rs)
+      <: #rStartM   @= (strdt _rsm)
+      <: #rEnd      @= (strdt _re)
+      <: #kStart    @= (strdt _ks)
+      <: #kStartM   @= (strdt _ksm)
+      <: #kEnd      @= (strdt _ken)
+      <: #amount    @= _am
       <: nil
   _ -> error "must not be happen."
 
@@ -194,3 +225,71 @@ toHelloWork _ = Nothing
 
 toHelloWorkNumber :: Text -> Text
 toHelloWorkNumber s = mempty `fromMaybe` (fst <$> toHelloWork s)
+
+--------------------------------------------------
+-- 賃金等の報告
+--------------------------------------------------
+filter026Conduit :: Conduit OfficeSP IO OfficeSP
+filter026Conduit =
+  CL.filter (\o -> or [ o ^. #otype == "0"
+                      , o ^. #otype == "2"
+                      , o ^. #otype == "6"])
+
+filter5Conduit :: Conduit OfficeSP IO OfficeSP
+filter5Conduit =
+  CL.filter ((^. #otype) >>> (== "5"))
+
+startDay_ :: OfficeSP -> Maybe Day
+startDay_ o | (o ^. #otype) == "2" = o ^. #kStartM
+            | otherwise = o ^. #rStartM
+
+startDay :: OfficeSP -> Text
+startDay o = "0" `fromMaybe` (Tx.pack . show <$> startDay_ o)
+
+endDay_ :: OfficeSP -> Maybe Day
+endDay_ o | (o ^. #otype) == "2" = o ^. #kEnd
+          | otherwise = o ^. #rEnd
+
+endDay :: OfficeSP -> Text
+endDay o = "0" `fromMaybe` (Tx.pack . show <$> endDay_ o)
+
+makeBlankColumns :: Int -> Text
+makeBlankColumns i = toCSV $ map (const "") [1..i]
+
+toText2 :: OfficeSP -> Text
+toText2 o = toCSV [ "30"
+                 , "26"
+                 , kikanBango o
+                 , o ^. #otype
+                 , o ^. #id
+                 , kikanBango o <> o ^. #otype <> o ^. #id
+                 , "" -- 異動年月日
+                 , o ^. #shibuName
+                 , o ^. #name
+                 , o ^. #nameKana
+                 , o ^. #owner
+                 , o ^. #ownerKana
+                 , o ^. #address
+                 , makeBlankColumns 6
+                 , o ^. #tel
+                 , startDay o
+                 , endDay o
+                 , o ^. #postal
+                 , makeBlankColumns 5
+                 , o ^. #kind <> o ^. #kindP
+                 , makeBlankColumns 7
+                 , k1
+                 , k2
+                 , k3
+                 , o ^. #amount
+                 -- 特別加入者カナ
+                 -- 特別加入者氏名
+                 -- 基礎日額
+                 -- 特別加入者加入日
+                 -- 特別加入者脱退日 のセットが6回
+                 ]
+  where
+    (k1, k2, k3) =
+      case koyouNumberDivide (o ^. #koyouNumber) of
+        Just (k1', k2', k3') -> (k1', k2', k3')
+        Nothing -> ("", "", "")

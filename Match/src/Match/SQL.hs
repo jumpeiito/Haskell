@@ -35,6 +35,7 @@ import           Match.Office
 import           Match.OfficeSP
 import           Match.Kumiai
 import           Match.KumiaiOffice
+import           Match.Hitori
 
 type ReadCSV = Either String [[Text]]
 
@@ -158,3 +159,9 @@ instance Sourceable KumiaiOffice where
                      , csvPathGetter = #kumiaiOfficeFile
                      , dbPathGetter  = #kumiaiOfficeDB
                      , makeFunction  = makeKumiaiOffice }
+
+instance Sourceable Hitori where
+  source = SQLSource { specGetter    = #hitoriSpec
+                     , csvPathGetter = #hitoriFile
+                     , dbPathGetter  = #hitoriDB
+                     , makeFunction  = makeHitori }

@@ -17,8 +17,10 @@ import           Data.Conduit              (Source
                                            , awaitForever
                                            , yield
                                            , runConduit
+                                           , sourceToList
                                            , (.|)
                                            , ($=), ($$))
+import qualified Data.Conduit.Combinators  as CC
 import qualified Data.Conduit.List         as CL
 import qualified Data.Map.Strict           as M
 import           Data.Maybe                (isNothing, isJust, fromMaybe)
@@ -71,68 +73,42 @@ test :: IO ()
 test = do
   I.hSetEncoding I.stdout I.utf8
 
-  n  <- thisNendo
-  -- 事業所番号にひもづけられた被保険者情報
-  om <- MP.hihoOfficeCodeCMap
-  -- 委託解除日の情報を取得するために、
-  -- 労働保険番号にひもづけられた事業所情報(2)
-  -- 事業所番号にしてしまうと、労働保険が複数ある場合に
-  -- うまく機能しないようだ。
-  cm <- MP.ospRosaiNumberCMap
+  runConduit $
+    (S.initializeSource :: Source IO H.HihoR)
+    .| H.alienFilterConduit
+    -- .| CL.filter H.hihoAliveP
+    .| H.textConduit
+    .| CL.mapM_ Tx.putStrLn
 
-  -- ベースになるのは事業所情報(1)
-  officeList <- (S.initializeSource :: Source IO B.Office)
-                $$ CL.consume
+test2 :: IO ()
+test2 = do
+  I.hSetEncoding I.stdout I.utf8
 
-  let officeListSource =
-        -- 事業所を基幹番号＋適用コード＋枝番号の順番に並びかえる。
-        CL.sourceList (comparing O.KikanBango `sortBy` officeList)
-        -- 適用コードが"0"または"2"のものだけ抽出する
-        $= CL.filter O.koyoP
+  m <- MP.hitoriRosaiCodeMap
+  m2 <- MP.hitoriRosaiCodeMap2
 
-  let mainSink =
-        CL.mapM_ $ \o -> liftIO $ do
-          let osp   = O.rosaiNumberKey o `M.lookup` cm
-          -- 委託解除日の情報
-          let lost  = Tx.pack . show <$> ((^. #lost) =<< osp)
-          -- 事業所が府外のハローワーク管轄の場合だけ、
-          -- ハローワーク名を出力する。
-          let hwork = O.helloworkForNendo o
-          -- 委託解除されている場合は、委託解除日を出力。
-          -- 委託解除されておらず、府外の場合、ハローワーク名を出力
-          -- 上記以外の事業所は空欄を出力する。
-          let header = mempty `fromMaybe` (lost <|> Just hwork)
-          let officePart = header <> "," <> O.outputForNendo o
-          case (o ^. #code) `M.lookup` om of
-            Nothing -> do
-              Tx.putStrLn $ officePart
-            Just x  -> do
-              -- 該当の事業所番号にひもづけられた被保険者を個人番号
-              -- の順番に並びかえる。
-              let hiho   = comparing H.IdNumber `sortBy` x
-              let sorted = map (H.outputForNendo n) hiho
-              -- 被保険者10名ずつ1行に出力する。
-              -- 具体的には、
-              -- (事業所情報) + (被保険者1番〜10番)
-              -- (事業所情報) + (被保険者11番〜20番)
-              -- (事業所情報) + (被保険者21番〜30番) …
-              -- 上記において、事業所情報は全て同じである。
-              forM_ (chunksOf 10 sorted) $ \hihoUnit -> do
-                Tx.putStrLn $ officePart <> "," <> toCSV hihoUnit
+  mainSource <-
+    (comparing OSP.KikanBango `sortBy`) <$>
+      sourceToList S.initializeSource
 
-  officeListSource
-    $$ mainSink
+  let mainConduit =
+        awaitForever $ \osp -> do
+          let key = OSP.rosaiNumberKey osp
+          let tok = mempty `fromMaybe` (key `M.lookup` m)
+          yield $ toCSV [ OSP.toText2 osp, tok]
 
--- test2 :: IO ()
--- test2 = do
---   I.hSetEncoding I.stdout I.utf8
---   n <- thisNendo
---   hihoList <- (S.initializeSource :: Source IO H.HihoR)
---               $$ CL.consume
+  -- let debugConduit =
+  --       awaitForever $ \osp -> do
+  --         let key = OSP.rosaiNumberKey osp
+  --         case key `M.lookup` m2 of
+  --           Just tok -> yield $ toCSV $ tok ^. #personsRow
+  --           Nothing  -> return ()
 
---   CL.sourceList (comparing H.Birthday `sortBy` hihoList)
---     $= CL.filter (H.hihoThisNendoP n)
---     $$ CL.mapM_ (H.outputForNendo n >>> Tx.putStrLn)
+  runConduit
+    $ (CL.sourceList mainSource :: Source IO OSP.OfficeSP)
+    .| OSP.filter026Conduit
+    .| mainConduit
+    .| CL.mapM_ Tx.putStrLn
 
 test3 :: IO ()
 test3 = do

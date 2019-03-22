@@ -28,17 +28,20 @@ type Conf = Record
    , "officeSpec"       >: [Text]
    , "officeSPSpec"     >: [Text]
    , "kumiaiOfficeSpec" >: [Text]
+   , "hitoriSpec"       >: [Text]
    , "fileTree"         >: String
    , "kumiaiFile"       >: String
    , "officeFile"       >: String
    , "officeSPFile"     >: String
    , "kumiaiOfficeFile" >: String
    , "hihoFile"         >: String
+   , "hitoriFile"       >: String
    , "kumiaiDB"         >: String
    , "officeDB"         >: String
    , "officeSPDB"       >: String
    , "kumiaiOfficeDB"   >: String
    , "hihoDB"           >: String
+   , "hitoriDB"         >: String
    ]
 
 type Getter a = Getting a Conf a
@@ -57,13 +60,20 @@ sendCSVFileName, fileTreeDirectory :: (MonadCatch m, MonadIO m) => m FilePath
 sendCSVFileName   = (^. #directoryFile) <$> safeReadConf
 fileTreeDirectory = (^. #fileTree) <$> safeReadConf
 
-directorySpecF, hihoSpecF, kumiaiSpecF, officeSpecF, kumiaiOfficeSpecF, officeSPSpecF :: (MonadCatch m, MonadIO m) => m [Text]
+directorySpecF    :: (MonadCatch m, MonadIO m) => m [Text]
+hihoSpecF         :: (MonadCatch m, MonadIO m) => m [Text]
+kumiaiSpecF       :: (MonadCatch m, MonadIO m) => m [Text]
+officeSpecF       :: (MonadCatch m, MonadIO m) => m [Text]
+kumiaiOfficeSpecF :: (MonadCatch m, MonadIO m) => m [Text]
+officeSPSpecF     :: (MonadCatch m, MonadIO m) => m [Text]
+hitoriSpecF       :: (MonadCatch m, MonadIO m) => m [Text]
 directorySpecF    = (^. #directorySpec)    <$> safeReadConf
 hihoSpecF         = (^. #hihoSpec)         <$> safeReadConf
 kumiaiSpecF       = (^. #kumiaiSpec)       <$> safeReadConf
 officeSpecF       = (^. #officeSpec)       <$> safeReadConf
 officeSPSpecF     = (^. #officeSPSpec)     <$> safeReadConf
 kumiaiOfficeSpecF = (^. #kumiaiOfficeSpec) <$> safeReadConf
+hitoriSpecF       = (^. #hitoriSpec)       <$> safeReadConf
 
 defaultConf :: Conf
 defaultConf = #directoryFile @= "d:/送信案件一覧.csv"
@@ -78,15 +88,18 @@ defaultConf = #directoryFile @= "d:/送信案件一覧.csv"
               <: #officeSpec       @= []
               <: #officeSPSpec     @= []
               <: #kumiaiOfficeSpec @= []
+              <: #hitoriSpec       @= []
               <: #fileTree         @= "y:/労働保険事務組合/電子申請e-Gov"
               <: #kumiaiFile       @= ""
               <: #officeFile       @= ""
               <: #officeSPFile     @= ""
               <: #kumiaiOfficeFile @= ""
               <: #hihoFile         @= ""
+              <: #hitoriFile       @= ""
               <: #kumiaiDB         @= ""
               <: #officeDB         @= ""
               <: #officeSPDB       @= ""
               <: #kumiaiOfficeDB   @= ""
               <: #hihoDB           @= ""
+              <: #hitoriDB         @= ""
               <: nil

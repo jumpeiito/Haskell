@@ -3,6 +3,7 @@
 module Match.Base ( Office
                   , BaseInfo
                   , BaseInfoRecord
+                  , DateString (..)
                   , killBlanks
                   , killShibu
                   , killBunkai
@@ -22,6 +23,7 @@ import           Data.Extensible
 import           Data.Attoparsec.Text
 import qualified Data.Attoparsec.Text as Atp
 import           Data.Either          (isRight)
+import           Data.String
 import qualified Data.Map.Strict      as M
 import           Data.Maybe           (fromMaybe)
 import           Data.Text            (Text)
@@ -255,3 +257,15 @@ katakanaP s = isRight parseResult
   where
     parseResult =
       many1 (satisfy inKatakana) `parseOnly` s
+
+class (IsString a, Monoid a) => DateString a where
+  translator :: String -> a
+  dateToS :: Maybe Day -> a
+
+  dateToS d = mempty `fromMaybe` (translator . show <$> d)
+
+instance DateString String where
+  translator = id
+
+instance DateString Text where
+  translator = Tx.pack
