@@ -361,7 +361,7 @@ openPDFFile pday = do
 
 openPDFFileSexp :: String -> String -> IO ()
 openPDFFileSexp dayString diffDay = do
-  case strdt dayString of
+  case (strdt dayString :: Maybe Day) of
     Nothing   -> return ()
     Just pday -> do
       topPath <- fileTreeDirectory
@@ -420,7 +420,7 @@ pSearchSourceRecently flg diffDay fp = do
   p  <- liftIO $ doesDirectoryExist fp
   if p
     then
-    do cond <- liftIO $ pSSRCondition flg fp diffDay
+    do cond <- liftIO $ pSSRCondition flg diffDay fp
        if cond
          then do contents <- liftIO $ listDirectory (fp <> "/")
                  forM_ contents (pSearchSourceRecently False diffDay)

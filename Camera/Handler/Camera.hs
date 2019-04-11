@@ -15,7 +15,7 @@ excel, sqlite :: FileSystem
 excel  = File [ "c:/Users/Jumpei/Haskell/組合員名簿.xlsm"
               , "s:/馬場フォルダ/組合員名簿/組合員名簿.xlsm"]
 sqlite = File [ "c:/Users/Jumpei/Haskell/Camera/Camera.sqlite3"
-              , "d:/home/Haskell/Camera/Camera.sqlite3"]
+              , "d:/home/temp/Haskell/Camera/Camera.sqlite3"]
 
 removeFileIfExists :: Maybe FilePath -> IO ()
 removeFileIfExists Nothing = return ()

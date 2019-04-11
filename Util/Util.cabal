@@ -17,6 +17,7 @@ library
   exposed-modules:     Util
                        Util.KanParse
                        Util.KanParseB
+                       Util.DateFormatta
                        Util.Strdt
                        Util.Strbt
                        Util.Tele
@@ -36,6 +37,7 @@ library
                      , directory
                      , containers
                      , text
+                     , transformers
                      , bytestring
                      , tagsoup
                      , attoparsec

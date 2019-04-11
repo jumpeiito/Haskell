@@ -1,0 +1,12 @@
+<h1>Article一覧画面
+
+<table border="1px">
+    <tr>
+        <th>タイトル
+        <th>
+    $forall Entity skkid skk <- query
+        <tr>
+            <td>
+                #{sKKCandidate skk}
+            <td>
+                編集　削除

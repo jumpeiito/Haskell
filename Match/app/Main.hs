@@ -3,11 +3,14 @@
 {-# LANGUAGE TypeFamilies      #-}
 module Main where
 
-import           Control.Arrow ((>>>), (&&&))
-import           Control.Applicative ((<|>))
+import           Codec.Xlsx
+import           Codec.Xlsx.Formatted
+import           Control.Arrow             ((>>>), (&&&))
+import           Control.Applicative       ((<|>))
 import           Control.Lens
-import           Control.Monad             (when, guard, forM_ )
+import           Control.Monad             (when, guard, forM_, liftM)
 import           Control.Monad.Except      (ExceptT, runExceptT, liftIO)
+import qualified Data.ByteString.Lazy      as BL
 import           Data.List                 (sortBy)
 import           Data.List.Split           (chunksOf)
 import           Data.Ord                  (comparing)
@@ -29,6 +32,7 @@ import           Data.Text                 (Text)
 import qualified Data.Text                 as Tx
 import qualified Data.Text.IO              as Tx
 import           Data.Text.Lazy.Builder    (Builder, fromText)
+import           Data.Time.Clock.POSIX
 import           Match.Directory           (createHihoDirectory
                                            , removeBlankDirectory)
 import           Match.Figure
@@ -69,14 +73,19 @@ thisNendo = toInteger <$> nendo <$> todayDay
 -- data Target = Target Filtering [K.Kumiai]
 
 -- data Filtering = undefined
-test :: IO ()
-test = do
+test :: Bool -> IO ()
+test flag = do
   I.hSetEncoding I.stdout I.utf8
+
+  let func =
+        if flag
+        then H.hihoAliveP
+        else (const True)
 
   runConduit $
     (S.initializeSource :: Source IO H.HihoR)
     .| H.alienFilterConduit
-    -- .| CL.filter H.hihoAliveP
+    .| CL.filter func
     .| H.textConduit
     .| CL.mapM_ Tx.putStrLn
 
@@ -96,6 +105,14 @@ test2 = do
           let key = OSP.rosaiNumberKey osp
           let tok = mempty `fromMaybe` (key `M.lookup` m)
           yield $ toCSV [ OSP.toText2 osp, tok]
+
+  -- let
+  --     sheet = def & cellValueAt (1,2) ?~ CellDouble (42.0 + 1.0)
+  --                 & cellValueAt (3,2) ?~ CellText "foo"
+  --     xlsx = def & atSheet "List1" ?~ sheet
+  -- BL.writeFile "example.xlsx" $ fromXlsx ct xlsx
+  -- let excelSink =
+  --       CL.map 
 
   -- let debugConduit =
   --       awaitForever $ \osp -> do
@@ -145,18 +162,107 @@ test3 = do
               -- (事業所情報) + (被保険者21番〜30番) …
               -- 上記において、事業所情報は全て同じである。
               forM_ (chunksOf 10 sorted) $ \hihoUnit -> do
-                yield $ toCSV [officePart, toCSV hihoUnit]
+                -- yield $ toCSV [officePart, toCSV hihoUnit]
+                yield $ officePart ++ (Prelude.concat hihoUnit)
 
-  let sinkTextFile =
-        awaitForever $ \line -> do
-          liftIO $ Tx.appendFile outputFile (line <> "\n")
-
-  SD.removeFile outputFile
   CL.sourceList (comparing OSP.KikanBango `sortBy` officeList)
     $= CL.filter OSP.koyoP
     $= mainConduit
-    -- $$ CL.mapM_ Tx.putStrLn
-    $$ sinkTextFile
+    $$ CL.mapM_ (toCSV >>> Tx.putStrLn)
+
+test4 :: IO ()
+test4 = do
+  I.hSetEncoding I.stdout I.utf8
+
+  n <- thisNendo
+  -- 事業所番号にひもづけられた被保険者情報
+  om <- MP.hihoKoyouNumberCMap
+
+  officeList <- (S.initializeSource :: Source IO OSP.OfficeSP)
+                $$ CL.consume
+  let outputFile = ".hiho3.csv"
+
+  ct <- getPOSIXTime
+  td <- todayDay
+
+  let
+    topDirectory  = "d:/home/temp/Haskell/Match/"
+    filePreParts  = "雇用保険被保険者基本台帳"
+    filePostParts = "現在.xlsx"
+    baseFile      =
+      Tx.unpack
+        (topDirectory <> filePreParts <> "20190315" <> filePostParts)
+    newFile       =
+      Tx.unpack
+        (topDirectory <> filePreParts <> Tx.pack (dayStr8 td) <> filePostParts)
+
+  SD.copyFile baseFile newFile
+
+  let mainConduit =
+        awaitForever $ \o -> do
+          let officePart = OSP.outputForNendo o
+          -- 雇用保険事業所番号にひもづけられた
+          -- 被保険者情報を取得する。
+          case (o ^. #koyouNumber) `M.lookup` om of
+            -- 該当の事業所に被保険者がいない場合,
+            -- (該当年度以前に退職している被保険者はカウント
+            -- しない),事業所情報部分だけを出力する。
+            Nothing -> do
+              yield officePart
+            Just x  -> do
+              -- 該当の事業所番号にひもづけられた被保険者を個人番号
+              -- の順番に並びかえる。
+              let hiho   = comparing H.IdNumber `sortBy` x
+              let sorted = map (H.outputForNendo n) hiho
+              -- 被保険者10名ずつ1行に出力する。
+              -- 具体的には、
+              -- (事業所情報) + (被保険者1番〜10番)
+              -- (事業所情報) + (被保険者11番〜20番)
+              -- (事業所情報) + (被保険者21番〜30番) …
+              -- 上記において、事業所情報は全て同じである。
+              forM_ (chunksOf 10 sorted) $ \hihoUnit -> do
+                -- yield $ toCSV [officePart, toCSV hihoUnit]
+                yield $ officePart ++ (Prelude.concat hihoUnit)
+
+  -- let excelSink = do
+  --       l <- CL.consume
+
+  --       forM_ (zip [3..] l) $ \(idx, row) -> liftIO $ do
+  --         sequence [let sheet = def & cellValueAt (idx, col) ?~ CellText cell
+  --                       xlsx  = def & atSheet "差し込み" ?~ sheet
+  --                   in BL.writeFile newFile $ fromXlsx ct xlsx
+  --                  | (col, cell) <- zip [2..] row]
+
+  -- let sinkTextFile =
+  --       awaitForever $ \line -> do
+  --         liftIO $ Tx.appendFile outputFile (line <> "\n")
+
+  -- SD.removeFile outputFile
+  let
+    excelCell txt = def { _cellValue = Just (CellText txt)}
+    excelSink = do
+      l <- CL.consume
+
+      let eMap = M.fromList [((ridx, cidx), excelCell v)
+                            | (ridx, row) <- zip [3..] l
+                            , (cidx, v) <- zip [2..] row]
+      -- let ownSheet = def { _wsCells = eMap } :: Worksheet
+      -- let ownxlsx  = def { _xlSheets = [("insert", ownSheet)] } :: Xlsx
+      -- liftIO $ BL.writeFile newFile $ fromXlsx ct ownxlsx
+      bs <- liftIO $ BL.readFile newFile
+      let xlsx  = toXlsx bs
+      let (Just sheet) = xlsx ^? ixSheet "差し込み"
+      let ownSheet = sheet { _wsCells = eMap }
+      let ownxlsx  = xlsx { _xlSheets = [("差し込み", ownSheet)]}
+      liftIO $ BL.writeFile "temp.xlsx" $ fromXlsx ct ownxlsx
+
+
+  CL.sourceList (comparing OSP.KikanBango `sortBy` officeList)
+    $= CL.filter OSP.koyoP
+    $= mainConduit
+    -- $$ CL.mapM_ (toCSV >>> Tx.putStrLn)
+    $$ excelSink
+    -- $$ sinkTextFile
 ----------------------------------------------------------------------
 jigyosyoMatchUp :: IO ()
 jigyosyoMatchUp = do
@@ -494,8 +600,8 @@ yakuOutput =
 ----------------------------------------------------------------------
 main :: IO ()
 main = do
-  sjis <- I.mkTextEncoding "CP932"
-  I.hSetEncoding I.stdout sjis
+  -- sjis <- I.mkTextEncoding "CP932"
+  I.hSetEncoding I.stdout I.utf8
 
   --------------------------------------------------------------------------------
 
@@ -513,6 +619,7 @@ main = do
   when (createD' opt)        createHihoDirectory
   when (yakuD' opt)          yakuOutput
   when (kumiaiBlank' opt)    kumiaiOfficeBlankMatchUp
+  when (nendoKousin' opt)    test3
 
   case shibu' opt of
     "" -> return ()
@@ -531,6 +638,7 @@ data Options = Options { hAddress'       :: Bool
                        , createD'        :: Bool
                        , yakuD'          :: Bool
                        , kumiaiBlank'    :: Bool
+                       , nendoKousin'    :: Bool
                        , shibu'          :: String
                        } deriving (Show)
 
@@ -549,7 +657,9 @@ kumiaiOfficeP    = Q.switch $ Q.short 'l' <> Q.long "kumiaiOffice"   <> Q.help "
 createDirectoryP = Q.switch $ Q.short 'm' <> Q.long "createDirectory" <> Q.help ""
 simpleOfficeP    = Q.switch $ Q.short 'y' <> Q.long "simpleOffice"   <> Q.help ""
 yakuOutputP      = Q.switch $ Q.short 'b' <> Q.long "yakuOutput "   <> Q.help ""
-kumiaiBlankP     = Q.switch $ Q.short 'q' <> Q.long "koBlank "   <> Q.help ""
+kumiaiBlankP     = Q.switch $ Q.short 'q' <> Q.long "koBlank"   <> Q.help ""
+nendoKousinP     = Q.switch $ Q.short 'z' <> Q.long "nendoKousin"
+  <> Q.help "ハローワーク届出の被保険者名簿を出力する。"
 
 shibuP :: Q.Parser String
 shibuP = Q.strOption $ mconcat
@@ -574,6 +684,7 @@ optionsP = (<*>) Q.helper
            <*> createDirectoryP
            <*> yakuOutputP
            <*> kumiaiBlankP
+           <*> nendoKousinP
            <*> shibuP
 
 myParserInfo :: Q.ParserInfo Options

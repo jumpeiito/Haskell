@@ -128,8 +128,7 @@ makeHiho line' = case line' of
   [_code, _hcode, _officename, _name, _kana, _birth, _postal
     , _ad1, _ad2, _telnum, _num, _g, _l, _rnum, _knum
     , _alien, _payA, _workHour, _workMinute, _payS
-    , _alienCountry, _alienRequirement, _kn
-    ]
+    , _alienCountry, _alienRequirement, _kn]
     -> #name           @= _name
        <: #code        @= _hcode
        <: #kana        @= _kana
@@ -170,14 +169,14 @@ hihoThisNendoP y h =
     Nothing -> True
     Just ld -> fromGregorian y 4 1 <= ld
 
-outputForNendo :: Integer -> HihoR -> Text
+outputForNendo :: Integer -> HihoR -> [Text]
 outputForNendo y h =
-  toCSV [ oldYear (h ^. #birth)
-        , Tx.pack (toHankaku (Tx.unpack $ h ^. #name))
-        , fromDay (h ^. #birth)
-        , fromDay (h ^. #got)
-        , fromDay (h ^. #lost)
-        ]
+  [ oldYear (h ^. #birth)
+  , Tx.pack (toHankaku (Tx.unpack $ h ^. #name))
+  , fromDay (h ^. #birth)
+  , fromDay (h ^. #got)
+  , fromDay (h ^. #lost)
+  ]
   where
     fromDay d = mempty `fromMaybe` (japaneseStyleDate <$> d)
     oldYear Nothing = mempty

@@ -179,22 +179,21 @@ headerForNendo :: OfficeSP -> Text
 headerForNendo o =
   mempty `fromMaybe` (lostDayString o <|> helloworkForNendo o)
 
-outputForNendo :: OfficeSP -> Text
-outputForNendo o = toCSV txs
-  where
-    txs = [ headerForNendo o
-          , o ^. #shibu
-          , o ^. #shibuName
-          , toHelloWorkNumber (takeEnd 2 $ o ^. #shibu)
-          , kikanBango o
-          , o ^. #otype
-          , o ^. #id
-          , koyouNumberHeader (o ^. #koyouNumber)
-          , koyouNumberRest (o ^. #koyouNumber)
-          , o ^. #name
-          , o ^. #payEnd
-          , o ^. #payM <> o ^. #payDay
-          ]
+outputForNendo :: OfficeSP -> [Text]
+outputForNendo o =
+  [ headerForNendo o
+  , o ^. #shibu
+  , o ^. #shibuName
+  , toHelloWorkNumber (takeEnd 2 $ o ^. #shibu)
+  , kikanBango o
+  , o ^. #otype
+  , o ^. #id
+  , koyouNumberHeader (o ^. #koyouNumber)
+  , koyouNumberRest (o ^. #koyouNumber)
+  , o ^. #name
+  , o ^. #payEnd
+  , o ^. #payM <> o ^. #payDay
+  ]
 
 toHelloWork :: Text -> Maybe (Text, Text)
 toHelloWork "10" = Just ("01", "西陣")
