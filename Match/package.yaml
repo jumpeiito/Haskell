@@ -43,7 +43,7 @@ dependencies:
   - directory
   - stm-conduit
   - heredocs
-  - extensible
+  - extensible >= 0.4.9
   - lens
   - yaml
   - heterocephalus
@@ -94,19 +94,19 @@ executables:
     - Match
     - async
     - optparse-applicative
-  Ukyo:
-    main:                Main.hs
-    source-dirs:
-    - app/Ukyo
-    ghc-options:
-    - -O3
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - Match
-    - async
-    - optparse-applicative
+  # Ukyo:
+  #   main:                Main.hs
+  #   source-dirs:
+  #   - app/Ukyo
+  #   ghc-options:
+  #   - -O3
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   dependencies:
+  #   - Match
+  #   - async
+  #   - optparse-applicative
   CreateDirectory:
     main:                Main.hs
     source-dirs:

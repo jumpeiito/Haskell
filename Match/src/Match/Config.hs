@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
 module Match.Config
   ( PathGetter
   , Getter
@@ -17,7 +18,9 @@ import           Control.Exception.Safe
 import           Control.Lens             hiding (Getter)
 import           Control.Monad.Trans
 import           Data.Extensible
+import           Data.Aeson
 import           Data.Text                (Text)
+import           GHC.Generics
 import           Util.Yaml                (readYaml)
 
 type Conf = Record

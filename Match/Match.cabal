@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9826462f751d3f0c485bf5728010b0b80d0d1bed4be852151b1470a045bc3cb7
+-- hash: 227406ad393c71c0250e07bce18c1777ffc9b7d90a5512c0404eb1896dc5a6d9
 
 name:           Match
 version:        0.4.0.0
@@ -31,7 +31,6 @@ library
       Match.CSV
       Match.Directory
       Match.Figure
-      Match.Geocoder
       Match.Hiho
       Match.Hitori
       Match.Kumiai
@@ -62,7 +61,7 @@ library
     , data-default-class
     , directory
     , doctest
-    , extensible
+    , extensible >=0.4.9
     , filepath
     , heredocs
     , heterocephalus
@@ -112,7 +111,7 @@ executable CreateDirectory
     , data-default-class
     , directory
     , doctest
-    , extensible
+    , extensible >=0.4.9
     , filepath
     , heredocs
     , heterocephalus
@@ -166,7 +165,7 @@ executable Match-exe
     , data-default-class
     , directory
     , doctest
-    , extensible
+    , extensible >=0.4.9
     , filepath
     , heredocs
     , heterocephalus
@@ -216,7 +215,7 @@ executable OpenPDF
     , data-default-class
     , directory
     , doctest
-    , extensible
+    , extensible >=0.4.9
     , filepath
     , heredocs
     , heterocephalus
@@ -265,64 +264,13 @@ executable PDFSexp
     , data-default-class
     , directory
     , doctest
-    , extensible
+    , extensible >=0.4.9
     , filepath
     , heredocs
     , heterocephalus
     , lens
     , monad-skeleton
     , mtl
-    , parallel
-    , parsec
-    , persistent
-    , persistent-sqlite
-    , persistent-template
-    , process
-    , req
-    , safe-exceptions
-    , split
-    , stm-conduit
-    , text
-    , time
-    , transformers
-    , vector
-    , xlsx
-    , xml-conduit
-    , yaml
-  default-language: Haskell2010
-
-executable Ukyo
-  main-is: Main.hs
-  other-modules:
-      Paths_Match
-  hs-source-dirs:
-      app/Ukyo
-  default-extensions: DataKinds OverloadedLabels TypeApplications TypeOperators OverloadedStrings
-  ghc-options: -O3 -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      Match
-    , Util
-    , aeson
-    , async
-    , attoparsec
-    , base >=4.7 && <5
-    , blaze-markup
-    , bytestring
-    , conduit
-    , conduit-combinators
-    , conduit-extra
-    , containers
-    , data-default-class
-    , directory
-    , doctest
-    , extensible
-    , filepath
-    , heredocs
-    , heterocephalus
-    , lens
-    , monad-skeleton
-    , mtl
-    , optparse-applicative
     , parallel
     , parsec
     , persistent
@@ -365,7 +313,7 @@ test-suite Match-doctest
     , directory
     , doctest
     , doctest-discover
-    , extensible
+    , extensible >=0.4.9
     , filepath
     , heredocs
     , heterocephalus
