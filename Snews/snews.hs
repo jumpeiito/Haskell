@@ -12,6 +12,7 @@ import           Snews.NewsArticle.Base
 import           Control.Monad.Reader
 import           Control.Concurrent.Async
 import           Network.HTTP                   (simpleHTTP, getRequest, getResponseBody)
+import           Network.HTTP.Req
 import           Data.Time                      (Day (..))
 import           Data.Monoid                    ((<>))
 import           Text.StringLike                (castString)

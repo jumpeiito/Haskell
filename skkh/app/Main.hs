@@ -1,10 +1,10 @@
-{-# LANGUAGE GADTs            #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving            #-}
-{-# LANGUAGE FlexibleContexts            #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE TypeFamilies               #-}
 module Main where
 
 import           Control.Monad
@@ -27,7 +27,7 @@ import           System.IO           (hSetBuffering
                                      , hPutStrLn
                                      , BufferMode(..)
                                      , Handle)
-import qualified System.IO           as I                                    
+import qualified System.IO           as I
 import           System.Directory    (doesFileExist)
 import           Control.Concurrent  (forkIO)
 import           Text.Parsec
@@ -93,9 +93,6 @@ lookupDB key = do
 
 main :: IO ()
 main = withSocketsDo $ do
-    -- encoding <- I.mkTextEncoding "cp932"
-    -- I.hSetEncoding I.stdin I.utf8
-    -- I.hSetEncoding I.stdout I.utf8
     args <- getArgs
     let port = fromIntegral (read $ head args :: Int)
     sock <- listenOn $ PortNumber port
@@ -103,7 +100,7 @@ main = withSocketsDo $ do
     sockHandler sock
 
 parseCommand :: String -> Maybe Command
-parseCommand ('1':k) = Just (Lookup k)
+parseCommand ('1':k) = Just (Lookup $ takeWhile (/= ' ') k)
 parseCommand ('2':k) = Just Version
 parseCommand _ = Nothing
 

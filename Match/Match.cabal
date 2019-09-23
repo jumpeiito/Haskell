@@ -1,8 +1,10 @@
--- This file has been generated from package.yaml by hpack version 0.28.2.
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 227406ad393c71c0250e07bce18c1777ffc9b7d90a5512c0404eb1896dc5a6d9
+-- hash: 465d050e91e75d3eba247cf67a000dc61cd7a90653d0f9ce24a39bd433d5c155
 
 name:           Match
 version:        0.4.0.0
@@ -14,10 +16,9 @@ maintainer:     example@example.com
 copyright:      2018 Author name here
 license:        BSD3
 build-type:     Simple
-cabal-version:  >= 1.10
 extra-source-files:
-    ChangeLog.md
     README.md
+    ChangeLog.md
 
 source-repository head
   type: git
@@ -142,7 +143,6 @@ executable Match-exe
   other-modules:
       CreateDirectory.Main
       OpenPDF.Main
-      PDFSexp.Main
       Ukyo.Main
       Paths_Match
   hs-source-dirs:

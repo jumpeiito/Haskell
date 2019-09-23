@@ -14,12 +14,12 @@ extra-include-dirs:
 - d:\home\temp\Haskell\Snews\icu\bin
 - C:\Users\Jumpei\Haskell\Snews\icu\include
 - C:\Users\Jumpei\Haskell\Snews\icu\include\unicode
-- C:\Users\Jumpei\Haskell\Snews\icu\bin
+- C:\Users\Jumpei\Haskell\Snews\icu\bin64
 extra-lib-dirs:
 - d:\home\temp\Haskell\Snews\icu\lib
 - d:\home\temp\Haskell\Snews\icu\bin
-- C:\Users\Jumpei\Haskell\Snews\icu\lib
-- C:\Users\Jumpei\Haskell\Snews\icu\bin
+- C:\Users\Jumpei\Haskell\Snews\icu\lib64
+- C:\Users\Jumpei\Haskell\Snews\icu\bin64
 
 # build:
 #   library-profiling: true

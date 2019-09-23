@@ -17,7 +17,7 @@ library
   exposed-modules:     Util
                        Util.KanParse
                        Util.KanParseB
-                       Util.DateFormatta
+                       -- Util.DateFormatta
                        Util.Strdt
                        Util.Strbt
                        Util.Tele

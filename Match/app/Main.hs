@@ -263,6 +263,25 @@ test4 = do
     -- $$ CL.mapM_ (toCSV >>> Tx.putStrLn)
     $$ excelSink
     -- $$ sinkTextFile
+
+test9 :: IO ()
+test9 = do
+  let filename = "c:/Users/jumpei/Dropbox/2019年度　出勤簿（原紙）.xlsx"
+  bs <- liftIO $ BL.readFile filename
+  let xlsx = toXlsx bs
+  forM_ ([4..12] ++ [1..3]) $ \month -> do
+    readFromFile xlsx month
+
+toMonthString :: Int -> Text
+toMonthString n | n < 10 = Tx.pack $ "0" ++ (show n) ++ "月"
+          | otherwise = Tx.pack $ show n ++ "月"
+
+readFromFile :: Xlsx -> Int -> IO ()
+readFromFile xlsx i = do
+  let v = [map (\n -> xlsx ^? ixSheet (toMonthString i) . ixCell (x, n) . cellValue . _Just) [1..20]
+          | x <- [8..38]]
+  mapM_ print v
+
 ----------------------------------------------------------------------
 jigyosyoMatchUp :: IO ()
 jigyosyoMatchUp = do
