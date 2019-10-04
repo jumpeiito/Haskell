@@ -9,6 +9,7 @@ import           Control.Monad.Reader
 import           Data.Conduit
 import qualified Data.Conduit.List  as CL
 import qualified Data.Map.Strict    as M
+import           Data.Maybe
 import qualified Data.Text          as Tx
 import           Data.Text          hiding (foldl', map)
 import           Data.Time          (Day (..))
@@ -44,6 +45,16 @@ hihoKanaBirthCMap = do
         M.insertWith (++)
                      (B.killBlanks (el ^. #kana), el ^. #birth)
                      [el] mp
+  initializeSource $$ CL.fold insert M.empty
+
+hihoKanaShibuBirthCMap :: IO (M.Map (Text, Text, Maybe Day) [H.HihoR])
+hihoKanaShibuBirthCMap = do
+  let triple el =
+        (B.killBlanks (el ^. #kana),
+         "" `fromMaybe` (el ^. #shibu),
+         el ^. #birth)
+  let insert mp el =
+        M.insertWith (++) (triple el) [el] mp
   initializeSource $$ CL.fold insert M.empty
 
 hihoNumberCMap :: IO (M.Map Text H.HihoR)
@@ -208,4 +219,15 @@ hitoriRosaiCodeMap2 = do
   M.fromList <$>
     (initializeSource
      $= CL.map (rosaiCode &&& id)
+     $$ CL.consume)
+
+hitori2NumberMap :: IO (M.Map Text HT.Hitori)
+hitori2NumberMap = do
+  -- let rosaiCode =
+  --       HT.rosaiCode >>> Tx.takeEnd 10
+        -- HT.rosaiCode
+  M.fromList <$>
+    (initializeSource
+     $= CL.map HT.runHO
+     $= CL.map ((^. #code) &&& id)
      $$ CL.consume)

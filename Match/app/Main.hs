@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Main where
 
 import           Codec.Xlsx
@@ -38,6 +39,7 @@ import           Match.Directory           (createHihoDirectory
 import           Match.Figure
 import qualified Match.Base                as B
 import qualified Match.Hiho                as H
+import qualified Match.Hitori              as HT
 import qualified Match.Kumiai              as K
 import qualified Match.KumiaiOffice        as KO
 import qualified Match.Office              as O
@@ -271,6 +273,27 @@ test9 = do
   let xlsx = toXlsx bs
   forM_ ([4..12] ++ [1..3]) $ \month -> do
     readFromFile xlsx month
+
+test10 :: IO ()
+test10 = do
+  I.hSetEncoding I.stdout I.utf8
+  hm   <- MP.hitori2NumberMap
+  hkmb <- MP.hihoKanaShibuBirthCMap
+
+  let hihoP mp k =
+        case (k ^. #kana, k ^. #shibuCode, k ^. #birth) `M.lookup` mp of
+          Just [h] -> H.hihoAliveP h
+          _        -> False
+  -- let hitoriO mp k = case ((6 `Tx.take` (k ^. #number)) `M.lookup` mp) of
+  --                      Just h -> HT.hitoriOLiveP h
+  --                      Nothing -> False
+
+  runConduit $
+    (S.initializeSource :: Source IO K.Kumiai)
+    .| CL.filter K.kokuhoAliveP
+    -- .| CL.filter (hitoriO hm)
+    .| CL.filter (hihoP hkmb)
+    .| CL.mapM_ ((^. #name) >>> Tx.putStrLn)
 
 toMonthString :: Int -> Text
 toMonthString n | n < 10 = Tx.pack $ "0" ++ (show n) ++ "月"

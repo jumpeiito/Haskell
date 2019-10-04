@@ -165,3 +165,9 @@ instance Sourceable Hitori where
                      , csvPathGetter = #hitoriFile
                      , dbPathGetter  = #hitoriDB
                      , makeFunction  = makeHitori }
+
+instance Sourceable HitoriO where
+  source = SQLSource { specGetter    = #hitoriSpec
+                     , csvPathGetter = #hitori2File
+                     , dbPathGetter  = #hitori2DB
+                     , makeFunction  = (makeHitori >>> HO) }

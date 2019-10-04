@@ -157,6 +157,11 @@ kanaBirthKey k = (killBlanks (k ^. #kana), k ^. #birth)
 aliveP :: Kumiai -> Bool
 aliveP k = isNothing $ k ^. #lost
 
+kokuhoAliveP :: Kumiai -> Bool
+kokuhoAliveP k = case (k ^. #kokuhoGet, k ^. #kokuhoLost) of
+                   (Just _, Nothing) -> True
+                   _                 -> False
+
 makeKumiai :: [Text] -> Kumiai
 makeKumiai record' = case record' of
   [_sc                          -- 支部コード

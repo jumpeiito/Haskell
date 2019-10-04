@@ -39,12 +39,14 @@ type Conf = Record
    , "kumiaiOfficeFile" >: String
    , "hihoFile"         >: String
    , "hitoriFile"       >: String
+   , "hitori2File"      >: String
    , "kumiaiDB"         >: String
    , "officeDB"         >: String
    , "officeSPDB"       >: String
    , "kumiaiOfficeDB"   >: String
    , "hihoDB"           >: String
    , "hitoriDB"         >: String
+   , "hitori2DB"        >: String
    ]
 
 type Getter a = Getting a Conf a
@@ -99,10 +101,12 @@ defaultConf = #directoryFile @= "d:/送信案件一覧.csv"
               <: #kumiaiOfficeFile @= ""
               <: #hihoFile         @= ""
               <: #hitoriFile       @= ""
+              <: #hitori2File      @= ""
               <: #kumiaiDB         @= ""
               <: #officeDB         @= ""
               <: #officeSPDB       @= ""
               <: #kumiaiOfficeDB   @= ""
               <: #hihoDB           @= ""
               <: #hitoriDB         @= ""
+              <: #hitori2DB        @= ""
               <: nil

@@ -37,6 +37,15 @@ type HitoriPerson = Record
    , "nameKana" >: Text
    ]
 
+newtype HitoriO = HO { runHO :: Hitori }
+
+hitoriOLiveP :: Hitori -> Bool
+hitoriOLiveP h = case h ^. #persons of
+                   [a] -> case (a ^. #got, a ^. #lost) of
+                            (Just _, Nothing) -> True
+                            _                 -> False
+                   _   -> False
+
 rosaiCode :: Hitori -> Text
 rosaiCode = (<>) <$> (^. #groupid) <*> (^. #id)
 
