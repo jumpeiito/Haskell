@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies     #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE QuasiQuotes                #-}
 module Match.OfficeSP where
 
 import           Control.Arrow              ((>>>))
@@ -14,6 +16,7 @@ import           Data.Text                  hiding (foldl', map, count)
 import           Data.Extensible
 import           Data.Monoid
 import           Data.Time                  ( Day (..))
+import           Text.Heredoc
 import           Util
 import           Util.Strbt                 (strdt)
 
@@ -70,6 +73,17 @@ instance Ord OSP where
     in (kikanBango $ runOSP x) `compare` (kikanBango $ runOSP y) <>
        (edaban $ runOSP x) `compare` (edaban $ runOSP y)
 
+aliveP :: OfficeSP -> Bool
+aliveP osp =
+  let rStartM = osp ^. #rStartM
+      rEnd    = osp ^. #rEnd
+      kStartM = osp ^. #kStartM
+      kEnd    = osp ^. #kEnd
+  in case (rStartM, rEnd, kStartM, kEnd) of
+       (Just _, Nothing, _, _) -> True
+       (_, _, Just _, Nothing) -> True
+       _                       -> False
+
 makeOfficeSP :: [Text] -> OfficeSP
 makeOfficeSP line' = case line' of
   [_c, _n, _nk, _o, _ok
@@ -113,6 +127,13 @@ makeOfficeSP line' = case line' of
       <: #amount    @= _am
       <: nil
   _ -> error "must not be happen."
+
+kokuhoOutput :: OfficeSP -> Tx.Text
+kokuhoOutput o =
+  let _id = o ^. #id
+      _gid = o ^. #groupid
+      _name = o ^. #name
+  in [heredoc|労働保険,${_name}・${_gid}-${_id}|]
 
 kikanBango :: OfficeSP -> Text
 kikanBango o =

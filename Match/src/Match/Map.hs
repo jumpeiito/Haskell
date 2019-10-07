@@ -50,12 +50,14 @@ hihoKanaBirthCMap = do
 hihoKanaShibuBirthCMap :: IO (M.Map (Text, Text, Maybe Day) [H.HihoR])
 hihoKanaShibuBirthCMap = do
   let triple el =
-        (B.killBlanks (el ^. #kana),
+        (B.regularize $ B.killBlanks (el ^. #kana),
          "" `fromMaybe` (el ^. #shibu),
          el ^. #birth)
   let insert mp el =
         M.insertWith (++) (triple el) [el] mp
-  initializeSource $$ CL.fold insert M.empty
+  initializeSource
+    $= CL.filter H.hihoAliveP
+    $$ CL.fold insert M.empty
 
 hihoNumberCMap :: IO (M.Map Text H.HihoR)
 hihoNumberCMap = do
@@ -186,6 +188,14 @@ ospCodeCMap :: IO (M.Map Text OSP.OfficeSP)
 ospCodeCMap = do
   let xl = initializeSource
            $= CL.filter OSP.koyoP
+           $$ CL.consume
+  xl ===>
+    Key (^. #code) `MakeSingletonMap` Value id
+
+ospCodeAllCMap :: IO (M.Map Text OSP.OfficeSP)
+ospCodeAllCMap = do
+  let xl = initializeSource
+           $= CL.filter OSP.aliveP
            $$ CL.consume
   xl ===>
     Key (^. #code) `MakeSingletonMap` Value id

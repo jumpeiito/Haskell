@@ -146,8 +146,10 @@ type Kumiai = Record
    , "shibuY"     >: Maybe [SY]
    , "bunkaiY"    >: Maybe [BY]
    , "hanY"       >: Maybe Text
+   , "kokuhoNumber"  >: Text
    , "kokuhoGet"  >: Maybe Day
    , "kokuhoLost" >: Maybe Day
+   , "kokuhoKaiso" >: Text
    , "relational" >: Maybe Text
    ]
 
@@ -191,8 +193,10 @@ makeKumiai record' = case record' of
     , _shibuY                   -- 役職(支部)
     , _bunkaiY                  -- 役職(分会)
     , _hanY                     -- 役職(班)
+    , _kokuhoNumber
     , _kokuhoGet                -- 資格取得日
     , _kokuhoLost               -- 資格喪失日
+    , _kokuhoKaiso
     ]
     -> #shibuCode @= _sc
        <: #shibu      @= killShibu _s
@@ -222,8 +226,10 @@ makeKumiai record' = case record' of
        <: #shibuY     @= makeSYList _shibuY
        <: #bunkaiY    @= makeBYList _bunkaiY
        <: #hanY       @= blankMaybe _hanY
+       <: #kokuhoNumber @= _kokuhoNumber
        <: #kokuhoGet  @= strdt _kokuhoGet
        <: #kokuhoLost @= strdt _kokuhoLost
+       <: #kokuhoKaiso @= _kokuhoKaiso
        <: #relational @= Nothing
        <: nil
   _ -> error $ "must not be happen." <> (Tx.unpack $ Tx.intercalate (Tx.pack ",") record')

@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE TypeFamilies      #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE QuasiQuotes                #-}
 module Main where
 
 import           Codec.Xlsx
@@ -49,6 +51,7 @@ import qualified Match.Map                 as MP
 import qualified Options.Applicative       as Q
 import qualified System.IO                 as I
 import qualified System.Directory          as SD
+import           Text.Heredoc
 import           Util                      (toCSV)
 import           Util.Strdt
 
@@ -279,21 +282,43 @@ test10 = do
   I.hSetEncoding I.stdout I.utf8
   hm   <- MP.hitori2NumberMap
   hkmb <- MP.hihoKanaShibuBirthCMap
+  om   <- MP.ospCodeAllCMap
 
   let hihoP mp k =
-        case (k ^. #kana, k ^. #shibuCode, k ^. #birth) `M.lookup` mp of
-          Just [h] -> H.hihoAliveP h
-          _        -> False
-  -- let hitoriO mp k = case ((6 `Tx.take` (k ^. #number)) `M.lookup` mp) of
-  --                      Just h -> HT.hitoriOLiveP h
-  --                      Nothing -> False
+        let key k = (B.regularize (k ^. #kana), k ^. #shibuCode, k ^. #birth)
+        in case key k `M.lookup` mp of
+          Just [h] | H.hihoAliveP h -> Just h
+                   | otherwise      -> Nothing
+          _                         -> Nothing
+  let hitoriO mp k = case ((6 `Tx.take` (k ^. #number)) `M.lookup` mp) of
+                       Just h | HT.hitoriOLiveP h -> Just h
+                              | otherwise         -> Nothing
+                       Nothing                    -> Nothing
+  let officeP mp k = (6 `Tx.take` (k ^. #number)) `M.lookup` mp
+
+  let judge k =
+        case (K.kokuhoAliveP k, hihoP hkmb k, hitoriO hm k, officeP om k) of
+          (False, _, _, _)  -> ("国保未加入", k)
+          (_, Just h, _, _) -> (H.kokuhoOutput h, k)
+          (_, _, Just h, _) -> (HT.kokuhoOutput h, k)
+          (_, _, _, Just h) -> (OSP.kokuhoOutput h, k)
+          (_, _, _, _)      -> ("", k)
+
+  let str (s, k) =
+        let _number = k ^. #number
+            _knum   = k ^. #kokuhoNumber
+            _name   = k ^. #name
+            _kana   = k ^. #kana
+            _shibu  = k ^. #shibu
+            _bunkai = k ^. #bunkai
+            _han    = k ^. #han
+            _kaiso  = k ^. #kokuhoKaiso
+        in [heredoc|${_number},${_knum},${_shibu},${_bunkai},${_han},${_name},${_kaiso},${s}|]
 
   runConduit $
     (S.initializeSource :: Source IO K.Kumiai)
-    .| CL.filter K.kokuhoAliveP
-    -- .| CL.filter (hitoriO hm)
-    .| CL.filter (hihoP hkmb)
-    .| CL.mapM_ ((^. #name) >>> Tx.putStrLn)
+    .| CL.map judge
+    .| CL.mapM_ (str >>> Tx.putStrLn)
 
 toMonthString :: Int -> Text
 toMonthString n | n < 10 = Tx.pack $ "0" ++ (show n) ++ "月"

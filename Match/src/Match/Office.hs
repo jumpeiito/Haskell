@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE TypeFamilies  #-}
 module Match.Office where
@@ -13,6 +15,7 @@ import qualified Data.Text.Lazy.Builder as BB
 import           Match.Base             (Office
                                         , toShibu
                                         , officeTypeRegularize)
+import           Text.Heredoc
 import           Util
 import           Util.Strbt             (strdt)
 
@@ -46,6 +49,12 @@ makeOffice line' = case line' of
     <: #hellowork   @= _hw
     <: nil
   _ -> error $ Tx.unpack $ "must not be happen : " <> Tx.intercalate "," line'
+
+kokuhoOutput :: Office -> Tx.Text
+kokuhoOutput o =
+  let _ocode = o ^. #rosaiCode
+      _number = o ^. #koyouNumber
+  in [heredoc|労働保険(${_ocode} ${_number})|]
 
 koyoP :: Office -> Bool
 koyoP o | (o ^. #otype) == "0" = True

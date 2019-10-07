@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE QuasiQuotes                #-}
 module Match.Hitori where
 
 import           Control.Lens
@@ -9,6 +11,7 @@ import           Data.Monoid
 import           Data.Text        (Text)
 import qualified Data.Text        as Tx
 import           Data.Time        ( Day (..))
+import           Text.Heredoc
 import           Util
 import           Util.Strbt
 
@@ -38,6 +41,12 @@ type HitoriPerson = Record
    ]
 
 newtype HitoriO = HO { runHO :: Hitori }
+
+kokuhoOutput :: Hitori -> Text
+kokuhoOutput h =
+  let _id = h ^. #id
+  in let _groupid = h ^. #groupid
+  in [heredoc|一人親方,${_groupid}-${_id}|]
 
 hitoriOLiveP :: Hitori -> Bool
 hitoriOLiveP h = case h ^. #persons of

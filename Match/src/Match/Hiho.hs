@@ -1,9 +1,13 @@
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE QuasiQuotes                #-}
+
 -- -*- coding:utf-8 -*-
 module Match.Hiho
   (
     HihoR
   , HihoX (..)
   , OldHiho (..)
+  , kokuhoOutput
   , outputForNendo
   , hihoThisNendoP
   , hihoNameUnfinishedP
@@ -36,6 +40,7 @@ import           Data.Time.Calendar         (toGregorian)
 import           Match.Base                 ( katakanaP
                                             , dateToS)
 import           Text.Read                  (readMaybe)
+import           Text.Heredoc
 import           Util
 import           Util.Strbt                 (strdt, howOld)
 import           Util.ZenkakuHankaku
@@ -86,6 +91,12 @@ instance Ord OldHiho where
   x `compare` y =
     let birth = runOH >>> (^. #birth)
     in birth x `compare` birth y
+
+kokuhoOutput :: HihoR -> Text
+kokuhoOutput h =
+  let _office = h ^. #officeName
+      _number = h ^. #number
+  in [heredoc|雇用保険被保険者,${_office} ${_number}|]
 
 hihoXKey :: HihoX -> Text
 hihoXKey hx =
