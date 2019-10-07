@@ -1,9 +1,9 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE QuasiQuotes         #-}
 module Main where
 
 import           Codec.Xlsx
@@ -290,10 +290,12 @@ test10 = do
           Just [h] | H.hihoAliveP h -> Just h
                    | otherwise      -> Nothing
           _                         -> Nothing
+
   let hitoriO mp k = case ((6 `Tx.take` (k ^. #number)) `M.lookup` mp) of
                        Just h | HT.hitoriOLiveP h -> Just h
                               | otherwise         -> Nothing
                        Nothing                    -> Nothing
+
   let officeP mp k = (6 `Tx.take` (k ^. #number)) `M.lookup` mp
 
   let judge k =
@@ -317,8 +319,7 @@ test10 = do
 
   runConduit $
     (S.initializeSource :: Source IO K.Kumiai)
-    .| CL.map judge
-    .| CL.mapM_ (str >>> Tx.putStrLn)
+    .| CL.mapM_ (judge >>> str >>> Tx.putStrLn)
 
 toMonthString :: Int -> Text
 toMonthString n | n < 10 = Tx.pack $ "0" ++ (show n) ++ "月"

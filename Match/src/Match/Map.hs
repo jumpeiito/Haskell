@@ -10,6 +10,7 @@ import           Data.Conduit
 import qualified Data.Conduit.List  as CL
 import qualified Data.Map.Strict    as M
 import           Data.Maybe
+import           Data.Monoid        ((<>))
 import qualified Data.Text          as Tx
 import           Data.Text          hiding (foldl', map)
 import           Data.Time          (Day (..))
