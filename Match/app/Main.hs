@@ -739,6 +739,7 @@ main = do
   when (yakuD' opt)          yakuOutput
   when (kumiaiBlank' opt)    kumiaiOfficeBlankMatchUp
   when (nendoKousin' opt)    test3
+  when (kokuhoOutput' opt)   test10
 
   case shibu' opt of
     "" -> return ()
@@ -758,11 +759,13 @@ data Options = Options { hAddress'       :: Bool
                        , yakuD'          :: Bool
                        , kumiaiBlank'    :: Bool
                        , nendoKousin'    :: Bool
+                       , kokuhoOutput'   :: Bool
                        , shibu'          :: String
                        } deriving (Show)
 
 hAddressP, jigyosyoP, officeAddressP, hihoNameP, hihoNameStrictP   :: Q.Parser Bool
 removeDirP, kumiaiOfficeP, kumiaiP, createDirectoryP, simpleOfficeP :: Q.Parser Bool
+kokuhoOutputP :: Q.Parser Bool
 yakuOutputP, kumiaiBlankP :: Q.Parser Bool
 hAddressP        = Q.switch $ Q.short 'a' <> Q.long "hihoAddress"    <> Q.help ""
 jigyosyoP        = Q.switch $ Q.short 'j' <> Q.long "jigyosyo"       <> Q.help ""
@@ -777,6 +780,7 @@ createDirectoryP = Q.switch $ Q.short 'm' <> Q.long "createDirectory" <> Q.help 
 simpleOfficeP    = Q.switch $ Q.short 'y' <> Q.long "simpleOffice"   <> Q.help ""
 yakuOutputP      = Q.switch $ Q.short 'b' <> Q.long "yakuOutput "   <> Q.help ""
 kumiaiBlankP     = Q.switch $ Q.short 'q' <> Q.long "koBlank"   <> Q.help ""
+kokuhoOutputP    = Q.switch $ Q.short 'c' <> Q.long "kokuhoOutput"   <> Q.help ""
 nendoKousinP     = Q.switch $ Q.short 'z' <> Q.long "nendoKousin"
   <> Q.help "ハローワーク届出の被保険者名簿を出力する。"
 
@@ -804,6 +808,7 @@ optionsP = (<*>) Q.helper
            <*> yakuOutputP
            <*> kumiaiBlankP
            <*> nendoKousinP
+           <*> kokuhoOutputP
            <*> shibuP
 
 myParserInfo :: Q.ParserInfo Options
