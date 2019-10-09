@@ -96,7 +96,10 @@ kokuhoOutput :: HihoR -> Text
 kokuhoOutput h =
   let _office = h ^. #officeName
       _number = h ^. #number
-  in [heredoc|雇用保険被保険者,${_office} ${_number}|]
+      _knum   = h ^. #koyouNumber
+  -- in [heredoc|雇用保険被保険者,${_office}・${_number},|]
+  in Tx.intercalate "," ["雇用保険被保険者"
+                        , [heredoc|${_office}・${_number}|]]
 
 hihoXKey :: HihoX -> Text
 hihoXKey hx =

@@ -131,8 +131,11 @@ type Kumiai = Record
    , "lost"       >: Maybe Day
    , "birth"      >: Maybe Day
    , "work"       >: Text
+   , "workCode"   >: Text
    , "office"     >: Text
    , "officeCode" >: Text
+   , "klass"      >: Text
+   , "klassCode"  >: Text
    , "printOrder" >: Maybe Double
    , "phone"      >: Text
    , "cellPhone"  >: Text
@@ -164,6 +167,11 @@ kokuhoAliveP k = case (k ^. #kokuhoGet, k ^. #kokuhoLost) of
                    (Just _, Nothing) -> True
                    _                 -> False
 
+kokuhoNewer :: Day -> Kumiai -> Bool
+kokuhoNewer d k
+  | not (kokuhoAliveP k) = False
+  | otherwise = (Just d) <= (k ^. #kokuhoGet)
+
 makeKumiai :: [Text] -> Kumiai
 makeKumiai record' = case record' of
   [_sc                          -- 支部コード
@@ -178,7 +186,10 @@ makeKumiai record' = case record' of
     , _birth                    -- 生年月日
     , _got                      -- 加入日
     , _lost                     -- 脱退日
+    , _workCode                 -- 職種コード
     , _work                     -- 職種
+    , _classCode                -- 階層コード
+    , _class                    -- 階層
     , _office                   -- 就労先
     , _officeCode               -- 就労先コード
     , _printOrder               -- 台帳表示順
@@ -211,8 +222,11 @@ makeKumiai record' = case record' of
        <: #lost       @= (if _lost == "" then Nothing else strdt _lost)
        <: #birth      @= strdt _birth
        <: #work       @= (officeTypeRegularize $ killBlanks _work)
+       <: #workCode   @= _workCode
        <: #office     @= _office
        <: #officeCode @= _officeCode
+       <: #klass      @= _class
+       <: #klassCode  @= _classCode
        <: #printOrder @= (readMaybe $ Tx.unpack _printOrder)
        <: #phone      @= _tel
        <: #cellPhone  @= _cellphone

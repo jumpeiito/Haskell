@@ -29,8 +29,9 @@ import           Data.Conduit              (Source
 import qualified Data.Conduit.Combinators  as CC
 import qualified Data.Conduit.List         as CL
 import qualified Data.Map.Strict           as M
-import           Data.Maybe                (isNothing, isJust, fromMaybe)
+import           Data.Maybe                (isNothing, isJust, fromMaybe, fromJust)
 import           Data.Monoid               ((<>))
+import           Data.Time                 (fromGregorian)
 import           Data.Text                 (Text)
 import qualified Data.Text                 as Tx
 import qualified Data.Text.IO              as Tx
@@ -283,6 +284,9 @@ test10 = do
   hm   <- MP.hitori2NumberMap
   hkmb <- MP.hihoKanaShibuBirthCMap
   om   <- MP.ospCodeAllCMap
+  okm  <- MP.ospKoyouNumberCMap
+
+  let startDay = fromGregorian 2019 4 1
 
   let hihoP mp k =
         let key k = (B.regularize (k ^. #kana), k ^. #shibuCode, k ^. #birth)
@@ -299,26 +303,73 @@ test10 = do
   let officeP mp k = (6 `Tx.take` (k ^. #number)) `M.lookup` mp
 
   let judge k =
-        case (K.kokuhoAliveP k, hihoP hkmb k, hitoriO hm k, officeP om k) of
-          (False, _, _, _)  -> ("国保未加入", k)
-          (_, Just h, _, _) -> (H.kokuhoOutput h, k)
+        case (K.kokuhoNewer startDay k, hihoP hkmb k, hitoriO hm k, officeP om k) of
+          --------------------------------------------------
+          -- 2019年度に加入した場合
+          --------------------------------------------------
+          (True, _, _, _)   ->
+            let kokuhoGet = Tx.pack $ show $ fromJust (k ^. #kokuhoGet)
+            in ([heredoc|今年度加入(${kokuhoGet})|], k)
+          --------------------------------------------------
+          -- 雇用保険被保険者
+          --------------------------------------------------
+          (_, Just h, _, _) ->
+            case (h ^. #koyouNumber) `M.lookup` okm of
+              Just osp ->
+                let mainPart = H.kokuhoOutput h
+                    officePart = OSP.kokuhoOutput2 osp
+                in ([heredoc|${mainPart},${officePart}|], k)
+              Nothing  -> (H.kokuhoOutput h, k)
+          --------------------------------------------------
+          -- 一人親方労災加入者
+          --------------------------------------------------
           (_, _, Just h, _) -> (HT.kokuhoOutput h, k)
-          (_, _, _, Just h) -> (OSP.kokuhoOutput h, k)
+          --------------------------------------------------
+          -- 労働保険加入者
+          --------------------------------------------------
+          (_, _, _, Just h) ->
+            let mainPart = OSP.kokuhoOutput h
+                subPart  = OSP.kokuhoOutput2 h
+            in ([heredoc|${mainPart},${subPart}|], k)
           (_, _, _, _)      -> ("", k)
 
+      -- case (K.kokuhoAliveP k, hihoP hkmb k, hitoriO hm k, officeP om k) of
+      --     (False, _, _, _)  -> ("国保未加入", k)
+      --     (_, Just h, _, _) ->
+      --       case (h ^. #koyouNumber) `M.lookup` okm of
+      --         Just osp ->
+      --           let mainPart = H.kokuhoOutput h
+      --               officePart = OSP.kokuhoOutput2 osp
+      --           in ([heredoc|${mainPart},${officePart}|], k)
+      --         Nothing  -> (H.kokuhoOutput h, k)
+      --     (_, _, Just h, _) -> (HT.kokuhoOutput h, k)
+      --     (_, _, _, Just h) ->
+      --       let mainPart = OSP.kokuhoOutput h
+      --           subPart  = OSP.kokuhoOutput2 h
+      --       in ([heredoc|${mainPart},${subPart}|], k)
+      --     (_, _, _, _)      -> ("", k)
+
   let str (s, k) =
-        let _number = k ^. #number
-            _knum   = k ^. #kokuhoNumber
-            _name   = k ^. #name
-            _kana   = k ^. #kana
-            _shibu  = k ^. #shibu
-            _bunkai = k ^. #bunkai
-            _han    = k ^. #han
-            _kaiso  = k ^. #kokuhoKaiso
-        in [heredoc|${_number},${_knum},${_shibu},${_bunkai},${_han},${_name},${_kaiso},${s}|]
+        let symlist = [ k ^. #kokuhoNumber
+                      , k ^. #shibuCode
+                      , k ^. #shibu
+                      , k ^. #bunkaiCode
+                      , k ^. #bunkai
+                      , k ^. #workCode
+                      , k ^. #work
+                      , k ^. #name
+                      , k ^. #klassCode
+                      , k ^. #klass
+                      , ""
+                      , k ^. #office
+                      , "", "", "", ""
+                      , s]
+        in let join = Tx.intercalate ","
+        in join symlist
 
   runConduit $
     (S.initializeSource :: Source IO K.Kumiai)
+    .| CL.filter K.kokuhoAliveP
     .| CL.mapM_ (judge >>> str >>> Tx.putStrLn)
 
 toMonthString :: Int -> Text

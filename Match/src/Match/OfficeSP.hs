@@ -135,6 +135,13 @@ kokuhoOutput o =
       _name = o ^. #name
   in [heredoc|労働保険,${_name}・${_gid}-${_id}|]
 
+kokuhoOutput2 :: OfficeSP -> Tx.Text
+kokuhoOutput2 o =
+  let _owner   = o ^. #owner
+      _address = o ^. #address
+      _postal  = o ^. #postal
+  in [heredoc|${_owner},${_address},${_postal}|]
+
 kikanBango :: OfficeSP -> Text
 kikanBango o =
   Tx.take 5 $ takeEnd 6 $ o ^. #groupid

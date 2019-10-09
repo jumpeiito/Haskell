@@ -209,6 +209,14 @@ ospRosaiNumberCMap = do
   xl ===>
     Key OSP.rosaiNumberKey `MakeSingletonMap` Value id
 
+ospKoyouNumberCMap :: IO (M.Map Text OSP.OfficeSP)
+ospKoyouNumberCMap = do
+  let xl = initializeSource
+           $= CL.filter OSP.koyoP
+           $$ CL.consume
+  xl ===>
+    Key (^. #koyouNumber) `MakeSingletonMap` Value id
+
 -- hitori
 hitoriRosaiCodeMap :: IO (M.Map Text Text)
 hitoriRosaiCodeMap = do
