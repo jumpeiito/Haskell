@@ -374,7 +374,7 @@ test10 = do
 
 test11 :: String -> IO ()
 test11 s = do
-  I.hSetEncoding I.stdout I.utf8
+  -- I.hSetEncoding I.stdout I.utf8
 
   kmb <- MP.kumiaiBirthdayNameCMap
   knm <- MP.kumiaiNumberCMap
@@ -421,10 +421,11 @@ test11 s = do
     (S.initializeSource :: Source IO H.HihoR)
     .| CL.filter H.hihoAliveP
     .| CL.filter ((^. #shibu) >>> (== Just (Tx.pack s)))
-    .| CL.map output
+    .| CL.map (output &&& id)
     .| CL.consume
 
-  forM_ (sort finalizer) Tx.putStrLn
+  -- forM_ (sort finalizer) Tx.putStrLn
+  forM_ (sort finalizer) print
 
 toMonthString :: Int -> Text
 toMonthString n | n < 10 = Tx.pack $ "0" ++ (show n) ++ "月"

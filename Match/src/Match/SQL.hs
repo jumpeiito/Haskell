@@ -101,7 +101,11 @@ fetchSQLSource csvf specf dbf = do
   let db   = conf ^. dbf
   let spec = conf ^. specf
 
-  liftIO $ renewDB spec csv db
+  bool <- liftIO $ doesFileExist csv
+
+  if bool
+    then liftIO $ renewDB spec csv db
+    else return ()
 
   readSQLiteSource db
 
