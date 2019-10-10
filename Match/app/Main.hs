@@ -14,7 +14,7 @@ import           Control.Lens
 import           Control.Monad             (when, guard, forM_, liftM)
 import           Control.Monad.Except      (ExceptT, runExceptT, liftIO)
 import qualified Data.ByteString.Lazy      as BL
-import           Data.List                 (sortBy)
+import           Data.List                 (sortBy, sort)
 import           Data.List.Split           (chunksOf)
 import           Data.Ord                  (comparing)
 import           Data.Conduit              (Source
@@ -372,11 +372,12 @@ test10 = do
     .| CL.filter K.kokuhoAliveP
     .| CL.mapM_ (judge >>> str >>> Tx.putStrLn)
 
-test11 :: IO ()
-test11 = do
+test11 :: String -> IO ()
+test11 s = do
   I.hSetEncoding I.stdout I.utf8
 
   kmb <- MP.kumiaiBirthdayNameCMap
+  knm <- MP.kumiaiNumberCMap
 
   let hihoKey h = ( B.regularize $ B.killBlanks $ h ^. #kana
                   , h ^. #birth)
@@ -388,7 +389,18 @@ test11 = do
             _birth = toText (h ^. #birth)
             _got   = toText (h ^. #got)
             _oname = h ^. #officeName
-        in [heredoc|${_name},${_birth},${_got},${_oname}|]
+            _ocode = h ^. #officeCode
+        in case _ocode `M.lookup` knm of
+             Nothing -> ""
+             Just k ->
+               Tx.intercalate "," [ k ^. #bunkaiCode <> k ^. #han
+                                  , _oname
+                                  , k ^. #bunkai
+                                  , k ^. #han
+                                  , k ^. #name
+                                  , _name
+                                  , _birth
+                                  , _got]
 
   let subPart h =
         case hihoKey h `M.lookup` kmb of
@@ -404,12 +416,15 @@ test11 = do
             s = subPart h
         in [heredoc|${m},${s}|]
 
-  runConduit $
+  finalizer <-
+    runConduit $
     (S.initializeSource :: Source IO H.HihoR)
     .| CL.filter H.hihoAliveP
-    .| CL.filter ((^. #shibu) >>> (== Just "20"))
-    .| CL.mapM_ (output >>> Tx.putStrLn)
-    -- .| CL.mapM_ ((^. #shibu) >>> print)
+    .| CL.filter ((^. #shibu) >>> (== Just (Tx.pack s)))
+    .| CL.map output
+    .| CL.consume
+
+  forM_ (sort finalizer) Tx.putStrLn
 
 toMonthString :: Int -> Text
 toMonthString n | n < 10 = Tx.pack $ "0" ++ (show n) ++ "月"
