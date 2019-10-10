@@ -144,7 +144,7 @@ kumiaiBirthdayNameCMap :: IO (M.Map (Text, Maybe Day) [K.Kumiai])
 kumiaiBirthdayNameCMap = do
   let insert mp el =
         let b = el ^. #birth
-        in let k = B.killBlanks $ el ^. #kana
+        in let k = B.regularize $ B.killBlanks $ el ^. #kana
         in M.insertWith (++) (k, b) [el] mp
   initializeSource $$ CL.fold insert M.empty
 

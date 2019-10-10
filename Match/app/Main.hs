@@ -372,6 +372,45 @@ test10 = do
     .| CL.filter K.kokuhoAliveP
     .| CL.mapM_ (judge >>> str >>> Tx.putStrLn)
 
+test11 :: IO ()
+test11 = do
+  I.hSetEncoding I.stdout I.utf8
+
+  kmb <- MP.kumiaiBirthdayNameCMap
+
+  let hihoKey h = ( B.regularize $ B.killBlanks $ h ^. #kana
+                  , h ^. #birth)
+
+  let toText d = mempty `fromMaybe` ((Tx.pack . show) <$> d)
+
+  let mainPart h =
+        let _name  = h ^. #name
+            _birth = toText (h ^. #birth)
+            _got   = toText (h ^. #got)
+            _oname = h ^. #officeName
+        in [heredoc|${_name},${_birth},${_got},${_oname}|]
+
+  let subPart h =
+        case hihoKey h `M.lookup` kmb of
+          Nothing  -> mempty
+          Just [k] ->
+            let _bunkai = k ^. #bunkai
+                _han    = k ^. #han
+                _shibu  = k ^. #shibu
+            in [heredoc|${_shibu}支部,${_bunkai}分会,${_han}班|]
+
+  let output h =
+        let m = mainPart h
+            s = subPart h
+        in [heredoc|${m},${s}|]
+
+  runConduit $
+    (S.initializeSource :: Source IO H.HihoR)
+    .| CL.filter H.hihoAliveP
+    .| CL.filter ((^. #shibu) >>> (== Just "20"))
+    .| CL.mapM_ (output >>> Tx.putStrLn)
+    -- .| CL.mapM_ ((^. #shibu) >>> print)
+
 toMonthString :: Int -> Text
 toMonthString n | n < 10 = Tx.pack $ "0" ++ (show n) ++ "月"
           | otherwise = Tx.pack $ show n ++ "月"
