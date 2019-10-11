@@ -53,8 +53,8 @@ type Getter a = Getting a Conf a
 type PathGetter = Getter FilePath
 
 readConf :: (MonadThrow m, MonadIO m) => m Conf
--- readConf = readYaml "d:/home/temp/Haskell/Match/matchConfig.yaml"
-readConf = readYaml "C:/users/Jumpei/Haskell/Match/matchConfig.yaml"
+readConf = readYaml "d:/home/temp/Haskell/Match/matchConfig.yaml"
+-- readConf = readYaml "C:/users/Jumpei/Haskell/Match/matchConfig.yaml"
 
 safeReadConf :: (MonadCatch m, MonadIO m) => m Conf
 safeReadConf =

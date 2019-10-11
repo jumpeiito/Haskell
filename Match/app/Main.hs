@@ -375,6 +375,8 @@ test10 = do
 test11 :: String -> IO ()
 test11 s = do
   -- I.hSetEncoding I.stdout I.utf8
+  encoding <- I.mkTextEncoding "cp932"
+  I.hSetEncoding I.stdout encoding
 
   kmb <- MP.kumiaiBirthdayNameCMap
   knm <- MP.kumiaiNumberCMap
@@ -391,13 +393,18 @@ test11 s = do
             _oname = h ^. #officeName
             _ocode = h ^. #officeCode
         in case _ocode `M.lookup` knm of
-             Nothing -> ""
+             Nothing ->
+               Tx.intercalate "," [ "", "", "", ""
+                                  , _oname
+                                  , _name
+                                  , _birth
+                                  , _got]
              Just k ->
                Tx.intercalate "," [ k ^. #bunkaiCode <> k ^. #han
-                                  , _oname
                                   , k ^. #bunkai
                                   , k ^. #han
                                   , k ^. #name
+                                  , _oname
                                   , _name
                                   , _birth
                                   , _got]
@@ -421,11 +428,21 @@ test11 s = do
     (S.initializeSource :: Source IO H.HihoR)
     .| CL.filter H.hihoAliveP
     .| CL.filter ((^. #shibu) >>> (== Just (Tx.pack s)))
-    .| CL.map (output &&& id)
+    .| CL.map output
     .| CL.consume
 
-  -- forM_ (sort finalizer) Tx.putStrLn
-  forM_ (sort finalizer) print
+  Tx.putStrLn $ Tx.intercalate "," [ "CD"
+                                   , "分会"
+                                   , "班"
+                                   , "事業主"
+                                   , "事業所"
+                                   , "被保険者"
+                                   , "生年月日"
+                                   , "資格取得日"
+                                   , "支部"
+                                   , "分会"
+                                   , "班"]
+  forM_ (sort finalizer) Tx.putStrLn
 
 toMonthString :: Int -> Text
 toMonthString n | n < 10 = Tx.pack $ "0" ++ (show n) ++ "月"
@@ -590,55 +607,55 @@ kumiaiOfficeBlankMatchUp = do
     .| CL.mapM_ (mapM_ Tx.putStrLn)
 ----------------------------------------------------------------------
 shibuMatchUp :: Text -> IO ()
-shibuMatchUp s = do
-  kMap <- MP.kumiaiBirthdayNameCMap
-  oMap <- MP.officeNumberMap
+shibuMatchUp s = test11 (Tx.unpack s)
+--   kMap <- MP.kumiaiBirthdayNameCMap
+--   oMap <- MP.officeNumberMap
 
-  joinPrint [ "支部コード"
-            , "記号"
-            , "事業所コード"
-            , "事業所名"
-            , "支部"
-            , "分会"
-            , "班"
-            , "被保険者氏名"
-            , "被保険者カナ"
-            , "生年月日"
-            , "雇用保険取得日"
-            , "雇用保険喪失日" ]
+--   joinPrint [ "支部コード"
+--             , "記号"
+--             , "事業所コード"
+--             , "事業所名"
+--             , "支部"
+--             , "分会"
+--             , "班"
+--             , "被保険者氏名"
+--             , "被保険者カナ"
+--             , "生年月日"
+--             , "雇用保険取得日"
+--             , "雇用保険喪失日" ]
 
-  (S.initializeSource     :: Source IO H.HihoR)
-    $= (CL.filter (\h -> (H.hihoAliveP h) && (H.hihoOfficeAliveP h)))
-    $= (CL.filter (\h -> h ^. #shibu == Just s))
-    $= (conduit kMap oMap :: Conduit H.HihoR IO Figure)
-    $$ (figureSink        :: Sink Figure IO ())
-----------------------------------------------------------------------
-  where
-    conduit k o =
-      awaitForever $ \hiho ->
-        figureMaybeConduit $ do
-          Just offi <- return $ (hiho ^. #officeCode) `M.lookup` o
-          let kMatch = (hiho ^. #kana, hiho ^. #birth) `M.lookup` k
-          let kumiai = head <$> kMatch
-          let sym = case (kumiai, (^. #lost) =<< kumiai , offi ^. #lost) of
-                      (Just _, Nothing, Nothing) -> "現組"
-                      (Just _, Just _, Nothing)  -> "元組"
-                      _                  -> ""
-          return Figure { runKumiai = kumiai
-                        , runOffice = Nothing
-                        , runHiho   = Just hiho
-                        , before    = map fromText [s, sym]
-                        , after     = mempty
-                        , direction = [ HihoOfficeCode
-                                      , HihoOfficeName
-                                      , Shibu
-                                      , Bunkai
-                                      , Han
-                                      , HihoName
-                                      , HihoKana
-                                      , HihoBirthday
-                                      , HihoGot
-                                      , HihoLost]}
+--   (S.initializeSource     :: Source IO H.HihoR)
+--     $= (CL.filter (\h -> (H.hihoAliveP h) && (H.hihoOfficeAliveP h)))
+--     $= (CL.filter (\h -> h ^. #shibu == Just s))
+--     $= (conduit kMap oMap :: Conduit H.HihoR IO Figure)
+--     $$ (figureSink        :: Sink Figure IO ())
+-- ----------------------------------------------------------------------
+--   where
+--     conduit k o =
+--       awaitForever $ \hiho ->
+--         figureMaybeConduit $ do
+--           Just offi <- return $ (hiho ^. #officeCode) `M.lookup` o
+--           let kMatch = (hiho ^. #kana, hiho ^. #birth) `M.lookup` k
+--           let kumiai = head <$> kMatch
+--           let sym = case (kumiai, (^. #lost) =<< kumiai , offi ^. #lost) of
+--                       (Just _, Nothing, Nothing) -> "現組"
+--                       (Just _, Just _, Nothing)  -> "元組"
+--                       _                  -> ""
+--           return Figure { runKumiai = kumiai
+--                         , runOffice = Nothing
+--                         , runHiho   = Just hiho
+--                         , before    = map fromText [s, sym]
+--                         , after     = mempty
+--                         , direction = [ HihoOfficeCode
+--                                       , HihoOfficeName
+--                                       , Shibu
+--                                       , Bunkai
+--                                       , Han
+--                                       , HihoName
+--                                       , HihoKana
+--                                       , HihoBirthday
+--                                       , HihoGot
+--                                       , HihoLost]}
 ----------------------------------------------------------------------
 kumiaiinMatchUp :: IO ()
 kumiaiinMatchUp = do
@@ -774,8 +791,8 @@ yakuOutput =
 ----------------------------------------------------------------------
 main :: IO ()
 main = do
-  -- sjis <- I.mkTextEncoding "CP932"
-  I.hSetEncoding I.stdout I.utf8
+  sjis <- I.mkTextEncoding "CP932"
+  I.hSetEncoding I.stdout sjis
 
   --------------------------------------------------------------------------------
 

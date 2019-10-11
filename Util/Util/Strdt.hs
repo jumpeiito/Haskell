@@ -124,6 +124,7 @@ gengouToYear (g, y)
   | g `isInfixOf` "Tt大" || g == "大正" = 1911 + y
   | g `isInfixOf` "Ss昭" || g == "昭和" || g == "3" = 1925 + y
   | g `isInfixOf` "Hh平" || g == "平成" || g == "4" = 1988 + y
+  | g `isInfixOf` "Rr令" || g == "令和" || g == "5" = 2018 + y
   | otherwise                          = 1988 + y
 
 stringToGengouYear :: String -> String -> String
@@ -131,9 +132,9 @@ stringToGengouYear g y = show $ gengouToYear (g, read y)
 
 gengouParse :: Parser String
 gengouParse =
-  try (choice [ string "明治", string "大正", string "昭和", string "平成"
-              , string "3", string "4" ])
-  <|> (:[]) <$> oneOf "MTSHmtsh明大昭平"
+  try (choice [ string "明治", string "大正", string "昭和", string "平成", string "令和"
+              , string "3", string "4", string "5"])
+  <|> (:[]) <$> oneOf "MTSHRmtshr明大昭平令"
 
 _strdt :: StringLike a => a -> Either ParseError Day
 _strdt = parse calc "" . castString

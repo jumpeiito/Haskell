@@ -117,6 +117,7 @@ gengouToYear (g, y)
   | g == 2    = 1911 + y
   | g == 3    = 1925 + y
   | g == 4    = 1988 + y
+  | g == 5    = 2018 + y
   | otherwise = 1988 + y
 
 stringToGengouYear :: Int -> Integer -> Integer
@@ -128,7 +129,12 @@ gengouParse = do
   let taisho = Prelude.map string ["大正", "T", "t", "大"]
   let showa  = Prelude.map string ["昭和", "3", "S", "s", "昭"]
   let heisei = Prelude.map string ["平成", "4", "H", "h", "平"]
-  (choice meiji  >> return 1) <|> (choice taisho >> return 2) <|> (choice showa  >> return 3) <|> (choice heisei >> return 4)
+  let reiwa  = Prelude.map string ["令和", "5", "R", "h", "令"]
+  (choice meiji  >> return 1)
+    <|> (choice taisho >> return 2)
+    <|> (choice showa  >> return 3)
+    <|> (choice heisei >> return 4)
+    <|> (choice reiwa  >> return 5)
 
 _strdt :: Text -> Either String Day
 _strdt = parseOnly calc
