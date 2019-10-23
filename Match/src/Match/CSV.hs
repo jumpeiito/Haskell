@@ -57,7 +57,8 @@ parseCSV spec fp = do
   case CSV.parseCSV contents of
     Left pe -> return $ Left pe
     Right c -> let sindex = spec `parseHeader` head c
-               in return $ Right $ map (commaReplace . (sindex `extractColumns`)) $ tail c
+                   extractRow = commaReplace . (sindex `extractColumns`)
+               in return $ Right $ map extractRow $ tail c
 
 parseCSV2 :: (MonadThrow m, MonadIO m)
   => Spec -> FilePath -> m [[Text]]
@@ -69,7 +70,8 @@ parseCSV2 spec fp = do
               Left _  -> throwM $ CSVParseFailException fp
               Right c -> do
                 let sindex = spec `parseHeader` head c
-                return $ map (sindex `extractColumns`) $ tail c
+                let extractRow = sindex `extractColumns`
+                return $ map extractRow $ tail c
     else throwM $ FileNotExistException fp
 
 parseCSVSource :: (MonadThrow m, MonadIO m)

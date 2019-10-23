@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.1.
+-- This file has been generated from package.yaml by hpack version 0.31.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 465d050e91e75d3eba247cf67a000dc61cd7a90653d0f9ce24a39bd433d5c155
+-- hash: 6d15adf66bed0b4f702116d56208b7ee50edffda2a80cc759dcbcea499f6808f
 
 name:           Match
 version:        0.4.0.0
@@ -32,6 +32,7 @@ library
       Match.CSV
       Match.Directory
       Match.Figure
+      Match.Geocoder
       Match.Hiho
       Match.Hitori
       Match.Kumiai
@@ -143,6 +144,7 @@ executable Match-exe
   other-modules:
       CreateDirectory.Main
       OpenPDF.Main
+      PDFSexp.Main
       Ukyo.Main
       Paths_Match
   hs-source-dirs:
