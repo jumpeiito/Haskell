@@ -1,5 +1,6 @@
 allow-newer: true
-resolver: lts-9.21
+# resolver: lts-9.21
+resolver: lts-14.11
 
 packages:
 - .
@@ -7,6 +8,7 @@ packages:
 
 extra-deps:
 - req-0.2.0
-- extensible-0.4.9
+- network-3.0.0.0
+- extensible-0.5
 - attoparsec-csv-0.1.1.0
 - heredocs-0.1.4
