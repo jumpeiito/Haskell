@@ -114,9 +114,7 @@ officePartsM = do
     _      -> return ("", "")
 
 lostPDFP :: MonadicPath Bool
-lostPDFP = do
-  x <- get
-  return $ "喪失" `V.elem` fst x
+lostPDFP = containP "喪失"
 
 baseInfoM :: MonadicPath DirectoryBaseInfo
 baseInfoM = do

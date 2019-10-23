@@ -60,6 +60,9 @@ addM dirs = do
 repM :: Int -> MonadicPath () -> MonadicPath ()
 repM i f = sequence_ [f | _ <- [0..i-1]]
 
+containP :: String -> MonadicPath Bool
+containP s = (V.elem s . fst) <$> get
+
 (../), (.../), (..../), (...../)   :: MonadicPath ()
 (....../), (......./), (......../) :: MonadicPath ()
 (../)       = upM
