@@ -76,7 +76,8 @@ renewDB spec csv db = do
               csvToSQL spec csv db
     else csvToSQL spec csv db
 
-readSQLiteSource :: (MonadThrow m, MonadIO m) => String -> Source m [Text]
+-- readSQLiteSource :: (MonadThrow m, MonadIO m) => String -> Source m [Text]
+readSQLiteSource :: (MonadThrow m, MonadIO m) => String -> ConduitT () [Text] m ()
 readSQLiteSource dbname = do
   p <- liftIO $ doesFileExist dbname
   if p
@@ -94,7 +95,8 @@ readSQLiteIfExists dbname = do
     return $ map (entityVal >>> toText >>> Tx.splitOn ",") answer
 
 fetchSQLSource :: (MonadThrow m, MonadIO m) =>
-  PathGetter -> Getter [Text] -> PathGetter -> Source m [Text]
+  -- PathGetter -> Getter [Text] -> PathGetter -> Source m [Text]
+  PathGetter -> Getter [Text] -> PathGetter -> ConduitT () [Text] m ()
 fetchSQLSource csvf specf dbf = do
   conf <- lift readConf
   let csv  = conf ^. csvf
@@ -117,8 +119,8 @@ data SQLSource a =
 
 class Sourceable a where
   source              :: SQLSource a
-  initializeCSVSource :: Reader (SQLSource a) (Source IO [Text])
-  initializeSource    :: Source IO a
+  initializeCSVSource :: Reader (SQLSource a) (ConduitT () [Text] IO ())
+  initializeSource    :: ConduitT () a IO ()
   initializeList      :: IO [a]
 
   initializeCSVSource = do
@@ -130,7 +132,7 @@ class Sourceable a where
   initializeSource = (`runReader` source) $ do
     maker <- makeFunction <$> ask
     src   <- initializeCSVSource
-    return $ src $= CL.map maker
+    return $ src .| CL.map maker
 
   initializeList = runConduit (initializeSource .| CL.consume)
 

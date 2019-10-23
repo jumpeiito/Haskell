@@ -70,7 +70,7 @@ parseCSV2 spec fp = do
               Left _  -> throwM $ CSVParseFailException fp
               Right c -> do
                 let sindex = spec `parseHeader` head c
-                let extractRow = sindex `extractColumns`
+                let extractRow = (sindex `extractColumns`)
                 return $ map extractRow $ tail c
     else throwM $ FileNotExistException fp
 

@@ -32,7 +32,6 @@ library
       Match.CSV
       Match.Directory
       Match.Figure
-      Match.Geocoder
       Match.Hiho
       Match.Hitori
       Match.Kumiai

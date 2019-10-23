@@ -46,7 +46,9 @@ hihoKanaBirthCMap = do
         M.insertWith (++)
                      (B.killBlanks (el ^. #kana), el ^. #birth)
                      [el] mp
-  initializeSource $$ CL.fold insert M.empty
+  runConduit
+    $ initializeSource
+    .| CL.fold insert M.empty
 
 hihoKanaShibuBirthCMap :: IO (M.Map (Text, Text, Maybe Day) [H.HihoR])
 hihoKanaShibuBirthCMap = do
@@ -56,15 +58,17 @@ hihoKanaShibuBirthCMap = do
          el ^. #birth)
   let insert mp el =
         M.insertWith (++) (triple el) [el] mp
-  initializeSource
-    $= CL.filter H.hihoAliveP
-    $$ CL.fold insert M.empty
+  runConduit
+    $ initializeSource
+    .| CL.filter H.hihoAliveP
+    .| CL.fold insert M.empty
 
 hihoNumberCMap :: IO (M.Map Text H.HihoR)
 hihoNumberCMap = do
-  gen <- initializeSource
-         =$ CL.map ((^. #number) &&& id)
-         $$ CL.consume
+  gen <- runConduit
+         $ initializeSource
+         .| CL.map ((^. #number) &&& id)
+         .| CL.consume
   return $ M.fromList gen
 
 hihoOfficeCodeCMap :: IO (M.Map Text [H.HihoR])
@@ -73,17 +77,19 @@ hihoOfficeCodeCMap = do
         M.insertWith (++)
                      (el ^. #officeCode)
                      [el] mp
-  initializeSource
-    $= CL.filter (H.hihoThisNendoP 2018)
-    $$ CL.fold insert M.empty
+  runConduit
+    $ initializeSource
+    .| CL.filter (H.hihoThisNendoP 2018)
+    .| CL.fold insert M.empty
 
 hihoKoyouNumberCMap :: IO (M.Map Text [H.HihoR])
 hihoKoyouNumberCMap = do
   let insert mp el =
         M.insertWith (++) (el ^. #koyouNumber) [el] mp
-  initializeSource
-    $= CL.filter (H.hihoThisNendoP 2018)
-    $$ CL.fold insert M.empty
+  runConduit
+    $ initializeSource
+    .| CL.filter (H.hihoThisNendoP 2018)
+    .| CL.fold insert M.empty
 
 hihoKoyouNumberRMap :: ReaderT Integer IO (M.Map Text [H.HihoR])
 hihoKoyouNumberRMap = do
@@ -99,7 +105,7 @@ hihoKoyouNumberRMap = do
 makeOfficeMap ::
   (B.Office -> (Text, B.Office)) -> IO (M.Map Text B.Office)
 makeOfficeMap f =
-  M.fromList <$> (initializeSource =$ CL.map f $$ CL.consume)
+  M.fromList <$> (runConduit $ initializeSource .| CL.map f .| CL.consume)
 
 officeNumberMap, officeTelMap, officePosMap, officeNameMap
   :: IO (M.Map Text B.Office)
@@ -130,15 +136,18 @@ kumiaiBirthdayNameMap = do
 
 kumiaiNumberCMap :: IO (M.Map Text K.Kumiai)
 kumiaiNumberCMap = M.fromList <$>
-             (initializeSource
-              =$ CL.map ((kumiaiMakeKey . (^. #number)) &&& id)
-              $$ CL.consume)
+             (runConduit
+              $ initializeSource
+              .| CL.map ((kumiaiMakeKey . (^. #number)) &&& id)
+              .| CL.consume)
 
 kumiaiBirthdayCMap :: IO (M.Map (Maybe Day) [K.Kumiai])
 kumiaiBirthdayCMap = do
   let insert mp el =
         M.insertWith (++) (el ^. #birth) [el] mp
-  initializeSource $$ CL.fold insert M.empty
+  runConduit
+    $ initializeSource
+    .| CL.fold insert M.empty
 
 kumiaiBirthdayNameCMap :: IO (M.Map (Text, Maybe Day) [K.Kumiai])
 kumiaiBirthdayNameCMap = do
@@ -146,7 +155,9 @@ kumiaiBirthdayNameCMap = do
         let b = el ^. #birth
         in let k = B.regularize $ B.killBlanks $ el ^. #kana
         in M.insertWith (++) (k, b) [el] mp
-  initializeSource $$ CL.fold insert M.empty
+  runConduit
+    $ initializeSource
+    .| CL.fold insert M.empty
 
 kumiaiOfficeCodeMap :: IO (M.Map Text [K.Kumiai])
 kumiaiOfficeCodeMap = do
@@ -174,46 +185,52 @@ koNameMap =
 
 koNumberCMap :: IO (M.Map Text KO.KumiaiOffice)
 koNumberCMap = M.fromList <$>
-             (initializeSource
-              =$ CL.map ((makeKeySimplize . (^. #idNumber)) &&& id)
-              $$ CL.consume)
+             (runConduit
+              $ initializeSource
+              .| CL.map ((makeKeySimplize . (^. #idNumber)) &&& id)
+              .| CL.consume)
 
 koNameCMap :: IO (M.Map Text KO.KumiaiOffice)
 koNameCMap = M.fromList <$>
-           (initializeSource
-             =$ CL.map ((^. #name) &&& id)
-             $$ CL.consume)
+           (runConduit
+             $ initializeSource
+             .| CL.map ((^. #name) &&& id)
+             .| CL.consume)
 
 -- officeSP
 ospCodeCMap :: IO (M.Map Text OSP.OfficeSP)
 ospCodeCMap = do
-  let xl = initializeSource
-           $= CL.filter OSP.koyoP
-           $$ CL.consume
+  let xl = runConduit
+           $ initializeSource
+           .| CL.filter OSP.koyoP
+           .| CL.consume
   xl ===>
     Key (^. #code) `MakeSingletonMap` Value id
 
 ospCodeAllCMap :: IO (M.Map Text OSP.OfficeSP)
 ospCodeAllCMap = do
-  let xl = initializeSource
-           $= CL.filter OSP.aliveP
-           $$ CL.consume
+  let xl = runConduit
+           $ initializeSource
+           .| CL.filter OSP.aliveP
+           .| CL.consume
   xl ===>
     Key (^. #code) `MakeSingletonMap` Value id
 
 ospRosaiNumberCMap :: IO (M.Map Text OSP.OfficeSP)
 ospRosaiNumberCMap = do
-  let xl = initializeSource
-           $= CL.filter OSP.koyoP
-           $$ CL.consume
+  let xl = runConduit
+           $ initializeSource
+           .| CL.filter OSP.koyoP
+           .| CL.consume
   xl ===>
     Key OSP.rosaiNumberKey `MakeSingletonMap` Value id
 
 ospKoyouNumberCMap :: IO (M.Map Text OSP.OfficeSP)
 ospKoyouNumberCMap = do
-  let xl = initializeSource
-           $= CL.filter OSP.koyoP
-           $$ CL.consume
+  let xl = runConduit
+           $ initializeSource
+           .| CL.filter OSP.koyoP
+           .| CL.consume
   xl ===>
     Key (^. #koyouNumber) `MakeSingletonMap` Value id
 
@@ -226,9 +243,10 @@ hitoriRosaiCodeMap = do
         HT.rosaiCode >>> Tx.takeEnd 10
         -- HT.rosaiCode
   M.fromList <$>
-    (initializeSource
-     $= CL.map (rosaiCode &&& personsCSV)
-     $$ CL.consume)
+    (runConduit
+      $ initializeSource
+      .| CL.map (rosaiCode &&& personsCSV)
+      .| CL.consume)
 
 hitoriRosaiCodeMap2 :: IO (M.Map Text HT.Hitori)
 hitoriRosaiCodeMap2 = do
@@ -236,9 +254,10 @@ hitoriRosaiCodeMap2 = do
         HT.rosaiCode >>> Tx.takeEnd 10
         -- HT.rosaiCode
   M.fromList <$>
-    (initializeSource
-     $= CL.map (rosaiCode &&& id)
-     $$ CL.consume)
+    (runConduit
+      $ initializeSource
+      .| CL.map (rosaiCode &&& id)
+      .| CL.consume)
 
 hitori2NumberMap :: IO (M.Map Text HT.Hitori)
 hitori2NumberMap = do
@@ -246,7 +265,8 @@ hitori2NumberMap = do
   --       HT.rosaiCode >>> Tx.takeEnd 10
         -- HT.rosaiCode
   M.fromList <$>
-    (initializeSource
-     $= CL.map HT.runHO
-     $= CL.map ((^. #code) &&& id)
-     $$ CL.consume)
+    (runConduit
+      $ initializeSource
+      .| CL.map HT.runHO
+      .| CL.map ((^. #code) &&& id)
+      .| CL.consume)

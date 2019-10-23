@@ -514,9 +514,12 @@ fromDiffList (DiffList f) = f []
 instance (Show a) => Show (DiffList a) where
   show x = "fromList " <> show (fromDiffList x)
 
+instance Semigroup (DiffList a) where
+    (DiffList f) <> (DiffList g) = DiffList (\xs -> f (g xs))
+
 instance Monoid (DiffList a) where
     mempty = DiffList (\xs -> [] ++ xs)
-    (DiffList f) `mappend` (DiffList g) = DiffList (\xs -> f (g xs))
+    mappend = (<>)
 
 -- pSearchD :: FilePath -> IO [FilePath]
 -- pSearchD fp = do

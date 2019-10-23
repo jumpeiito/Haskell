@@ -256,13 +256,15 @@ toHelloWorkNumber s = mempty `fromMaybe` (fst <$> toHelloWork s)
 --------------------------------------------------
 -- 賃金等の報告
 --------------------------------------------------
-filter026Conduit :: Conduit OfficeSP IO OfficeSP
+-- filter026Conduit :: Conduit OfficeSP IO OfficeSP
+filter026Conduit :: ConduitT OfficeSP OfficeSP IO ()
 filter026Conduit =
   CL.filter (\o -> or [ o ^. #otype == "0"
                       , o ^. #otype == "2"
                       , o ^. #otype == "6"])
 
-filter5Conduit :: Conduit OfficeSP IO OfficeSP
+-- filter5Conduit :: Conduit OfficeSP IO OfficeSP
+filter5Conduit :: ConduitT OfficeSP OfficeSP IO ()
 filter5Conduit =
   CL.filter ((^. #otype) >>> (== "5"))
 

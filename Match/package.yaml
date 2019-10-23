@@ -56,7 +56,6 @@ dependencies:
   - vector
   - process
   - split
-  - xlsx
 
 default-extensions:
   - DataKinds

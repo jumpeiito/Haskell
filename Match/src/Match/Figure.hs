@@ -288,11 +288,12 @@ toBuilder f = before f <> core <> after f
 figurePrint :: Figure -> IO ()
 figurePrint = joinPrint . toBuilder
 
-figureSink :: Sink Figure IO ()
+figureSink :: ConduitT Figure Void IO ()
 figureSink = CL.mapM_ figurePrint
 
 figureMaybeConduit :: MaybeT (ConduitM a Figure IO) Figure
-  -> Conduit a IO Figure
+  -- -> Conduit a IO Figure
+  -> ConduitT a Figure IO ()
 figureMaybeConduit c = do
   fig <- runMaybeT c
   forM_ fig yield
