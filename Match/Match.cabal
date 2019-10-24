@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6d15adf66bed0b4f702116d56208b7ee50edffda2a80cc759dcbcea499f6808f
+-- hash: 6843c41c56e031fac8156b07d607c63dc79e212b9266f8fcd22200ab0c6a266b
 
 name:           Match
 version:        0.4.0.0
@@ -32,6 +32,7 @@ library
       Match.CSV
       Match.Directory
       Match.Figure
+      -- Match.Geocoder
       Match.Hiho
       Match.Hitori
       Match.Kumiai
@@ -84,17 +85,20 @@ library
     , time
     , transformers
     , vector
-    , xlsx
     , xml-conduit
     , yaml
   default-language: Haskell2010
 
 executable CreateDirectory
-  main-is: Main.hs
+  main-is: CreateDirectory.hs
   other-modules:
+      Main
+      OpenPDF
+      PDFSexp
+      Ukyo
       Paths_Match
   hs-source-dirs:
-      app/CreateDirectory
+      app
   default-extensions: DataKinds OverloadedLabels TypeApplications TypeOperators OverloadedStrings
   ghc-options: -O3 -static -optl-static -threaded -rtsopts -with-rtsopts=-N
   build-depends:
@@ -133,7 +137,6 @@ executable CreateDirectory
     , time
     , transformers
     , vector
-    , xlsx
     , xml-conduit
     , yaml
   default-language: Haskell2010
@@ -141,10 +144,10 @@ executable CreateDirectory
 executable Match-exe
   main-is: Main.hs
   other-modules:
-      CreateDirectory.Main
-      OpenPDF.Main
-      PDFSexp.Main
-      Ukyo.Main
+      CreateDirectory
+      OpenPDF
+      PDFSexp
+      Ukyo
       Paths_Match
   hs-source-dirs:
       app
@@ -188,17 +191,20 @@ executable Match-exe
     , time
     , transformers
     , vector
-    , xlsx
     , xml-conduit
     , yaml
   default-language: Haskell2010
 
 executable OpenPDF
-  main-is: Main.hs
+  main-is: OpenPDF.hs
   other-modules:
+      CreateDirectory
+      Main
+      PDFSexp
+      Ukyo
       Paths_Match
   hs-source-dirs:
-      app/OpenPDF
+      app
   default-extensions: DataKinds OverloadedLabels TypeApplications TypeOperators OverloadedStrings
   ghc-options: -O0 -static -optl-static
   build-depends:
@@ -237,17 +243,20 @@ executable OpenPDF
     , time
     , transformers
     , vector
-    , xlsx
     , xml-conduit
     , yaml
   default-language: Haskell2010
 
 executable PDFSexp
-  main-is: Main.hs
+  main-is: PDFSexp.hs
   other-modules:
+      CreateDirectory
+      Main
+      OpenPDF
+      Ukyo
       Paths_Match
   hs-source-dirs:
-      app/PDFSexp
+      app
   default-extensions: DataKinds OverloadedLabels TypeApplications TypeOperators OverloadedStrings
   ghc-options: -O3 -static -optl-static
   build-depends:
@@ -286,7 +295,60 @@ executable PDFSexp
     , time
     , transformers
     , vector
-    , xlsx
+    , xml-conduit
+    , yaml
+  default-language: Haskell2010
+
+executable Ukyo
+  main-is: Ukyo.hs
+  other-modules:
+      CreateDirectory
+      Main
+      OpenPDF
+      PDFSexp
+      Paths_Match
+  hs-source-dirs:
+      app
+  default-extensions: DataKinds OverloadedLabels TypeApplications TypeOperators OverloadedStrings
+  ghc-options: -O3 -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      Match
+    , Util
+    , aeson
+    , async
+    , attoparsec
+    , base >=4.7 && <5
+    , blaze-markup
+    , bytestring
+    , conduit
+    , conduit-combinators
+    , conduit-extra
+    , containers
+    , data-default-class
+    , directory
+    , doctest
+    , extensible >=0.4.9
+    , filepath
+    , heredocs
+    , heterocephalus
+    , lens
+    , monad-skeleton
+    , mtl
+    , optparse-applicative
+    , parallel
+    , parsec
+    , persistent
+    , persistent-sqlite
+    , persistent-template
+    , process
+    , req
+    , safe-exceptions
+    , split
+    , stm-conduit
+    , text
+    , time
+    , transformers
+    , vector
     , xml-conduit
     , yaml
   default-language: Haskell2010
@@ -335,7 +397,6 @@ test-suite Match-doctest
     , time
     , transformers
     , vector
-    , xlsx
     , xml-conduit
     , yaml
   default-language: Haskell2010

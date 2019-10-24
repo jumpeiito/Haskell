@@ -93,23 +93,23 @@ executables:
     - Match
     - async
     - optparse-applicative
-  # Ukyo:
-  #   main:                Main.hs
-  #   source-dirs:
-  #   - app/Ukyo
-  #   ghc-options:
-  #   - -O3
-  #   - -threaded
-  #   - -rtsopts
-  #   - -with-rtsopts=-N
-  #   dependencies:
-  #   - Match
-  #   - async
-  #   - optparse-applicative
-  CreateDirectory:
-    main:                Main.hs
+  Ukyo:
+    main:                Ukyo.hs
     source-dirs:
-    - app/CreateDirectory
+    - app
+    ghc-options:
+    - -O3
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - Match
+    - async
+    - optparse-applicative
+  CreateDirectory:
+    main:                CreateDirectory.hs
+    source-dirs:
+    - app
     ghc-options:
     - -O3
     - -static
@@ -120,9 +120,9 @@ executables:
     dependencies:
     - Match
   OpenPDF:
-    main:                Main.hs
+    main:                OpenPDF.hs
     source-dirs:
-    - app/OpenPDF
+    - app
     ghc-options:
     - -O0
     - -static
@@ -130,9 +130,9 @@ executables:
     dependencies:
     - Match
   PDFSexp:
-    main:                Main.hs
+    main:                PDFSexp.hs
     source-dirs:
-    - app/PDFSexp
+    - app
     ghc-options:
     - -O3
     - -static
