@@ -56,6 +56,8 @@ dependencies:
   - vector
   - process
   - split
+  - xlsx
+  - optparse-applicative
 
 default-extensions:
   - DataKinds
@@ -93,52 +95,52 @@ executables:
     - Match
     - async
     - optparse-applicative
-  Ukyo:
-    main:                Ukyo.hs
-    source-dirs:
-    - app
-    ghc-options:
-    - -O3
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - Match
-    - async
-    - optparse-applicative
-  CreateDirectory:
-    main:                CreateDirectory.hs
-    source-dirs:
-    - app
-    ghc-options:
-    - -O3
-    - -static
-    - -optl-static
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - Match
-  OpenPDF:
-    main:                OpenPDF.hs
-    source-dirs:
-    - app
-    ghc-options:
-    - -O0
-    - -static
-    - -optl-static
-    dependencies:
-    - Match
-  PDFSexp:
-    main:                PDFSexp.hs
-    source-dirs:
-    - app
-    ghc-options:
-    - -O3
-    - -static
-    - -optl-static
-    dependencies:
-    - Match
+  # Ukyo:
+  #   main:                Ukyo.hs
+  #   source-dirs:
+  #   - app
+  #   ghc-options:
+  #   - -O3
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   dependencies:
+  #   - Match
+  #   - async
+  #   - optparse-applicative
+  # CreateDirectory:
+  #   main:                CreateDirectory.hs
+  #   source-dirs:
+  #   - app
+  #   ghc-options:
+  #   - -O3
+  #   - -static
+  #   - -optl-static
+  #   - -threaded
+  #   - -rtsopts
+  #   - -with-rtsopts=-N
+  #   dependencies:
+  #   - Match
+  # OpenPDF:
+  #   main:                OpenPDF.hs
+  #   source-dirs:
+  #   - app
+  #   ghc-options:
+  #   - -O0
+  #   - -static
+  #   - -optl-static
+  #   dependencies:
+  #   - Match
+  # PDFSexp:
+  #   main:                PDFSexp.hs
+  #   source-dirs:
+  #   - app
+  #   ghc-options:
+  #   - -O3
+  #   - -static
+  #   - -optl-static
+  #   dependencies:
+  #   - Match
    
 tests:
   # Match-test:

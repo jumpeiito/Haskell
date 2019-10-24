@@ -2,7 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
-module Ukyo where
+module Main where
 
 import           Control.Arrow             ((>>>), (&&&))
 import           Control.Lens
@@ -216,7 +216,7 @@ contains :: Text -> Text -> Bool
 contains t s = s `elem` Tx.splitOn "・" t
 
 makeMark :: Text -> String -> String -> String
-makeMark target part ret = if target `Ukyo.contains` Tx.pack part
+makeMark target part ret = if target `Main.contains` Tx.pack part
                            then ret
                            else ""
 
@@ -252,6 +252,7 @@ maybeString Nothing  = mempty
 --------------------------------------------------
 csvSource :: MonadIO m =>
   (Config -> FilePath) -> UnderConfigT m (Source IO [Text])
+  -- (Config -> FilePath) -> UnderConfigT m (ConduitT () [Text] IO ())
 csvSource f = do
   csvname <- f <$> ask
   return $ relationSpec `parseCSVSource` csvname
@@ -309,6 +310,7 @@ addRelationaltoKumiai m k =
     Nothing      -> k
 
 addRelationConduit :: OyakataMap -> Conduit Kumiai IO Kumiai
+-- addRelationConduit :: OyakataMap -> ConduitT Kumiai Kumiai IO ()
 addRelationConduit om =
   awaitForever (yield . addRelationaltoKumiai om)
 ---workReplace------------------------------------
@@ -510,7 +512,7 @@ figureP = Q.switch $ Q.short 'f' <> Q.long "figure"    <> Q.help ""
 makeMapP :: Q.Parser Bool
 makeMapP = Q.switch $ Q.short 'm' <> Q.long "map"    <> Q.help ""
 
-myParserInfo :: Q.ParserInfo Ukyo.Options
+myParserInfo :: Q.ParserInfo Main.Options
 myParserInfo = Q.info optionsP $ mconcat
     [ Q.fullDesc
     , Q.progDesc "test program."
@@ -519,7 +521,7 @@ myParserInfo = Q.info optionsP $ mconcat
     , Q.progDesc ""
     ]
 
-optionsP :: Q.Parser Ukyo.Options
+optionsP :: Q.Parser Main.Options
 optionsP = (<*>) Q.helper
            $ Options
            <$> yamlFileP

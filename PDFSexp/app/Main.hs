@@ -1,4 +1,4 @@
-module PDFSexp where
+module Main where
 
 import Match.Directory
 import System.Environment

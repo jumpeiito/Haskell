@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.31.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6843c41c56e031fac8156b07d607c63dc79e212b9266f8fcd22200ab0c6a266b
+-- hash: 60849c957e011ae1c6b32e8795aa030ed78a6ee07652f685a6ccbaa6d1049d66
 
 name:           Match
 version:        0.4.0.0
@@ -32,7 +32,7 @@ library
       Match.CSV
       Match.Directory
       Match.Figure
-      -- Match.Geocoder
+      Match.Geocoder
       Match.Hiho
       Match.Hitori
       Match.Kumiai
@@ -70,6 +70,7 @@ library
     , lens
     , monad-skeleton
     , mtl
+    , optparse-applicative
     , parallel
     , parsec
     , path
@@ -85,58 +86,7 @@ library
     , time
     , transformers
     , vector
-    , xml-conduit
-    , yaml
-  default-language: Haskell2010
-
-executable CreateDirectory
-  main-is: CreateDirectory.hs
-  other-modules:
-      Main
-      OpenPDF
-      PDFSexp
-      Ukyo
-      Paths_Match
-  hs-source-dirs:
-      app
-  default-extensions: DataKinds OverloadedLabels TypeApplications TypeOperators OverloadedStrings
-  ghc-options: -O3 -static -optl-static -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      Match
-    , Util
-    , aeson
-    , attoparsec
-    , base >=4.7 && <5
-    , blaze-markup
-    , bytestring
-    , conduit
-    , conduit-combinators
-    , conduit-extra
-    , containers
-    , data-default-class
-    , directory
-    , doctest
-    , extensible >=0.4.9
-    , filepath
-    , heredocs
-    , heterocephalus
-    , lens
-    , monad-skeleton
-    , mtl
-    , parallel
-    , parsec
-    , persistent
-    , persistent-sqlite
-    , persistent-template
-    , process
-    , req
-    , safe-exceptions
-    , split
-    , stm-conduit
-    , text
-    , time
-    , transformers
-    , vector
+    , xlsx
     , xml-conduit
     , yaml
   default-language: Haskell2010
@@ -191,164 +141,7 @@ executable Match-exe
     , time
     , transformers
     , vector
-    , xml-conduit
-    , yaml
-  default-language: Haskell2010
-
-executable OpenPDF
-  main-is: OpenPDF.hs
-  other-modules:
-      CreateDirectory
-      Main
-      PDFSexp
-      Ukyo
-      Paths_Match
-  hs-source-dirs:
-      app
-  default-extensions: DataKinds OverloadedLabels TypeApplications TypeOperators OverloadedStrings
-  ghc-options: -O0 -static -optl-static
-  build-depends:
-      Match
-    , Util
-    , aeson
-    , attoparsec
-    , base >=4.7 && <5
-    , blaze-markup
-    , bytestring
-    , conduit
-    , conduit-combinators
-    , conduit-extra
-    , containers
-    , data-default-class
-    , directory
-    , doctest
-    , extensible >=0.4.9
-    , filepath
-    , heredocs
-    , heterocephalus
-    , lens
-    , monad-skeleton
-    , mtl
-    , parallel
-    , parsec
-    , persistent
-    , persistent-sqlite
-    , persistent-template
-    , process
-    , req
-    , safe-exceptions
-    , split
-    , stm-conduit
-    , text
-    , time
-    , transformers
-    , vector
-    , xml-conduit
-    , yaml
-  default-language: Haskell2010
-
-executable PDFSexp
-  main-is: PDFSexp.hs
-  other-modules:
-      CreateDirectory
-      Main
-      OpenPDF
-      Ukyo
-      Paths_Match
-  hs-source-dirs:
-      app
-  default-extensions: DataKinds OverloadedLabels TypeApplications TypeOperators OverloadedStrings
-  ghc-options: -O3 -static -optl-static
-  build-depends:
-      Match
-    , Util
-    , aeson
-    , attoparsec
-    , base >=4.7 && <5
-    , blaze-markup
-    , bytestring
-    , conduit
-    , conduit-combinators
-    , conduit-extra
-    , containers
-    , data-default-class
-    , directory
-    , doctest
-    , extensible >=0.4.9
-    , filepath
-    , heredocs
-    , heterocephalus
-    , lens
-    , monad-skeleton
-    , mtl
-    , parallel
-    , parsec
-    , persistent
-    , persistent-sqlite
-    , persistent-template
-    , process
-    , req
-    , safe-exceptions
-    , split
-    , stm-conduit
-    , text
-    , time
-    , transformers
-    , vector
-    , xml-conduit
-    , yaml
-  default-language: Haskell2010
-
-executable Ukyo
-  main-is: Ukyo.hs
-  other-modules:
-      CreateDirectory
-      Main
-      OpenPDF
-      PDFSexp
-      Paths_Match
-  hs-source-dirs:
-      app
-  default-extensions: DataKinds OverloadedLabels TypeApplications TypeOperators OverloadedStrings
-  ghc-options: -O3 -threaded -rtsopts -with-rtsopts=-N
-  build-depends:
-      Match
-    , Util
-    , aeson
-    , async
-    , attoparsec
-    , base >=4.7 && <5
-    , blaze-markup
-    , bytestring
-    , conduit
-    , conduit-combinators
-    , conduit-extra
-    , containers
-    , data-default-class
-    , directory
-    , doctest
-    , extensible >=0.4.9
-    , filepath
-    , heredocs
-    , heterocephalus
-    , lens
-    , monad-skeleton
-    , mtl
-    , optparse-applicative
-    , parallel
-    , parsec
-    , persistent
-    , persistent-sqlite
-    , persistent-template
-    , process
-    , req
-    , safe-exceptions
-    , split
-    , stm-conduit
-    , text
-    , time
-    , transformers
-    , vector
+    , xlsx
     , xml-conduit
     , yaml
   default-language: Haskell2010
@@ -383,6 +176,7 @@ test-suite Match-doctest
     , lens
     , monad-skeleton
     , mtl
+    , optparse-applicative
     , parallel
     , parsec
     , persistent
@@ -397,6 +191,7 @@ test-suite Match-doctest
     , time
     , transformers
     , vector
+    , xlsx
     , xml-conduit
     , yaml
   default-language: Haskell2010

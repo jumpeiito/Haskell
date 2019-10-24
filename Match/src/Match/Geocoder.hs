@@ -181,7 +181,7 @@ parseXML x =
 
 getLatLng :: Text -> IO [Double]
 getLatLng address = do
-  runReq def $ do
+  runReq defaultHttpConfig $ do
     r <- getRequest address
     case def `parseLBS` responseBody r of
       Right x -> return $ parseXML x

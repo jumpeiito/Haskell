@@ -1,0 +1,20 @@
+allow-newer: true
+
+resolver: lts-14.11
+
+packages:
+- .
+- ../Match
+- ../Util
+
+extra-deps:
+# - attoparsec-csv-0.1.1.0@sha256:b626fa3d850e5a813e72c2c7fda5d9b2d1164a0aa25d33bc16872916a0f4d8c5
+- extensible-0.6.1@sha256:d73a5dc13bd00f44ace729f83ce868e81a45ea31c7453a6f8a4a9b5b0591d600
+- heredocs-0.1.5@sha256:30681d0f009dcb35ceb41e7e4ad370c6559077ef0d81e59d2fe47c86d8be1127
+- attoparsec-csv-0.1.1.0@sha256:b626fa3d850e5a813e72c2c7fda5d9b2d1164a0aa25d33bc16872916a0f4d8c5
+- membership-0@sha256:3a11d8fd53cb1a76bb9273e6c929bbf9d649f109714bf487abb3143be04ddc81
+
+# flags: {}
+
+# extra-package-dbs: []
+
