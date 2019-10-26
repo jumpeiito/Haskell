@@ -71,7 +71,7 @@ run :: ExceptT String IO () -> IO ()
 run = (>> return ()) . runExceptT
 
 thisNendo :: IO Integer
-thisNendo = toInteger <$> nendo <$> todayDay
+thisNendo = toInteger . nendo <$> todayDay
 
 -- data Act =
 --   MakeCSV FilePath Target
@@ -88,7 +88,7 @@ test flag = do
   let func =
         if flag
         then H.hihoAliveP
-        else (const True)
+        else const True
 
   runConduit $
     -- (S.initializeSource :: Source IO H.HihoR)
@@ -161,8 +161,7 @@ test3 = do
             -- 該当の事業所に被保険者がいない場合,
             -- (該当年度以前に退職している被保険者はカウント
             -- しない),事業所情報部分だけを出力する。
-            Nothing -> do
-              yield officePart
+            Nothing -> yield officePart
             Just x  -> do
               -- 該当の事業所番号にひもづけられた被保険者を個人番号
               -- の順番に並びかえる。
@@ -174,9 +173,8 @@ test3 = do
               -- (事業所情報) + (被保険者11番〜20番)
               -- (事業所情報) + (被保険者21番〜30番) …
               -- 上記において、事業所情報は全て同じである。
-              forM_ (chunksOf 10 sorted) $ \hihoUnit -> do
-                -- yield $ toCSV [officePart, toCSV hihoUnit]
-                yield $ officePart ++ (Prelude.concat hihoUnit)
+              forM_ (chunksOf 10 sorted) $ \hihoUnit ->
+                yield $ officePart ++ Prelude.concat hihoUnit
 
   runConduit
     $ CL.sourceList (comparing OSP.KikanBango `sortBy` officeList)
@@ -224,8 +222,7 @@ test4 = do
             -- 該当の事業所に被保険者がいない場合,
             -- (該当年度以前に退職している被保険者はカウント
             -- しない),事業所情報部分だけを出力する。
-            Nothing -> do
-              yield officePart
+            Nothing -> yield officePart
             Just x  -> do
               -- 該当の事業所番号にひもづけられた被保険者を個人番号
               -- の順番に並びかえる。
@@ -237,9 +234,9 @@ test4 = do
               -- (事業所情報) + (被保険者11番〜20番)
               -- (事業所情報) + (被保険者21番〜30番) …
               -- 上記において、事業所情報は全て同じである。
-              forM_ (chunksOf 10 sorted) $ \hihoUnit -> do
+              forM_ (chunksOf 10 sorted) $ \hihoUnit ->
                 -- yield $ toCSV [officePart, toCSV hihoUnit]
-                yield $ officePart ++ (Prelude.concat hihoUnit)
+                yield $ officePart ++ Prelude.concat hihoUnit
 
   -- let excelSink = do
   --       l <- CL.consume
@@ -287,7 +284,7 @@ test9 = do
   let filename = "c:/Users/jumpei/Dropbox/2019年度　出勤簿（原紙）.xlsx"
   bs <- liftIO $ BL.readFile filename
   let xlsx = toXlsx bs
-  forM_ ([4..12] ++ [1..3]) $ \month -> do
+  forM_ ([4..12] ++ [1..3]) $ \month ->
     readFromFile xlsx month
 
 test10 :: IO ()
@@ -307,7 +304,7 @@ test10 = do
                    | otherwise      -> Nothing
           _                         -> Nothing
 
-  let hitoriO mp k = case ((6 `Tx.take` (k ^. #number)) `M.lookup` mp) of
+  let hitoriO mp k = case (6 `Tx.take` (k ^. #number)) `M.lookup` mp of
                        Just h | HT.hitoriOLiveP h -> Just h
                               | otherwise         -> Nothing
                        Nothing                    -> Nothing
@@ -397,7 +394,8 @@ test11 s = do
   let hihoKey h = ( B.regularize $ B.killBlanks $ h ^. #kana
                   , h ^. #birth)
 
-  let toText d = mempty `fromMaybe` ((Tx.pack . show) <$> d)
+  -- let toText d = mempty `fromMaybe` ((Tx.pack . show) <$> d)
+  let toText = maybe mempty (Tx.pack . show)
 
   let mainPart h =
         let _name  = h ^. #name
@@ -459,7 +457,7 @@ test11 s = do
   forM_ (sort finalizer) Tx.putStrLn
 
 toMonthString :: Int -> Text
-toMonthString n | n < 10 = Tx.pack $ "0" ++ (show n) ++ "月"
+toMonthString n | n < 10 = Tx.pack $ "0" ++ show n ++ "月"
           | otherwise = Tx.pack $ show n ++ "月"
 
 readFromFile :: Xlsx -> Int -> IO ()
@@ -499,8 +497,9 @@ jigyosyoMatchUp = do
                         , runHiho   = Nothing
                         , before    = [sym]
                         , after     =
-                            fromMaybe mempty $
-                            KO.stringList <$> key <??> ko'
+                            -- fromMaybe mempty $
+                            -- KO.stringList <$> key <??> ko'
+                          maybe mempty KO.stringList (key <??> ko')
                         , direction = [ ShibuCode
                                       , Shibu
                                       , BunkaiCode
@@ -626,8 +625,9 @@ kumiaiOfficeBlankMatchUp :: IO ()
 kumiaiOfficeBlankMatchUp = do
   kMap <- MP.kumiaiOfficeCodeMap
 
-  let mapSearch l m = case l `M.lookup` m of Just x -> x; Nothing -> []
-  let tp t = Tx.pack (fromMaybe "" $ show <$> t)
+  -- let mapSearch l m = case l `M.lookup` m of Just x -> x; Nothing -> []
+  let mapSearch l m = [] `fromMaybe` (l `M.lookup` m)
+  let tp t = Tx.pack (maybe "" show t)
   let funcs = [ (^. #shibu)
               , (^. #bunkai)
               , (^. #han)
@@ -708,7 +708,7 @@ kumiaiinMatchUp = do
   --   $$ (figureSink     :: Sink Figure IO ())
   runConduit
     $  S.initializeSource
-    .| CL.filter (\k -> (isNothing (k ^. #lost) && (k ^. #office == "")))
+    .| CL.filter (\k -> isNothing (k ^. #lost) && (k ^. #office == ""))
     .| conduit kb ko
     .| figureSink
 ----------------------------------------------------------------------
@@ -750,10 +750,10 @@ kumiaiOfficeMatchUp = do
   --   $= (conduit telMap numMap :: Conduit KO.KumiaiOffice IO Figure)
   --   $$ (figureSink            :: Sink Figure IO ())
   runConduit
-    $  (S.initializeSource)
-    .| (CL.filter ((^. #idNumber) >>> (=="")))
-    .| (conduit telMap numMap)
-    .| (figureSink)
+    $  S.initializeSource
+    .| CL.filter ((^. #idNumber) >>> (==""))
+    .| conduit telMap numMap
+    .| figureSink
 ----------------------------------------------------------------------
   where
     conduit t n =
@@ -793,7 +793,7 @@ simpleOfficeOutput = undefined
 
 ----------------------------------------------------------------------
 yakuOutput :: IO ()
-yakuOutput = do
+yakuOutput =
   runConduit
     $ S.initializeSource
     -- $= CL.filter (K.kShibuCode >>> (=="18"))

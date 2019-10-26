@@ -15,6 +15,7 @@ import           Data.Aeson
 import           Data.Conduit              (Sink
                                            , Source
                                            , Conduit
+                                           , ConduitT
                                            , runConduit
                                            , yield
                                            , awaitForever
