@@ -362,14 +362,16 @@ alienFromSetP = (^. #number) >>> (`S.member` alienSet)
 alienP :: HihoR -> Bool
 alienP = (^. #alien) >>> isJust
 
-alienFilterConduit :: Conduit HihoR IO HihoR
+-- alienFilterConduit :: Conduit HihoR IO HihoR
+alienFilterConduit :: ConduitT HihoR HihoR IO ()
 alienFilterConduit =
   CL.filter ((||) <$> alienP <*> alienP2)
   where
     alienP2 = (&&) <$> hihoNameKatakanaP
                    <*> alienFromSetP
 
-textConduit :: Conduit HihoR IO Text
+-- textConduit :: Conduit HihoR IO Text
+textConduit :: ConduitT HihoR Text IO ()
 textConduit = CL.map hihoOutput
 
 alienSet :: S.Set Tx.Text

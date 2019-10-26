@@ -204,7 +204,8 @@ readSendFile = do
   forM_ (lefts contents) print
   return $ rights contents
 
-sourceDescendDirectory :: FilePath -> Source IO FilePath
+-- sourceDescendDirectory :: FilePath -> Source IO FilePath
+sourceDescendDirectory :: FilePath -> ConduitT () FilePath IO ()
 sourceDescendDirectory fp = do
   directoryP <- liftIO $ doesDirectoryExist fp
   when directoryP $ do
@@ -229,7 +230,8 @@ createHihoDirectory = do
   forM_ xsnd $ \n -> do
     createDirectoryRecursive (fp <> "/") $ xsendDirectoryList n
 
-removeTargetDirectories :: Conduit FilePath IO FilePath
+-- removeTargetDirectories :: Conduit FilePath IO FilePath
+removeTargetDirectories :: ConduitT FilePath FilePath IO ()
 removeTargetDirectories = do
   awaitForever $ \dir -> do
     when (dir `runFileM` targetMP) $ do
@@ -237,7 +239,7 @@ removeTargetDirectories = do
       when (len == 2) $
         yield dir
 
-removeBlankDirectorySink :: Sink FilePath IO ()
+removeBlankDirectorySink :: ConduitT FilePath Void IO ()
 removeBlankDirectorySink = do
   targets <- CL.consume
   mapM_ (liftIO . putStrLn) targets
@@ -259,11 +261,11 @@ removeBlankDirectory :: IO ()
 removeBlankDirectory = do
   topPath  <- fileTreeDirectory
   let producer = sourceDescendDirectory topPath
-                 $= removeTargetDirectories
-  len <- producer $$ (length <$> CL.consume)
+                 .| removeTargetDirectories
+  len <- runConduit (producer .| (length <$> CL.consume))
   if len == 0
     then return ()
-    else do producer $$ removeBlankDirectorySink
+    else do runConduit $ producer .| removeBlankDirectorySink
             removeBlankDirectory
 
 acrord :: FilePath
@@ -315,7 +317,7 @@ pdfOpenFromVector pv i = do
     Nothing      -> return ()
     Just (_, xl) -> forM_ xl (liftIO . openPDFFileCommand)
 
-pdfSink2 :: Sink FilePath IO ()
+pdfSink2 :: ConduitT FilePath Void IO ()
 pdfSink2 = do
   pdflist <- CL.consume
   let infoVector = makePDFVector pdflist
@@ -325,7 +327,7 @@ pdfSink2 = do
     Nothing -> return ()
     Just xl -> forM_ xl (pdfOpenFromVector infoVector)
 
-pdfSinkSexp :: Sink FilePath IO ()
+pdfSinkSexp :: ConduitT FilePath Void IO ()
 pdfSinkSexp = do
   pdflist <- CL.consume
   let finalize =
@@ -341,7 +343,8 @@ pdfSinkSexp = do
   let final = DL.intercalate "\n" $ finalize pdflist
   liftIO $ writeFile "d:/home/.sexp" $ "(" ++ final ++ ")"
 
-dayFilter :: Day -> Conduit FilePath IO FilePath
+-- dayFilter :: Day -> Conduit FilePath IO FilePath
+dayFilter :: Day -> ConduitT FilePath FilePath IO ()
 dayFilter pday = do
   awaitForever $ \pdf -> do
     utc <- liftIO $ getModificationTime pdf
@@ -413,7 +416,8 @@ fromRange target =
     Left _  -> Nothing
 
 pSearchSourceRecently ::
-  Bool -> String -> FilePath -> Source IO FilePath
+  -- Bool -> String -> FilePath -> Source IO FilePath
+  Bool -> String -> FilePath -> ConduitT () FilePath IO ()
 pSearchSourceRecently flg diffDay fp = do
   p  <- liftIO $ doesDirectoryExist fp
   if p

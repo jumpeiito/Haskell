@@ -251,7 +251,8 @@ maybeString (Just a) = pack $ show a
 maybeString Nothing  = mempty
 --------------------------------------------------
 csvSource :: MonadIO m =>
-  (Config -> FilePath) -> UnderConfigT m (Source IO [Text])
+  -- (Config -> FilePath) -> UnderConfigT m (Source IO [Text])
+  (Config -> FilePath) -> UnderConfigT m (ConduitT () [Text] IO ())
 csvSource f = do
   csvname <- f <$> ask
   return $ relationSpec `parseCSVSource` csvname
@@ -308,7 +309,8 @@ addRelationaltoKumiai m k =
     Just (o, _)  -> k & #relational .~ Just o
     Nothing      -> k
 
-addRelationConduit :: OyakataMap -> Conduit Kumiai IO Kumiai
+-- addRelationConduit :: OyakataMap -> Conduit Kumiai IO Kumiai
+addRelationConduit :: OyakataMap -> ConduitT Kumiai Kumiai IO ()
 addRelationConduit om =
   awaitForever (yield . addRelationaltoKumiai om)
 ---workReplace------------------------------------

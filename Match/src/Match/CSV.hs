@@ -1,5 +1,6 @@
 -- -*- coding:utf-8 -*-
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Match.CSV
   (parseCSV, parseCSV2, Spec, parseCSVSource)
 where
@@ -74,8 +75,9 @@ parseCSV2 spec fp = do
                 return $ map extractRow $ tail c
     else throwM $ FileNotExistException fp
 
-parseCSVSource :: (MonadThrow m, MonadIO m)
-  => Spec -> FilePath -> Source m [Text]
+-- parseCSVSource :: (MonadThrow m, MonadIO m)
+--   => Spec -> FilePath -> ConduitT () [Text] IO ()
+parseCSVSource :: Spec -> FilePath -> ConduitT () [Text] IO ()
 parseCSVSource spec fp = do
   p <- liftIO $ doesFileExist fp
   if p

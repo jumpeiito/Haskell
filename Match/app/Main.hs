@@ -20,6 +20,8 @@ import           Data.Ord                  (comparing)
 import           Data.Conduit              (Source
                                            , Conduit
                                            , Sink
+                                           , ConduitT
+                                           , Void
                                            , awaitForever
                                            , yield
                                            , runConduit
@@ -89,7 +91,8 @@ test flag = do
         else (const True)
 
   runConduit $
-    (S.initializeSource :: Source IO H.HihoR)
+    -- (S.initializeSource :: Source IO H.HihoR)
+    (S.initializeSource :: ConduitT () H.HihoR IO ())
     .| H.alienFilterConduit
     .| CL.filter func
     .| H.textConduit
@@ -128,7 +131,8 @@ test2 = do
   --           Nothing  -> return ()
 
   runConduit
-    $ (CL.sourceList mainSource :: Source IO OSP.OfficeSP)
+    -- $ (CL.sourceList mainSource :: Source IO OSP.OfficeSP)
+    $ (CL.sourceList mainSource :: ConduitT () OSP.OfficeSP IO ())
     .| OSP.filter026Conduit
     .| mainConduit
     .| CL.mapM_ Tx.putStrLn
@@ -141,8 +145,11 @@ test3 = do
   -- 事業所番号にひもづけられた被保険者情報
   om <- MP.hihoKoyouNumberCMap
 
-  officeList <- (S.initializeSource :: Source IO OSP.OfficeSP)
-                $$ CL.consume
+  -- officeList <- (S.initializeSource :: Source IO OSP.OfficeSP)
+  --               $$ CL.consume
+  officeList <- runConduit
+                $ (S.initializeSource :: ConduitT () OSP.OfficeSP IO ())
+                .| CL.consume
   let outputFile = ".hiho3.csv"
 
   let mainConduit =
@@ -171,10 +178,11 @@ test3 = do
                 -- yield $ toCSV [officePart, toCSV hihoUnit]
                 yield $ officePart ++ (Prelude.concat hihoUnit)
 
-  CL.sourceList (comparing OSP.KikanBango `sortBy` officeList)
-    $= CL.filter OSP.koyoP
-    $= mainConduit
-    $$ CL.mapM_ (toCSV >>> Tx.putStrLn)
+  runConduit
+    $ CL.sourceList (comparing OSP.KikanBango `sortBy` officeList)
+    .| CL.filter OSP.koyoP
+    .| mainConduit
+    .| CL.mapM_ (toCSV >>> Tx.putStrLn)
 
 test4 :: IO ()
 test4 = do
@@ -184,8 +192,11 @@ test4 = do
   -- 事業所番号にひもづけられた被保険者情報
   om <- MP.hihoKoyouNumberCMap
 
-  officeList <- (S.initializeSource :: Source IO OSP.OfficeSP)
-                $$ CL.consume
+  -- officeList <- (S.initializeSource :: Source IO OSP.OfficeSP)
+  --               $$ CL.consume
+  officeList <- runConduit
+                  $ (S.initializeSource :: ConduitT () OSP.OfficeSP IO ())
+                  .| CL.consume
   let outputFile = ".hiho3.csv"
 
   ct <- getPOSIXTime
@@ -263,11 +274,12 @@ test4 = do
       liftIO $ BL.writeFile "temp.xlsx" $ fromXlsx ct ownxlsx
 
 
-  CL.sourceList (comparing OSP.KikanBango `sortBy` officeList)
-    $= CL.filter OSP.koyoP
-    $= mainConduit
+  runConduit
+    $  CL.sourceList (comparing OSP.KikanBango `sortBy` officeList)
+    .| CL.filter OSP.koyoP
+    .| mainConduit
     -- $$ CL.mapM_ (toCSV >>> Tx.putStrLn)
-    $$ excelSink
+    .| excelSink
     -- $$ sinkTextFile
 
 test9 :: IO ()
@@ -368,7 +380,8 @@ test10 = do
         in join symlist
 
   runConduit $
-    (S.initializeSource :: Source IO K.Kumiai)
+    -- (S.initializeSource :: Source IO K.Kumiai)
+    (S.initializeSource :: ConduitT () K.Kumiai IO ())
     .| CL.filter K.kokuhoAliveP
     .| CL.mapM_ (judge >>> str >>> Tx.putStrLn)
 
@@ -425,7 +438,8 @@ test11 s = do
 
   finalizer <-
     runConduit $
-    (S.initializeSource :: Source IO H.HihoR)
+    -- (S.initializeSource :: Source IO H.HihoR)
+    (S.initializeSource :: ConduitT () H.HihoR IO ())
     .| CL.filter H.hihoAliveP
     .| CL.filter ((^. #shibu) >>> (== Just (Tx.pack s)))
     .| CL.map output
@@ -460,10 +474,15 @@ jigyosyoMatchUp = do
   o  <- MP.officeNumberMap
   ko <- MP.koNumberMap
 
-  (S.initializeSource                    :: Source IO K.Kumiai)
-    $= (CL.filter (isNothing . (^. #lost)) :: Conduit K.Kumiai IO K.Kumiai)
-    $= (conduit o ko                     :: Conduit K.Kumiai IO Figure)
-    $$ (figureSink                       :: Sink Figure IO ())
+  -- (S.initializeSource                    :: Source IO K.Kumiai)
+  --   $= (CL.filter (isNothing . (^. #lost)) :: Conduit K.Kumiai IO K.Kumiai)
+  --   $= (conduit o ko                     :: Conduit K.Kumiai IO Figure)
+  --   $$ (figureSink                       :: Sink Figure IO ())
+  runConduit
+    $  (S.initializeSource                 :: ConduitT () K.Kumiai IO ())
+    .| (CL.filter (isNothing . (^. #lost)) :: ConduitT K.Kumiai K.Kumiai IO ())
+    .| (conduit o ko                       :: ConduitT K.Kumiai Figure IO ())
+    .| (figureSink                         :: ConduitT Figure Void IO ())
 ----------------------------------------------------------------------
   where
     conduit o' ko' =
@@ -499,20 +518,30 @@ jigyosyoMatchUp = do
 ----------------------------------------------------------------------
 officeAddressMatchUp :: IO ()
 officeAddressMatchUp =
-  (S.initializeSource                   :: Source IO B.Office)
-    $= (CL.filter O.numberInfixAddressP :: Conduit B.Office IO B.Office)
-    $= (CL.map O.basicInfo              :: Conduit B.Office IO [Builder])
-    $$ (CL.mapM_ (liftIO . joinPrint)   :: Sink [Builder] IO ())
+  -- (S.initializeSource                   :: Source IO B.Office)
+  --   $= (CL.filter O.numberInfixAddressP :: Conduit B.Office IO B.Office)
+  --   $= (CL.map O.basicInfo              :: Conduit B.Office IO [Builder])
+  --   $$ (CL.mapM_ (liftIO . joinPrint)   :: Sink [Builder] IO ())
+  runConduit
+    $  S.initializeSource
+    .| CL.filter O.numberInfixAddressP
+    .| CL.map O.basicInfo
+    .| CL.mapM_ (liftIO . joinPrint)
 
 ----------------------------------------------------------------------
 hihoNameMatchUp :: IO ()
 hihoNameMatchUp = do
   bMap <- MP.kumiaiBirthdayCMap
 
-  (S.initializeSource                   :: Source IO H.HihoR)
-    $= (CL.filter H.hihoNameUnfinishedP :: Conduit H.HihoR IO H.HihoR)
-    $= (conduit bMap                    :: Conduit H.HihoR IO Figure)
-    $$ (figureSink                      :: Sink Figure IO ())
+  -- (S.initializeSource                   :: Source IO H.HihoR)
+  --   $= (CL.filter H.hihoNameUnfinishedP :: Conduit H.HihoR IO H.HihoR)
+  --   $= (conduit bMap                    :: Conduit H.HihoR IO Figure)
+  --   $$ (figureSink                      :: Sink Figure IO ())
+  runConduit
+    $  S.initializeSource
+    .| CL.filter H.hihoNameUnfinishedP
+    .| conduit bMap
+    .| figureSink
 ----------------------------------------------------------------------
   where
     conduit m =
@@ -535,11 +564,16 @@ hihoNameStrictMatchUp :: IO ()
 hihoNameStrictMatchUp = do
   bMap <- MP.kumiaiBirthdayNameCMap
 
-  (S.initializeSource                   :: Source IO H.HihoR)
-    $= (CL.filter H.hihoNameUnfinishedP :: Conduit H.HihoR IO H.HihoR)
-    $= (conduit bMap                    :: Conduit H.HihoR IO Figure)
-    $$ (figureSink                      :: Sink Figure IO ())
-----------------------------------------------------------------------
+  -- (S.initializeSource                   :: Source IO H.HihoR)
+  --   $= (CL.filter H.hihoNameUnfinishedP :: Conduit H.HihoR IO H.HihoR)
+  --   $= (conduit bMap                    :: Conduit H.HihoR IO Figure)
+  --   $$ (figureSink                      :: Sink Figure IO ())
+  runConduit
+    $  S.initializeSource
+    .| CL.filter H.hihoNameUnfinishedP
+    .| conduit bMap
+    .| figureSink
+  ----------------------------------------------------------------------
   where
     conduit m =
       awaitForever $ \hiho ->
@@ -561,11 +595,16 @@ hihoAddressMatchUp :: IO ()
 hihoAddressMatchUp = do
   bMap <- MP.kumiaiBirthdayNameCMap
 
-  (S.initializeSource :: Source IO H.HihoR)
-    $= (CL.filter H.hihoAddressBlankP
-                      :: Conduit H.HihoR IO H.HihoR)
-    $= (conduit bMap  :: Conduit H.HihoR IO Figure)
-    $$ (figureSink    :: Sink Figure IO ())
+  -- (S.initializeSource :: Source IO H.HihoR)
+  --   $= (CL.filter H.hihoAddressBlankP
+  --                     :: Conduit H.HihoR IO H.HihoR)
+  --   $= (conduit bMap  :: Conduit H.HihoR IO Figure)
+  --   $$ (figureSink    :: Sink Figure IO ())
+  runConduit
+    $  S.initializeSource
+    .| CL.filter H.hihoAddressBlankP
+    .| conduit bMap
+    .| figureSink
 ----------------------------------------------------------------------
   where
     conduit m =
@@ -662,11 +701,16 @@ kumiaiinMatchUp = do
   kb <- MP.hihoKanaBirthCMap
   ko <- MP.koNumberCMap
 
-  (S.initializeSource  :: Source IO K.Kumiai)
-    $= (CL.filter (\k -> (isNothing (k ^. #lost) && (k ^. #office == "")))
-                       :: Conduit K.Kumiai IO K.Kumiai)
-    $= (conduit kb ko  :: Conduit K.Kumiai IO Figure)
-    $$ (figureSink     :: Sink Figure IO ())
+  -- (S.initializeSource  :: Source IO K.Kumiai)
+  --   $= (CL.filter (\k -> (isNothing (k ^. #lost) && (k ^. #office == "")))
+  --                      :: Conduit K.Kumiai IO K.Kumiai)
+  --   $= (conduit kb ko  :: Conduit K.Kumiai IO Figure)
+  --   $$ (figureSink     :: Sink Figure IO ())
+  runConduit
+    $  S.initializeSource
+    .| CL.filter (\k -> (isNothing (k ^. #lost) && (k ^. #office == "")))
+    .| conduit kb ko
+    .| figureSink
 ----------------------------------------------------------------------
   where
     conduit b o =
@@ -700,11 +744,16 @@ kumiaiOfficeMatchUp = do
   telMap <- MP.officeTelMap
   numMap <- MP.kumiaiNumberCMap
 
-  (S.initializeSource        :: Source IO KO.KumiaiOffice)
-    $= (CL.filter ((^. #idNumber) >>> (==""))
-                              :: Conduit KO.KumiaiOffice IO KO.KumiaiOffice)
-    $= (conduit telMap numMap :: Conduit KO.KumiaiOffice IO Figure)
-    $$ (figureSink            :: Sink Figure IO ())
+  -- (S.initializeSource        :: Source IO KO.KumiaiOffice)
+  --   $= (CL.filter ((^. #idNumber) >>> (==""))
+  --                             :: Conduit KO.KumiaiOffice IO KO.KumiaiOffice)
+  --   $= (conduit telMap numMap :: Conduit KO.KumiaiOffice IO Figure)
+  --   $$ (figureSink            :: Sink Figure IO ())
+  runConduit
+    $  (S.initializeSource)
+    .| (CL.filter ((^. #idNumber) >>> (=="")))
+    .| (conduit telMap numMap)
+    .| (figureSink)
 ----------------------------------------------------------------------
   where
     conduit t n =
@@ -744,13 +793,14 @@ simpleOfficeOutput = undefined
 
 ----------------------------------------------------------------------
 yakuOutput :: IO ()
-yakuOutput =
-  S.initializeSource
+yakuOutput = do
+  runConduit
+    $ S.initializeSource
     -- $= CL.filter (K.kShibuCode >>> (=="18"))
     -- $= CL.filter (K.kBunkaiCode >>> (=="03"))
-    $= CL.filter ((^. #honbuY) >>> isJust)
-    $= conduit
-    $$ sink
+    .| CL.filter ((^. #honbuY) >>> isJust)
+    .| conduit
+    .| sink
   where
     conduit =
       awaitForever $ \kumiai ->

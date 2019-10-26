@@ -584,7 +584,8 @@ pSearch fp = do
     readIORef dirs
   return $ fromDiffList diff
 
-pSearchSource :: FilePath -> Source IO FilePath
+-- pSearchSource :: FilePath -> Source IO FilePath
+pSearchSource :: FilePath -> ConduitT () FilePath IO ()
 pSearchSource fp = do
   p <- liftIO $ doesDirectoryExist fp
   if p
