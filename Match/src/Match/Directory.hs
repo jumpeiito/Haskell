@@ -12,7 +12,7 @@ module Match.Directory
   , openPDFFileToday) where
 
 import           Control.Applicative   ((<|>))
-import           Control.Arrow         ((>>>))
+import           Control.Arrow         ((>>>), (&&&))
 import           Control.Lens
 import           Control.Monad         (forM_, unless, when)
 import           Control.Monad.IO.Class
@@ -62,38 +62,11 @@ import           System.Process          (runInteractiveCommand)
 import           Text.Heredoc
 import qualified Text.Parsec             as P
 import qualified Text.Parsec.String      as P
+import           Text.Printf
 import           Text.Read               (readMaybe)
 import           Util
 import           Util.Strdt
 import           Util.MonadPath
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-Unit
-    mtime Text
-    kind Text
-    number Text
-    shibuCode Text
-    officeCode Text
-    officeName Text
-    person Text
-    deriving Show
-|]
-
-dbPath :: FilePath
-dbPath = "d:/home/.directory.sqlite3"
-
-makeNewDB :: IO ()
-makeNewDB = do
-  p <- doesFileExist dbPath
-  when p $ removeFile dbPath
-  runSqlite (pack dbPath) $ runMigration migrateAll
-
-insertDB :: Unit -> IO ()
-insertDB u = do
-  runSqlite (pack dbPath) . s $ insert u >> return ()
-
-s :: ReaderT SqlBackend m a -> ReaderT SqlBackend m a
-s = id
 
 type DirectoryBaseInfo = (Maybe Int, (String, String), String, Bool)
 
@@ -204,7 +177,6 @@ readSendFile = do
   forM_ (lefts contents) print
   return $ rights contents
 
--- sourceDescendDirectory :: FilePath -> Source IO FilePath
 sourceDescendDirectory :: FilePath -> ConduitT () FilePath IO ()
 sourceDescendDirectory fp = do
   directoryP <- liftIO $ doesDirectoryExist fp
@@ -230,7 +202,6 @@ createHihoDirectory = do
   forM_ xsnd $ \n -> do
     createDirectoryRecursive (fp <> "/") $ xsendDirectoryList n
 
--- removeTargetDirectories :: Conduit FilePath IO FilePath
 removeTargetDirectories :: ConduitT FilePath FilePath IO ()
 removeTargetDirectories = do
   awaitForever $ \dir -> do
@@ -276,10 +247,23 @@ openPDFFileCommand fp =
   runInteractiveCommand (acrord <> " " <> fp <> " &")
     >> return ()
 
+type PDFFile = Record
+  '[ "name"  >: FilePath
+   , "mtime" >: UTCTime]
+
+makePDFFile :: FilePath -> UTCTime -> PDFFile
+makePDFFile fp utc = #name @= fp <: #mtime @= utc <: nil
+
 baseInfoMap ::
   [FilePath] -> M.Map DirectoryBaseInfo (DiffList FilePath)
 baseInfoMap dirs =
   dirs ==> Key (`runFileM` baseInfoM) `MakeDiffListMap` Value id
+
+baseInfoMap3 ::
+  [PDFFile] -> M.Map DirectoryBaseInfo [PDFFile]
+baseInfoMap3 dirs =
+  let key = Key ((`runFileM` baseInfoM) . (^. #name))
+  in dirs ==> key `MakeListMap` Value id
 
 directoryBaseInfoString :: DirectoryBaseInfo -> String
 directoryBaseInfoString dbi =
@@ -327,29 +311,58 @@ pdfSink2 = do
     Nothing -> return ()
     Just xl -> forM_ xl (pdfOpenFromVector infoVector)
 
-pdfSinkSexp :: ConduitT FilePath Void IO ()
-pdfSinkSexp = do
+toHourString :: UTCTime -> String
+toHourString utc =
+  let ud = fromEnum (utctDayTime utc) `div` 1000000000000
+      hour = ud `div` (60 * 60)
+      h = if hour > 15 then hour - 15 else hour + 9
+      minute = (ud - (hour * 60 * 60)) `div` 60
+      second = ud - (hour * 60 * 60) - (minute * 60)
+      tos    = printf "%02d"
+  in [heredoc|${tos h}:${tos minute}:${tos second}|]
+
+timestampString :: PDFFile -> String
+timestampString = toHourString . (^. #mtime)
+
+fullString :: PDFFile -> String
+fullString p =
+  let f = p ^. #name
+      m = timestampString p
+  in [heredoc|${f}@${m}|]
+
+pdfSinkSexp3 :: ConduitT PDFFile Void IO ()
+pdfSinkSexp3 = do
   pdflist <- CL.consume
+  let toSexp = map (map (\n -> "\"" <> n <> "\""))
+               >>> map (DL.intercalate " ")
+               >>> map (\n -> "(" ++ n ++ ")")
+
+  let numbering = DL.zip [0..]
+                  >>> map (\(n, s) -> "(" ++ show n ++ " . " ++ s ++ ")")
+
   let finalize =
-        baseInfoMap
+        baseInfoMap3
         >>> M.toList
         >>> map (\(k, v) -> directoryBaseInfoList k
-                            ++ fromDiffList v)
-        >>> map (map (\n -> "\"" <> n <> "\""))
-        >>> map (DL.intercalate " ")
-        >>> map (\n -> "(" ++ n ++ ")")
-        >>> DL.zip [0..]
-        >>> map (\(n, s) -> "(" ++ show n ++ " . " ++ s ++ ")")
+                            ++ map fullString v)
+        >>> toSexp >>> numbering
   let final = DL.intercalate "\n" $ finalize pdflist
-  liftIO $ writeFile "d:/home/.sexp" $ "(" ++ final ++ ")"
+  liftIO $ writeFile "d:/home/.sexp2" $ "(" ++ final ++ ")"
 
--- dayFilter :: Day -> Conduit FilePath IO FilePath
 dayFilter :: Day -> ConduitT FilePath FilePath IO ()
 dayFilter pday = do
   awaitForever $ \pdf -> do
     utc <- liftIO $ getModificationTime pdf
     when (utctDay utc == pday) $ do
       yield pdf
+
+dayFilterMap2 :: Day -> ConduitT FilePath PDFFile IO ()
+dayFilterMap2 pday = do
+  awaitForever $ \pdf -> do
+    utc <- liftIO $ getModificationTime pdf
+    let p = makePDFFile pdf utc
+    when (utctDay utc == pday) $ do
+      yield p
 
 openPDFFile :: Day -> IO ()
 openPDFFile pday = do
@@ -369,8 +382,8 @@ openPDFFileSexp dayString diffDay = do
       runConduit $
         pSearchSourceRecently True diffDay topPath
         .| CL.filter (takeExtension >>> (== ".pdf"))
-        .| dayFilter pday
-        .| pdfSinkSexp
+        .| dayFilterMap2 pday
+        .| pdfSinkSexp3
 
 openPDFFileFromString :: String -> IO ()
 openPDFFileFromString dayString = do
@@ -416,7 +429,6 @@ fromRange target =
     Left _  -> Nothing
 
 pSearchSourceRecently ::
-  -- Bool -> String -> FilePath -> Source IO FilePath
   Bool -> String -> FilePath -> ConduitT () FilePath IO ()
 pSearchSourceRecently flg diffDay fp = do
   p  <- liftIO $ doesDirectoryExist fp
