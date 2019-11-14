@@ -7,6 +7,7 @@ module Match.Hiho
     HihoR
   , HihoX (..)
   , OldHiho (..)
+  , ShibuO (..)
   , kokuhoOutput
   , outputForNendo
   , hihoThisNendoP
@@ -30,6 +31,7 @@ import           Data.Maybe                 ( isNothing
                                             , isJust
                                             , fromMaybe)
 import           Data.Monoid                ((<>))
+import           Data.Ord                   (comparing)
 import qualified Data.Set                   as S
 import qualified Data.Text                  as Tx
 import           Data.Text                  hiding (foldl', map)
@@ -75,6 +77,7 @@ type HihoR = Record
 
 newtype HihoX = IdNumber { runHiho :: HihoR }
 newtype OldHiho = Birthday { runOH :: HihoR }
+newtype ShibuO = ShibuO { runShibu :: HihoR }
 
 instance Eq HihoX where
   x == y = hihoXKey x == hihoXKey y
@@ -84,6 +87,10 @@ instance Eq OldHiho where
     let birth = runOH >>> (^. #birth)
     in birth x == birth y
 
+instance Eq ShibuO where
+  x == y =
+    ((runShibu x) ^. #shibu) == ((runShibu y) ^. #shibu)
+
 instance Ord HihoX where
   x `compare` y = hihoXKey x `compare` hihoXKey y
 
@@ -91,6 +98,14 @@ instance Ord OldHiho where
   x `compare` y =
     let birth = runOH >>> (^. #birth)
     in birth x `compare` birth y
+
+instance Ord ShibuO where
+  x `compare` y =
+    let sorter f   = comparing (runShibu >>> (^. f)) x y
+        sortShibu  = sorter #shibu
+        sortOffice = sorter #officeName
+        sortName   = sorter #name
+    in sortShibu <> sortOffice <> sortName
 
 kokuhoOutput :: HihoR -> Text
 kokuhoOutput h =
@@ -266,7 +281,8 @@ hihoOutput h =
   -- in let l  = maybeS (xShow <$> (h ^. #lost))
   in let g  = dateToS (h ^. #got)
   in let l  = dateToS (h ^. #lost)
-  in toCSV [s, n, o, hh, c, y, p, a, g, l]
+  in let aq = maybeS $ h ^. #alienReq
+  in toCSV [s, n, o, hh, c, y, p, a, g, l, aq]
 
 -- type Calcurate a = ReaderT Bool IO a
 -- type HihoRList a = [(Maybe a, [HihoR])]

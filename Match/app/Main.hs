@@ -90,13 +90,21 @@ test flag = do
         then H.hihoAliveP
         else const True
 
-  runConduit $
-    -- (S.initializeSource :: Source IO H.HihoR)
-    (S.initializeSource :: ConduitT () H.HihoR IO ())
-    .| H.alienFilterConduit
-    .| CL.filter func
+  filtered <- runConduit $
+              -- (S.initializeSource :: Source IO H.HihoR)
+              (S.initializeSource :: ConduitT () H.HihoR IO ())
+              .| H.alienFilterConduit
+              .| CL.filter func
+              .| CL.consume
+
+  let sorted = comparing H.ShibuO `sortBy` filtered
+
+  runConduit
+    $ CL.sourceList sorted
     .| H.textConduit
     .| CL.mapM_ Tx.putStrLn
+              -- .| H.textConduit
+              -- .| CL.mapM_ Tx.putStrLn
 
 test2 :: IO ()
 test2 = do

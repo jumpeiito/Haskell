@@ -111,7 +111,7 @@ calc = do
   <|> try date8
   <|> try dateNormal
   <|> try dateJapanese
-  <|> try date6 
+  <|> try date6
 ----------------------------------------------------------------------------------------------------
 sepYear4, sepYear, sepMonth :: Parser String
 sepYear4 = (count 4 digit <|> kanParseStr) <* oneOf (separator ++ "年")
@@ -282,4 +282,3 @@ instance DiffDate String [(DayWeek, Integer)] where
 -- --     -- it "date6-03"
 -- --     -- it "date6-04"
 -- --     -- it "date6-05"
-    

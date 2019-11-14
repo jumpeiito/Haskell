@@ -347,7 +347,7 @@ pdfSinkSexp3 = do
                             ++ map fullString v)
         >>> toSexp >>> numbering
   let final = DL.intercalate "\n" $ finalize pdflist
-  liftIO $ writeFile "d:/home/.sexp2" $ "(" ++ final ++ ")"
+  liftIO $ writeFile "d:/home/.sexp3" $ "(" ++ final ++ ")"
 
 dayFilter :: Day -> ConduitT FilePath FilePath IO ()
 dayFilter pday = do
